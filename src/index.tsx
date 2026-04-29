@@ -11,10 +11,9 @@ import {
   QueryClientProvider,
 } from '@tanstack/react-query';
 
-import Header from '@edx/frontend-component-header';
-import { FooterSlot } from '@edx/frontend-component-footer';
+import { Routes } from 'react-router-dom';
 import messages from './i18n';
-import ExamplePage from './example/ExamplePage';
+import { sessionsAdminRoutes } from './sessions-admin/routes';
 
 import './index.scss';
 
@@ -27,12 +26,11 @@ subscribe(APP_READY, () => {
   root.render(
     <AppProvider>
       <QueryClientProvider client={queryClient}>
-        <Header />
-        <ExamplePage />
-        <FooterSlot />
+        <Routes>
+          {sessionsAdminRoutes}
+        </Routes>
       </QueryClientProvider>
     </AppProvider>,
-    document.getElementById('root'),
   );
 });
 
