@@ -6,9 +6,9 @@ import {
 import {
   correctSession, createSession, updateSession, fetchAllInstructors, fetchCourseRuns, fetchInstructors,
 } from './api';
-import { getLocations } from '../sessions-admin/api';
-import { toISOString, toDateTimeLocal, extractApiError } from './utils';
-import SearchableSelect from './SearchableSelect';
+import { getLocations } from '../locations/api';
+import { toISOString, toDateTimeLocal, extractApiError } from '../shared/utils';
+import SearchableSelect from '../shared/SearchableSelect';
 
 // ─── Recurrence constants ─────────────────────────────────────────────────────
 

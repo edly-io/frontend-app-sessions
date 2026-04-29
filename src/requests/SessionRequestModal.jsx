@@ -9,8 +9,8 @@ import {
 } from '@openedx/paragon';
 
 import { createSessionRequest } from './api';
-import { REQUEST_TYPE, REQUEST_TYPE_LABELS } from './constants';
-import { extractApiError, formatDateTime } from './utils';
+import { REQUEST_TYPE, REQUEST_TYPE_LABELS } from '../shared/constants';
+import { extractApiError, formatDateTime } from '../shared/utils';
 
 /**
  * Learner-facing modal for submitting a SessionRequest.

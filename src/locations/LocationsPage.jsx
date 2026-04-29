@@ -9,9 +9,9 @@ import { Add, DeleteOutline, EditOutline } from '@openedx/paragon/icons';
 import PropTypes from 'prop-types';
 import { getAuthenticatedUser } from '@edx/frontend-platform/auth';
 
-import { useLocations } from '../hooks';
-import { deleteLocation } from '../api';
-import { extractApiError } from '../../sessions-tab/utils';
+import { useLocations } from '../app/hooks';
+import { deleteLocation } from './api';
+import { extractApiError } from '../shared/utils';
 import LocationModal from './LocationModal';
 
 const DescriptionCell = ({ value }) => (

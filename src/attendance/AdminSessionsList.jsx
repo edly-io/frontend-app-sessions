@@ -8,9 +8,9 @@ import {
   ArrowBackIos, ArrowForwardIos, People, Search,
 } from '@openedx/paragon/icons';
 
-import { getPastSessionsForAttendance } from '../api';
-import { extractApiError, formatDateTime, getStatusVariant } from '../../sessions-tab/utils';
-import { SESSION_STATUS_LABELS } from '../../sessions-tab/constants';
+import { getPastSessionsForAttendance } from './api';
+import { extractApiError, formatDateTime, getStatusVariant } from '../shared/utils';
+import { SESSION_STATUS_LABELS } from '../shared/constants';
 
 const PAGE_SIZE = 25;
 const WINDOW_DAYS = 30;

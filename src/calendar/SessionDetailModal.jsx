@@ -9,13 +9,13 @@ import {
 } from '@openedx/paragon';
 import { Launch } from '@openedx/paragon/icons';
 
-import ScopeBadge from '../ScopeBadge';
-import InstructingBadge from '../InstructingBadge';
-import RequestStatusBadge from '../RequestStatusBadge';
-import { formatDateTime, getStatusVariant } from '../utils';
+import ScopeBadge from '../shared/ScopeBadge';
+import InstructingBadge from '../shared/InstructingBadge';
+import RequestStatusBadge from '../shared/RequestStatusBadge';
+import { formatDateTime, getStatusVariant } from '../shared/utils';
 import {
   SESSION_STATUS_LABELS, SESSION_PLATFORM_LABELS, USER_ROLE,
-} from '../constants';
+} from '../shared/constants';
 
 const RECURRENCE_TYPE_LABEL = { 1: 'Daily', 2: 'Weekly', 3: 'Monthly' };
 

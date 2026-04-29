@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { getLocations, getPrograms } from './api';
+import { getPrograms } from './api';
+import { getLocations } from '../locations/api';
 
 export const usePrograms = () => {
   const [programs, setPrograms] = useState([]);

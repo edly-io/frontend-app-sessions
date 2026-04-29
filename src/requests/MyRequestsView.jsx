@@ -4,13 +4,13 @@ import {
   Alert, Badge, Container, DataTable, Spinner,
 } from '@openedx/paragon';
 
-import { getMySessionRequests } from '../sessions-tab/api';
+import { getMySessionRequests } from './api';
 import {
   REQUEST_STATUS_LABELS,
   REQUEST_STATUS_VARIANTS,
   REQUEST_TYPE_LABELS,
-} from '../sessions-tab/constants';
-import { extractApiError, formatDateTime } from '../sessions-tab/utils';
+} from '../shared/constants';
+import { extractApiError, formatDateTime } from '../shared/utils';
 
 const rowShape = PropTypes.shape({
   original: PropTypes.shape({

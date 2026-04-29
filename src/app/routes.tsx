@@ -2,19 +2,19 @@ import React from 'react';
 import { Route, Navigate } from 'react-router-dom';
 import { PageWrap } from '@edx/frontend-platform/react';
 
-import { CalendarPage } from '../sessions-tab';
+import CalendarPage from '../calendar/CalendarPage';
 import AuthGate from './AuthGate';
 import SessionsAdminLayout from './SessionsAdminLayout';
 import SessionsLanding from './SessionsLanding';
-import RequestsPage from './RequestsPage';
-import AttendancePage from './attendance/AttendancePage';
-import AttendanceIndexRedirect from './attendance/AttendanceIndexRedirect';
-import AdminSessionsList from './attendance/AdminSessionsList';
-import AttendanceRosterPage from './attendance/AttendanceRosterPage';
-import MyAttendanceView from './attendance/MyAttendanceView';
-import PerLearnerHistoryReport from './attendance/reports/PerLearnerHistoryReport';
-import CourseSummaryReport from './attendance/reports/CourseSummaryReport';
-import LocationsPage from './locations/LocationsPage';
+import RequestsPage from '../requests/RequestsPage';
+import AttendancePage from '../attendance/AttendancePage';
+import AttendanceIndexRedirect from '../attendance/AttendanceIndexRedirect';
+import AdminSessionsList from '../attendance/AdminSessionsList';
+import AttendanceRosterPage from '../attendance/AttendanceRosterPage';
+import MyAttendanceView from '../attendance/MyAttendanceView';
+import PerLearnerHistoryReport from '../attendance/reports/PerLearnerHistoryReport';
+import CourseSummaryReport from '../attendance/reports/CourseSummaryReport';
+import LocationsPage from '../locations/LocationsPage';
 
 /**
  * Route paths owned by the sessions-admin area. Importing from here keeps

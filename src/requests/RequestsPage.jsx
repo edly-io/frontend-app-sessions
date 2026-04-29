@@ -1,7 +1,7 @@
 import React from 'react';
 import { getAuthenticatedUser } from '@edx/frontend-platform/auth';
 
-import StudentRequestsTab from '../sessions-tab/StudentRequestsTab';
+import StudentRequestsTab from './StudentRequestsTab';
 import MyRequestsView from './MyRequestsView';
 
 // Role-aware Requests tab. Admin sees the cross-course review queue (existing

@@ -12,9 +12,9 @@ import {
   getEnrolledLearners,
   getSession,
   markAttendance,
-} from '../api';
-import { getAttendanceRecords } from '../../sessions-tab/api';
-import { extractApiError, formatDateTime, getStatusVariant } from '../../sessions-tab/utils';
+  getAttendanceRecords,
+} from './api';
+import { extractApiError, formatDateTime, getStatusVariant } from '../shared/utils';
 
 // Must match the backend AttendanceSettings.marking_window_days default.
 // This is used only for UX hints — the backend enforces the real value.

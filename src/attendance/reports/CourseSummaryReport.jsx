@@ -6,10 +6,10 @@ import {
   Alert, Container, DataTable, Form, Spinner,
 } from '@openedx/paragon';
 
-import { getAttendanceSummary } from '../../api';
-import SearchableSelect from '../../../sessions-tab/SearchableSelect';
-import { fetchCourseRuns } from '../../../sessions-tab/api';
-import { extractApiError } from '../../../sessions-tab/utils';
+import { getAttendanceSummary } from '../api';
+import SearchableSelect from '../../shared/SearchableSelect';
+import { fetchCourseRuns } from '../../calendar/api';
+import { extractApiError } from '../../shared/utils';
 
 // ─── Default date range helpers ───────────────────────────────────────────────
 

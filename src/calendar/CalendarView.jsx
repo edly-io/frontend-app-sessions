@@ -10,11 +10,11 @@ import {
 import {
   ChevronLeft, ChevronRight, Launch, Add, EditOutline, DeleteOutline, EventBusy,
 } from '@openedx/paragon/icons';
-import { bucketSessionsByDay, getStatusVariant } from '../utils';
-import { SESSION_STATUS_LABELS, USER_ROLE } from '../constants';
-import RequestStatusBadge from '../RequestStatusBadge';
-import ScopeBadge from '../ScopeBadge';
-import InstructingBadge from '../InstructingBadge';
+import { bucketSessionsByDay, getStatusVariant } from '../shared/utils';
+import { SESSION_STATUS_LABELS, USER_ROLE } from '../shared/constants';
+import RequestStatusBadge from '../shared/RequestStatusBadge';
+import ScopeBadge from '../shared/ScopeBadge';
+import InstructingBadge from '../shared/InstructingBadge';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 

@@ -6,10 +6,10 @@ import {
   Alert, Badge, Container, DataTable, Spinner,
 } from '@openedx/paragon';
 
-import { getAttendanceRecordsPage, getPastSessionsForAttendance } from '../../api';
-import SearchableSelect from '../../../sessions-tab/SearchableSelect';
-import { ATTENDANCE_STATUS } from '../../../sessions-tab/constants';
-import { extractApiError, formatDateTime, getStatusVariant } from '../../../sessions-tab/utils';
+import { getAttendanceRecordsPage, getPastSessionsForAttendance } from '../api';
+import SearchableSelect from '../../shared/SearchableSelect';
+import { ATTENDANCE_STATUS } from '../../shared/constants';
+import { extractApiError, formatDateTime, getStatusVariant } from '../../shared/utils';
 
 const PAGE_SIZE = 50;
 

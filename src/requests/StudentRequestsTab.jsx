@@ -19,8 +19,8 @@ import {
   REQUEST_STATUS_LABELS,
   REQUEST_STATUS_VARIANTS,
   REQUEST_TYPE_LABELS,
-} from './constants';
-import { formatDateTime, extractApiError } from './utils';
+} from '../shared/constants';
+import { formatDateTime, extractApiError } from '../shared/utils';
 
 /**
  * Reviewer DataTable for session requests.

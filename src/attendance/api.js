@@ -1,17 +1,14 @@
 import { getAuthenticatedHttpClient } from '@edx/frontend-platform/auth';
 import { getConfig } from '@edx/frontend-platform';
 
-// TODO(phase-6B): swap this stub for a real GET /fbr/api/programs/v1/programs/
-// call once the programs team ships the endpoint. Shape of each item must
-// stay `{ id, slug, name }` so callers don't change.
-const STUB_PROGRAMS = [
-  { id: 1, slug: 'default', name: 'Default Program' },
-  { id: 2, slug: 'second', name: 'Second Program' },
-];
+const getBaseUrl = () => `${getConfig().LMS_BASE_URL}/fbr/api/attendance/v1`;
 
-export const getPrograms = async () => STUB_PROGRAMS;
-
-const getAttendanceBaseUrl = () => `${getConfig().LMS_BASE_URL}/fbr/api/attendance/v1`;
+export const getAttendanceRecords = async (filters = {}) => {
+  const client = getAuthenticatedHttpClient();
+  const params = new URLSearchParams(filters);
+  const { data } = await client.get(`${getBaseUrl()}/records/?${params}`);
+  return data;
+};
 
 /**
  * Active enrollments for the session's course. Used by the admin roster page
@@ -22,7 +19,7 @@ const getAttendanceBaseUrl = () => `${getConfig().LMS_BASE_URL}/fbr/api/attendan
 export const getEnrolledLearners = async (sessionId) => {
   const client = getAuthenticatedHttpClient();
   const { data } = await client.get(
-    `${getAttendanceBaseUrl()}/sessions/${sessionId}/enrolled-learners/`,
+    `${getBaseUrl()}/sessions/${sessionId}/enrolled-learners/`,
   );
   return data;
 };
@@ -36,7 +33,7 @@ export const getEnrolledLearners = async (sessionId) => {
 export const markAttendance = async (sessionId, records) => {
   const client = getAuthenticatedHttpClient();
   const { data } = await client.post(
-    `${getAttendanceBaseUrl()}/sessions/${sessionId}/mark-attendance/`,
+    `${getBaseUrl()}/sessions/${sessionId}/mark-attendance/`,
     { records },
   );
   return data;
@@ -54,7 +51,7 @@ export const getMyAttendanceRecords = async ({ page, pageSize } = {}) => {
   if (pageSize) { params.set('page_size', String(pageSize)); }
   const qs = params.toString();
   const { data } = await client.get(
-    `${getAttendanceBaseUrl()}/records/me/${qs ? `?${qs}` : ''}`,
+    `${getBaseUrl()}/records/me/${qs ? `?${qs}` : ''}`,
   );
   return data;
 };
@@ -82,7 +79,7 @@ export const getPastSessionsForAttendance = async ({ daysBack = 30, startDate, e
     attendance_only: '1',
   });
   const { data } = await client.get(
-    `${getAttendanceBaseUrl()}/calendar-sessions/?${params}`,
+    `${getBaseUrl()}/calendar-sessions/?${params}`,
   );
   return data;
 };
@@ -95,7 +92,7 @@ export const getPastSessionsForAttendance = async ({ daysBack = 30, startDate, e
 export const getSession = async (sessionId) => {
   const client = getAuthenticatedHttpClient();
   const { data } = await client.get(
-    `${getAttendanceBaseUrl()}/sessions/${sessionId}/`,
+    `${getBaseUrl()}/sessions/${sessionId}/`,
   );
   return data;
 };
@@ -124,38 +121,8 @@ export const getAttendanceRecordsPage = async ({
   if (pageSize) { params.set('page_size', String(pageSize)); }
   const qs = params.toString();
   const { data } = await client.get(
-    `${getAttendanceBaseUrl()}/records/${qs ? `?${qs}` : ''}`,
+    `${getBaseUrl()}/records/${qs ? `?${qs}` : ''}`,
   );
-  return data;
-};
-
-/**
- * Correct the ``course_id`` and/or ``instructor_emails`` on a past session.
- * Admin-only. Does not trigger Zoom sync or the immutability guard.
- *
- * PATCH /fbr/api/attendance/v1/sessions/{session_id}/
- * Body: { course_id?: string, instructor_emails?: string[] }
- * Returns the updated session object.
- */
-export const correctSession = async (sessionId, data) => {
-  const client = getAuthenticatedHttpClient();
-  const { data: responseData } = await client.patch(
-    `${getAttendanceBaseUrl()}/sessions/${sessionId}/`,
-    data,
-  );
-  return responseData;
-};
-
-/**
- * All users with a staff or instructor role across any course.
- * Used by the session correction form to populate the instructor picker.
- *
- * GET /fbr/api/attendance/v1/instructors/
- * Returns: [{ user_id, email, name }, ...]
- */
-export const fetchAllInstructors = async () => {
-  const client = getAuthenticatedHttpClient();
-  const { data } = await client.get(`${getAttendanceBaseUrl()}/instructors/`);
   return data;
 };
 
@@ -168,7 +135,7 @@ export const fetchAllInstructors = async () => {
 export const getCourseEnrolledLearners = async (courseKey) => {
   const client = getAuthenticatedHttpClient();
   const { data } = await client.get(
-    `${getAttendanceBaseUrl()}/courses/${encodeURIComponent(courseKey)}/enrolled-learners/`,
+    `${getBaseUrl()}/courses/${encodeURIComponent(courseKey)}/enrolled-learners/`,
   );
   return data;
 };
@@ -191,38 +158,7 @@ export const getAttendanceSummary = async ({ courseId, startDate, endDate } = {}
   if (endDate) { params.set('end_date', endDate); }
   const qs = params.toString();
   const { data } = await client.get(
-    `${getAttendanceBaseUrl()}/attendance-summary/${qs ? `?${qs}` : ''}`,
+    `${getBaseUrl()}/attendance-summary/${qs ? `?${qs}` : ''}`,
   );
   return data;
-};
-
-// ─── Locations ──────────────────────────────────────────────────────────────
-// Global catalogue of physical venues (e.g. "IRSA 1"). List + detail are open
-// to any authenticated user — the schedule modal needs them for its picker.
-// Mutations are admin-only (backend permission `IsAdminOrAuthenticatedReadOnly`).
-
-export const getLocations = async () => {
-  const client = getAuthenticatedHttpClient();
-  const { data } = await client.get(`${getAttendanceBaseUrl()}/locations/`);
-  return Array.isArray(data) ? data : data.results ?? [];
-};
-
-export const createLocation = async (payload) => {
-  const client = getAuthenticatedHttpClient();
-  const { data } = await client.post(`${getAttendanceBaseUrl()}/locations/`, payload);
-  return data;
-};
-
-export const updateLocation = async (id, payload) => {
-  const client = getAuthenticatedHttpClient();
-  const { data } = await client.patch(
-    `${getAttendanceBaseUrl()}/locations/${id}/`,
-    payload,
-  );
-  return data;
-};
-
-export const deleteLocation = async (id) => {
-  const client = getAuthenticatedHttpClient();
-  await client.delete(`${getAttendanceBaseUrl()}/locations/${id}/`);
 };

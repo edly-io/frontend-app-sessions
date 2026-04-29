@@ -5,12 +5,13 @@ import {
   Container, Spinner, Alert, Toast, StandardModal, Button,
 } from '@openedx/paragon';
 import {
-  getCalendarSessions, deleteSession, cancelSession, getMySessionRequests,
-} from '../api';
-import { extractApiError } from '../utils';
-import { USER_ROLE } from '../constants';
-import ScheduleMeetingModal from '../ScheduleMeetingModal';
-import SessionRequestModal from '../SessionRequestModal';
+  getCalendarSessions, deleteSession, cancelSession,
+} from './api';
+import { getMySessionRequests } from '../requests/api';
+import { extractApiError } from '../shared/utils';
+import { USER_ROLE } from '../shared/constants';
+import ScheduleMeetingModal from './ScheduleMeetingModal';
+import SessionRequestModal from '../requests/SessionRequestModal';
 import CalendarView, { getMonthGridDays, getWeekDays } from './CalendarView';
 import SessionDetailModal from './SessionDetailModal';
 

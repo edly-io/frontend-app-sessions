@@ -13,7 +13,7 @@ import {
 
 import { Routes } from 'react-router-dom';
 import messages from './i18n';
-import { sessionsAdminRoutes } from './sessions-admin/routes';
+import { sessionsAdminRoutes } from './app/routes';
 
 import './index.scss';
 
