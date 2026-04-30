@@ -28,7 +28,7 @@ const AttendanceSubNav = ({ isAdmin }) => {
       {items.map(({ slug, label }) => (
         <NavLink
           key={slug}
-          to={`/sessions/${programId}/attendance/${slug}`}
+          to={`/${programId}/attendance/${slug}`}
           className={({ isActive }) => [
             'px-3 py-1',
             'rounded-pill',

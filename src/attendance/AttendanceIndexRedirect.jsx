@@ -8,7 +8,7 @@ const AttendanceIndexRedirect = () => {
   const { programId } = useParams();
   const { administrator } = getAuthenticatedUser() || {};
   const target = administrator ? 'sessions' : 'me';
-  return <Navigate replace to={`/sessions/${programId}/attendance/${target}`} />;
+  return <Navigate replace to={`/${programId}/attendance/${target}`} />;
 };
 
 export default AttendanceIndexRedirect;

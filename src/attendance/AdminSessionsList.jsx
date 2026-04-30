@@ -97,7 +97,7 @@ const ViewMarkActionCell = ({ row }) => {
   return (
     <Button
       as={Link}
-      to={`/sessions/${programId}/attendance/sessions/${row.original.id}`}
+      to={`/${programId}/attendance/sessions/${row.original.id}`}
       state={{ session: row.original }}
       variant="outline-primary"
       size="sm"

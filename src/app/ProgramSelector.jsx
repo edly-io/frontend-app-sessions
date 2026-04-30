@@ -51,7 +51,7 @@ const ProgramSelector = ({ section }) => {
 
   const onChange = (event) => {
     const next = event.target.value;
-    navigate(`/sessions/${next}/${section}`);
+    navigate(`/${next}/${section}`);
   };
 
   // Multi-program: button-styled select. Padding lives on the select itself

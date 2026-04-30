@@ -53,7 +53,7 @@ const SessionsLanding = () => {
     );
   }
 
-  return <Navigate replace to={`/sessions/${programs[0].id}/calendar`} />;
+  return <Navigate replace to={`/${programs[0].id}/calendar`} />;
 };
 
 export default SessionsLanding;

@@ -23,7 +23,7 @@ const SectionNav = () => {
       {visibleSections.map(({ slug, label }) => (
         <NavLink
           key={slug}
-          to={`/sessions/${programId}/${slug}`}
+          to={`/${programId}/${slug}`}
           className={({ isActive }) => [
             'px-3 py-2',
             'text-decoration-none',
