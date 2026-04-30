@@ -206,7 +206,7 @@ const AttendanceRosterPage = () => {
     <Container className="py-3">
       <Button
         as={Link}
-        to={`/sessions/${programId}/attendance/sessions`}
+        to={`/${programId}/attendance/sessions`}
         variant="tertiary"
         size="sm"
         iconBefore={ArrowBack}

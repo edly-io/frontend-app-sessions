@@ -20,18 +20,23 @@ import LocationsPage from '../locations/LocationsPage';
  * Route paths owned by the sessions-admin area. Importing from here keeps
  * top-level `src/constants.ts` and `src/index.jsx` free of sessions-admin
  * specifics — the area owns its own paths.
+ *
+ * Paths are relative to the MFE basename (`PUBLIC_PATH=/sessions/`) which
+ * `AppProvider`'s `<BrowserRouter basename>` strips before matching. So a
+ * route declared `/` matches the URL `/sessions`, `/:programId/calendar`
+ * matches `/sessions/<id>/calendar`, etc.
  */
-// Deprecated alias — old `/sessions/calendar` bookmarks redirect into the
-// landing resolver below.
-export const LEGACY_CALENDAR_PATH = '/sessions/calendar';
+// Deprecated alias — old `/sessions/calendar` bookmarks (relative `/calendar`
+// under the MFE basename) redirect into the landing resolver below.
+export const LEGACY_CALENDAR_PATH = '/calendar';
 // Bare entry: silent resolver picks the first program and forwards to its
 // calendar.
-export const SESSIONS_ROOT_PATH = '/sessions';
+export const SESSIONS_ROOT_PATH = '/';
 // Program-scoped sections.
-export const SESSIONS_CALENDAR_PATH = '/sessions/:programId/calendar';
-export const SESSIONS_REQUESTS_PATH = '/sessions/:programId/requests';
-export const SESSIONS_ATTENDANCE_PATH = '/sessions/:programId/attendance';
-export const SESSIONS_LOCATIONS_PATH = '/sessions/:programId/locations';
+export const SESSIONS_CALENDAR_PATH = '/:programId/calendar';
+export const SESSIONS_REQUESTS_PATH = '/:programId/requests';
+export const SESSIONS_ATTENDANCE_PATH = '/:programId/attendance';
+export const SESSIONS_LOCATIONS_PATH = '/:programId/locations';
 
 const wrapInShell = (Component: React.ComponentType) => (
   <PageWrap>
@@ -48,10 +53,6 @@ const wrapInShell = (Component: React.ComponentType) => (
 // route definitions.
 export const sessionsAdminRoutes = (
   <>
-    <Route
-      path="/"
-      element={<Navigate to={SESSIONS_ROOT_PATH} replace />}
-    />
     <Route
       path={LEGACY_CALENDAR_PATH}
       element={<Navigate to={SESSIONS_ROOT_PATH} replace />}
