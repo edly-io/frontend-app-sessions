@@ -1,32 +1,106 @@
-frontend-template-application
-#############################
+frontend-app-sessions
+#####################
 
-|license-badge| |status-badge| |ci-badge| |codecov-badge|
-
-⚠️ Warning ⚠️
-***************
-
-This template uses a version of Paragon that includes `design tokens <https://github.com/openedx/paragon/?tab=readme-ov-file#design-tokens>`_ support. Support for design tokens is a breaking change, and more information is available in `the DEPR <https://github.com/openedx/brand-openedx/issues/23>`_.
-
-To use this template with a pre-design-tokens version of Paragon, you can utilize `the release/teak branch <https://github.com/openedx/frontend-template-application/tree/release/teak>`_.
+|license-badge|
 
 Purpose
 *******
 
-This repository is a template for Open edX micro-frontend applications. It is
-flagged as a Template Repository, meaning it can be used as a basis for new
-GitHub repositories by clicking the green "Use this template" button above.
-The rest of this document describes how to work with your new micro-frontend
-**after you've created a new repository from the template.**
+``frontend-app-sessions`` is the Open edX Sessions and Attendance MFE. It provides:
+
+- A calendar view of scheduled live sessions (Zoom / Microsoft Teams)
+- Per-learner session request submission (remote Zoom join, leave requests)
+- Instructor and admin tools: attendance roster, per-session/per-learner/course-summary reports, location management
+
+This MFE is part of the `tutor-contrib-fbr <https://github.com/edly-io/tutor-contrib-fbr>`_ plugin ecosystem and is deployed via Tutor at port **1998** (``http://apps.local.openedx.io:1998``).
 
 Getting Started
 ***************
 
-After copying the template repository, you'll want to do a find-and-replace to
-replace all instances of ``frontend-template-application`` with the name of
-your new repository.  Also edit index.html to replace "Application Template"
-with a friendly name for this application that users will see in their browser
-tab.
+Prerequisites
+=============
+
+- Node 18+ (see ``.nvmrc``)
+- A running Open edX devstack (Tutor 21.x) with the ``fbr`` plugin enabled
+
+Local Development
+=================
+
+.. code-block:: bash
+
+    # 1. Install dependencies
+    npm install
+
+    # 2. Start the webpack dev server (hot reload)
+    npm start
+    # → http://apps.local.openedx.io:1998
+
+The dev server talks to the LMS at ``http://local.openedx.io:8000`` (configured in ``.env.development``).
+
+Tutor Setup
+===========
+
+.. code-block:: bash
+
+    # Install plugin
+    pip install -e path/to/tutor-contrib-fbr
+    tutor plugins enable fbr
+
+    # Generate Caddy route and CORS whitelist for port 1998
+    tutor config save
+
+    # Restart services to pick up config changes
+    tutor dev restart lms
+    tutor dev restart mfe
+
+Environment Variables
+=====================
+
+Key variables in ``.env.development``:
+
++------------------------------+-----------------------------------------------+
+| Variable                     | Description                                   |
++==============================+===============================================+
+| ``PORT``                     | Dev server port (``1998``)                    |
++------------------------------+-----------------------------------------------+
+| ``APP_ID``                   | MFE identifier (``sessions``)                 |
++------------------------------+-----------------------------------------------+
+| ``LMS_BASE_URL``             | LMS host                                      |
++------------------------------+-----------------------------------------------+
+| ``MFE_CONFIG_API_URL``       | MFE runtime config endpoint on LMS            |
++------------------------------+-----------------------------------------------+
+
+Routes
+======
+
++------------------------------------------+--------------------------------------+
+| Path                                     | Component                            |
++==========================================+======================================+
+| ``/sessions``                            | Calendar (learner view)              |
++------------------------------------------+--------------------------------------+
+| ``/sessions/:programId/calendar``        | Calendar scoped to a program         |
++------------------------------------------+--------------------------------------+
+| ``/sessions/:programId/requests``        | Learner request list                 |
++------------------------------------------+--------------------------------------+
+| ``/sessions/:programId/attendance``      | Attendance reports (admin/instructor)|
++------------------------------------------+--------------------------------------+
+| ``/sessions/:programId/locations``       | Location management (admin)          |
++------------------------------------------+--------------------------------------+
+
+Testing
+*******
+
+.. code-block:: bash
+
+    npm test              # Jest with coverage
+    npm run test:watch    # Jest in watch mode
+    npm run lint          # ESLint + TypeScript type check
+    npm run types         # TypeScript type check only
+
+License
+*******
+
+The code in this repository is licensed under the AGPL v3 unless otherwise noted.
 
 Prerequisites
 =============
