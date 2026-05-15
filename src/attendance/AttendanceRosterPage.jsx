@@ -20,6 +20,7 @@ import { extractApiError, formatDateTime, getStatusVariant } from '../shared/uti
 // This is used only for UX hints — the backend enforces the real value.
 const MARKING_WINDOW_DAYS = 7;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const MARKING_WINDOW_MS = MARKING_WINDOW_DAYS * MS_PER_DAY;
 
 const STATUS_OPTIONS = [
   { value: 'present', label: 'Present' },
@@ -30,11 +31,13 @@ const STATUS_OPTIONS = [
 const DEFAULT_STATUS = 'present';
 const PAGE_SIZE = 25;
 
-/** Compute how many days ago a session ended (0 if it ended today or in future). */
-const daysSinceEnd = (endTimeStr) => {
-  if (!endTimeStr) { return 0; }
-  const diff = Date.now() - new Date(endTimeStr).getTime();
-  return Math.max(0, Math.floor(diff / MS_PER_DAY));
+// Milliseconds remaining in the marking window. Negative when the window has
+// already closed. Returns null when the session has no end time yet.
+const msUntilWindowClose = (endTimeStr) => {
+  if (!endTimeStr) { return null; }
+  const endMs = new Date(endTimeStr).getTime();
+  if (Number.isNaN(endMs)) { return null; }
+  return (endMs + MARKING_WINDOW_MS) - Date.now();
 };
 
 const NameCell = ({ value }) => value || '—';
@@ -102,13 +105,19 @@ const AttendanceRosterPage = () => {
   const [sessionData, setSessionData] = useState(navSession);
   // Initialise optimistically from nav state; overwritten once the API responds.
   const [isLocked, setIsLocked] = useState(navSession?.attendance_marked ?? false);
+  // Set true if a save is rejected with `marking_window_closed`, so the page
+  // can re-render read-only without a manual refresh.
+  const [windowClosedByServer, setWindowClosedByServer] = useState(false);
 
-  const daysElapsed = daysSinceEnd(sessionData?.scheduled_end_time);
-  const isExpired = daysElapsed > MARKING_WINDOW_DAYS;
-  const daysRemaining = Math.max(0, MARKING_WINDOW_DAYS - daysElapsed);
+  const msRemaining = msUntilWindowClose(sessionData?.scheduled_end_time);
+  const isExpired = windowClosedByServer || (msRemaining !== null && msRemaining <= 0);
+  const daysRemaining = (msRemaining !== null && msRemaining > 0)
+    ? Math.ceil(msRemaining / MS_PER_DAY)
+    : 0;
 
   const [learners, setLearners] = useState([]);
   const [statusByUserId, setStatusByUserId] = useState(() => new Map());
+  const [hasRecords, setHasRecords] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -126,19 +135,31 @@ const AttendanceRosterPage = () => {
         if (cancelled) { return; }
         const roster = rosterData.results ?? [];
         const existing = recordsData.results ?? [];
+        const lockedAtLoad = freshSession.attendance_marked ?? false;
+        const remaining = msUntilWindowClose(freshSession.scheduled_end_time);
+        const expiredAtLoad = remaining !== null && remaining <= 0;
+        const readOnlyAtLoad = lockedAtLoad || expiredAtLoad;
+
+        const rosterIds = new Set(roster.map((r) => r.user_id));
         const seeded = new Map();
-        roster.forEach((row) => seeded.set(row.user_id, DEFAULT_STATUS));
         existing.forEach((rec) => {
-          if (seeded.has(rec.user_id)) {
-            seeded.set(rec.user_id, STATUS_OPTIONS.some((s) => s.value === rec.status)
-              ? rec.status
-              : DEFAULT_STATUS);
-          }
+          if (!rosterIds.has(rec.user_id)) { return; }
+          seeded.set(rec.user_id, STATUS_OPTIONS.some((s) => s.value === rec.status)
+            ? rec.status
+            : DEFAULT_STATUS);
         });
+        // Only seed default-Present rows for editable mode. In read-only mode
+        // unseeded rows render "—" rather than a fabricated "Present" badge.
+        if (!readOnlyAtLoad) {
+          roster.forEach((row) => {
+            if (!seeded.has(row.user_id)) { seeded.set(row.user_id, DEFAULT_STATUS); }
+          });
+        }
         setLearners(roster);
         setStatusByUserId(seeded);
+        setHasRecords(existing.length > 0);
         setSessionData(freshSession);
-        setIsLocked(freshSession.attendance_marked ?? false);
+        setIsLocked(lockedAtLoad);
       } catch (err) {
         if (!cancelled) { setError(extractApiError(err, 'Failed to load roster')); }
       } finally {
@@ -166,8 +187,14 @@ const AttendanceRosterPage = () => {
       }));
       await markAttendance(sessionId, records);
       setIsLocked(true);
+      setHasRecords(true);
       setShowToast(true);
     } catch (err) {
+      // Race: window closed between page load and Save. Flip to read-only so
+      // the user does not stare at the same Save button after rejection.
+      if (err.response?.data?.error === 'marking_window_closed') {
+        setWindowClosedByServer(true);
+      }
       setError(extractApiError(err, 'Failed to save attendance'));
     } finally {
       setSaving(false);
@@ -185,12 +212,17 @@ const AttendanceRosterPage = () => {
   const currentlyReadOnly = isLocked || isExpired;
 
   const tableData = useMemo(() => (
-    learners.map((l) => ({
-      ...l,
-      currentStatus: statusByUserId.get(l.user_id) ?? DEFAULT_STATUS,
-      isReadOnly: currentlyReadOnly,
-      onStatusChange: (value) => setStatusFor(l.user_id, value),
-    }))
+    learners.map((l) => {
+      const stored = statusByUserId.get(l.user_id);
+      return {
+        ...l,
+        // Read-only with no real record: undefined so StatusCell shows "—"
+        // instead of a fabricated "Present" badge.
+        currentStatus: stored ?? (currentlyReadOnly ? undefined : DEFAULT_STATUS),
+        isReadOnly: currentlyReadOnly,
+        onStatusChange: (value) => setStatusFor(l.user_id, value),
+      };
+    })
   ), [learners, statusByUserId, currentlyReadOnly]);
 
   if (loading) {
@@ -266,7 +298,9 @@ const AttendanceRosterPage = () => {
       {!isLocked && isExpired && (
         <Alert variant="warning" className="mb-3">
           The {MARKING_WINDOW_DAYS}-day attendance marking window for this session has passed.
-          Attendance can no longer be recorded.
+          {hasRecords
+            ? ' Attendance can no longer be edited.'
+            : ' No attendance was recorded for this session.'}
         </Alert>
       )}
       {!currentlyReadOnly && sessionData?.scheduled_end_time && (
