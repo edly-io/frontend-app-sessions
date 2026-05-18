@@ -5,7 +5,7 @@ import {
 } from '@openedx/paragon';
 import {
   correctSession, createSession, updateSession, fetchAllInstructors, fetchCourseRuns, fetchInstructors,
-  getAttendanceConfig,
+  getSessionsConfig,
 } from './api';
 import { getLocations } from '../locations/api';
 import { toISOString, toDateTimeLocal, extractApiError } from '../shared/utils';
@@ -191,7 +191,7 @@ const ScheduleMeetingModal = ({
   // Fetch session type options from the attendance config endpoint.
   useEffect(() => {
     if (!isOpen) { return; }
-    getAttendanceConfig()
+    getSessionsConfig()
       .then((cfg) => setSessionTypeOptions(cfg.session_types || []))
       .catch(() => {});
   }, [isOpen]);

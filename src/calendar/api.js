@@ -91,7 +91,7 @@ export const correctSession = async (sessionId, correctionData) => {
   return data;
 };
 
-export const getAttendanceConfig = async () => {
+export const getSessionsConfig = async () => {
   const client = getAuthenticatedHttpClient();
   const { data } = await client.get(`${getBaseUrl()}/config/`);
   return data;
