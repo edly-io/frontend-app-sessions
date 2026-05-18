@@ -15,17 +15,19 @@ export const updateSession = async (sessionId, sessionData) => {
   return data;
 };
 
-// Soft-cancel via dedicated endpoint. Preserves the session row and Zoom meeting.
-// The PATCH endpoint is correction-only (course_id/instructors/location) and does
-// not accept status transitions — POST /cancel/ is the correct path.
+// Soft-cancel: preserves the session row and Zoom meeting for audit/rescheduling.
 export const cancelSession = async (sessionId) => {
   const client = getAuthenticatedHttpClient();
   const { data } = await client.post(`${getBaseUrl()}/sessions/${sessionId}/cancel/`);
   return data;
 };
 
-// Hard DELETE is not wired on the backend — soft-cancel preserves the audit trail.
-export const deleteSession = async (sessionId) => cancelSession(sessionId);
+// Hard delete. Blocked by the backend for sessions that have already started,
+// completed, or are in progress — use cancelSession for those.
+export const deleteSession = async (sessionId) => {
+  const client = getAuthenticatedHttpClient();
+  await client.delete(`${getBaseUrl()}/sessions/${sessionId}/`);
+};
 
 // ─── Course Run & Instructor lookup APIs ──────────────────────────────────────
 // Used to populate the searchable autocomplete fields in ScheduleMeetingModal.
