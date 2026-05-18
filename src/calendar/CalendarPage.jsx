@@ -1,6 +1,7 @@
 import React, {
   useState, useEffect, useMemo, useCallback,
 } from 'react';
+import { useParams } from 'react-router-dom';
 import {
   Container, Spinner, Alert, Toast, StandardModal, Button,
 } from '@openedx/paragon';
@@ -51,6 +52,7 @@ const computeFetchWindow = (view, currentDate) => {
 };
 
 const CalendarPage = () => {
+  const { programId } = useParams();
   const [sessions, setSessions] = useState([]);
   const [userRole, setUserRole] = useState(USER_ROLE.LEARNER);
   const [loading, setLoading] = useState(true);
@@ -152,7 +154,7 @@ const CalendarPage = () => {
   const handleDeleteConfirm = async () => {
     if (!sessionToDelete) { return; }
     try {
-      await deleteSession(sessionToDelete.course_id, sessionToDelete.id);
+      await deleteSession(sessionToDelete.id);
       setSessionToDelete(null);
       setRefreshKey((prev) => prev + 1);
       showSuccess('Session deleted successfully!');
@@ -174,7 +176,7 @@ const CalendarPage = () => {
   const handleCancelConfirm = async () => {
     if (!sessionToCancel) { return; }
     try {
-      await cancelSession(sessionToCancel.course_id, sessionToCancel.id);
+      await cancelSession(sessionToCancel.id);
       setSessionToCancel(null);
       setRefreshKey((prev) => prev + 1);
       showSuccess('Session cancelled.');
@@ -288,7 +290,7 @@ const CalendarPage = () => {
         <ScheduleMeetingModal
           isOpen={modalSession !== undefined}
           onClose={() => setModalSession(undefined)}
-          courseId={modalSession?.course_id || ''}
+          programKey={programId || ''}
           session={modalSession}
           onSuccess={handleSessionSuccess}
         />
