@@ -3,28 +3,24 @@ import { getConfig } from '@edx/frontend-platform';
 
 const getBaseUrl = () => `${getConfig().LMS_BASE_URL}/fbr/api/attendance/v1`;
 
-export const createSession = async (courseId, sessionData) => {
+export const createSession = async (sessionData) => {
   const client = getAuthenticatedHttpClient();
-  const { data } = await client.post(`${getBaseUrl()}/courses/${courseId}/sessions/`, sessionData);
+  const { data } = await client.post(`${getBaseUrl()}/sessions/`, sessionData);
   return data;
 };
 
-export const updateSession = async (courseId, sessionId, sessionData) => {
+export const updateSession = async (sessionId, sessionData) => {
   const client = getAuthenticatedHttpClient();
-  const { data } = await client.patch(`${getBaseUrl()}/courses/${courseId}/sessions/${sessionId}/`, sessionData);
+  const { data } = await client.patch(`${getBaseUrl()}/sessions/${sessionId}/`, sessionData);
   return data;
 };
 
-export const deleteSession = async (courseId, sessionId) => {
-  const client = getAuthenticatedHttpClient();
-  await client.delete(`${getBaseUrl()}/courses/${courseId}/sessions/${sessionId}/`);
-};
+// Backend DELETE is not wired in urls.py — use soft-cancel (status: 'cancelled')
+// which preserves the audit trail and Zoom meeting. See deleteSession discussion.
+export const deleteSession = async (sessionId) => updateSession(sessionId, { status: 'cancelled' });
 
-// Soft-cancel via partial update. Backend accepts {status:'cancelled'} on
-// SessionViewSet today; preserves audit trail and the Zoom meeting (unlike
-// destroy(), which tears Zoom down). Pair endpoint with a transition guard
-// in api/views.py — see Phase 8 in the plan.
-export const cancelSession = async (courseId, sessionId) => updateSession(courseId, sessionId, { status: 'cancelled' });
+// Soft-cancel via partial update. Preserves the session row and Zoom meeting.
+export const cancelSession = async (sessionId) => updateSession(sessionId, { status: 'cancelled' });
 
 // ─── Course Run & Instructor lookup APIs ──────────────────────────────────────
 // Used to populate the searchable autocomplete fields in ScheduleMeetingModal.
@@ -43,18 +39,16 @@ export const fetchCourseRuns = async () => {
 };
 
 /**
- * Fetch instructors / course-team members for a specific course run.
- * Called after the user selects a course run in ScheduleMeetingModal.
- * Searched by `name` in the frontend autocomplete.
+ * Fetch all instructors / staff members (flat list, not course-scoped).
+ * Called after the user selects a course run in ScheduleMeetingModal to
+ * populate the instructor autocomplete.
  *
- * GET /fbr/api/attendance/v1/courses/{courseId}/instructors/
+ * GET /fbr/api/attendance/v1/instructors/
  * Returns: [{ user_id, email, name }, ...]
- *
- * @param {string} courseId - Course key string, e.g. "course-v1:Org+Course+Run"
  */
-export const fetchInstructors = async (courseId) => {
+export const fetchInstructors = async () => {
   const client = getAuthenticatedHttpClient();
-  const { data } = await client.get(`${getBaseUrl()}/courses/${courseId}/instructors/`);
+  const { data } = await client.get(`${getBaseUrl()}/instructors/`);
   return data;
 };
 
