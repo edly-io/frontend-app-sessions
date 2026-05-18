@@ -115,7 +115,7 @@ const buildSummary = ({
 };
 
 const ScheduleMeetingModal = ({
-  isOpen, onClose, courseId, onSuccess, session,
+  isOpen, onClose, programKey, onSuccess, session,
 }) => {
   const timezoneName = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
@@ -184,16 +184,14 @@ const ScheduleMeetingModal = ({
       .finally(() => setLocationsLoading(false));
   }, [isOpen]);
 
-  // Pre-fill course run once options are loaded:
-  //   edit mode  → match session.course_id
-  //   create mode → match the courseId prop (course-scoped sessions tab)
+  // Pre-fill course run once options are loaded (edit mode only).
   useEffect(() => {
-    if (courseRunOptions.length === 0) { return; }
-    const targetId = session ? String(session.course_id) : courseId;
+    if (courseRunOptions.length === 0 || !session) { return; }
+    const targetId = String(session.course_id);
     if (!targetId) { return; }
     const match = courseRunOptions.find((r) => r.value === targetId);
     if (match) { setSelectedCourseRun(match); }
-  }, [courseRunOptions, session, courseId]);
+  }, [courseRunOptions, session]);
 
   // Fetch instructors whenever the selected course run changes.
   // In correction mode we fetch the global instructor list once on open (the
@@ -221,7 +219,7 @@ const ScheduleMeetingModal = ({
     }
     setInstructorsLoading(true);
     setSelectedInstructors([]);
-    fetchInstructors(selectedCourseRunId)
+    fetchInstructors()
       .then((data) => setInstructorOptions(
         data.map((i) => ({ value: i.user_id, label: i.name, email: i.email })),
       ))
@@ -547,9 +545,9 @@ const ScheduleMeetingModal = ({
       } else {
         // Normal mode: full scheduling edit / create.
         const recurrence = buildRecurrence();
-        // Use the explicitly selected course run; fall back to the prop for backwards-compat
-        const effectiveCourseId = selectedCourseRun?.value || courseId;
         const sessionData = {
+          program_key: programKey,
+          course_id: selectedCourseRun?.value || null,
           title: formData.title,
           description: formData.description,
           scheduled_start_time: toISOString(formData.scheduled_start_time),
@@ -558,15 +556,15 @@ const ScheduleMeetingModal = ({
           is_recurring: isRecurring,
           instructor_emails: selectedInstructors.map((i) => i.email),
           location_id: selectedLocation?.value || null,
+          create_zoom_meeting: createZoomMeeting,
         };
-        sessionData.create_zoom_meeting = createZoomMeeting;
         if (recurrence) {
           sessionData.recurrence = recurrence;
         }
         if (session) {
-          result = await updateSession(effectiveCourseId, session.id, sessionData);
+          result = await updateSession(session.id, sessionData);
         } else {
-          result = await createSession(effectiveCourseId, sessionData);
+          result = await createSession(sessionData);
         }
       }
 
@@ -989,13 +987,13 @@ const ScheduleMeetingModal = ({
 ScheduleMeetingModal.propTypes = {
   isOpen: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
-  courseId: PropTypes.string,
+  programKey: PropTypes.string,
   onSuccess: PropTypes.func.isRequired,
   // eslint-disable-next-line react/forbid-prop-types
   session: PropTypes.object,
 };
 ScheduleMeetingModal.defaultProps = {
-  courseId: '',
+  programKey: '',
   session: null,
 };
 
