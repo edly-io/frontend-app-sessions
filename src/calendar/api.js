@@ -91,6 +91,12 @@ export const correctSession = async (sessionId, correctionData) => {
   return data;
 };
 
+export const getAttendanceConfig = async () => {
+  const client = getAuthenticatedHttpClient();
+  const { data } = await client.get(`${getBaseUrl()}/config/`);
+  return data;
+};
+
 // ─── Calendar API ─────────────────────────────────────────────────────────────
 //
 // Returns sessions within a date window for the calendar UI. Visibility is

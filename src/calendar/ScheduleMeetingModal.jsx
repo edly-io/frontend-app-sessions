@@ -5,6 +5,7 @@ import {
 } from '@openedx/paragon';
 import {
   correctSession, createSession, updateSession, fetchAllInstructors, fetchCourseRuns, fetchInstructors,
+  getAttendanceConfig,
 } from './api';
 import { getLocations } from '../locations/api';
 import { toISOString, toDateTimeLocal, extractApiError } from '../shared/utils';
@@ -123,6 +124,7 @@ const ScheduleMeetingModal = ({
   // location fields are editable. Uses scheduled_end_time so in-progress
   // sessions are not incorrectly treated as past (consistent with CalendarView).
   const isPastSession = !!session && new Date(session.scheduled_end_time || session.scheduled_start_time) <= new Date();
+  const isSessionType = sessionType === 'session';
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const errorRef = useRef(null);
@@ -161,6 +163,8 @@ const ScheduleMeetingModal = ({
   const [locationsLoading, setLocationsLoading] = useState(false);
   const [courseRunsLoading, setCourseRunsLoading] = useState(false);
   const [instructorsLoading, setInstructorsLoading] = useState(false);
+  const [sessionType, setSessionType] = useState('session');
+  const [sessionTypeOptions, setSessionTypeOptions] = useState([]);
 
   // Fetch the full course run list once each time the modal opens
   useEffect(() => {
@@ -182,6 +186,14 @@ const ScheduleMeetingModal = ({
       ))
       .catch(() => {}) // silently fail — admin can still save without a location
       .finally(() => setLocationsLoading(false));
+  }, [isOpen]);
+
+  // Fetch session type options from the attendance config endpoint.
+  useEffect(() => {
+    if (!isOpen) { return; }
+    getAttendanceConfig()
+      .then((cfg) => setSessionTypeOptions(cfg.session_types || []))
+      .catch(() => {});
   }, [isOpen]);
 
   // Pre-fill course run once options are loaded (edit mode only).
@@ -211,21 +223,22 @@ const ScheduleMeetingModal = ({
         .finally(() => setInstructorsLoading(false));
       return;
     }
-    // Normal mode: scope to selected course run.
-    if (!selectedCourseRunId) {
+    // Normal mode: course is only required when session_type is 'session'.
+    // For other types load all instructors immediately even without a course.
+    if (!selectedCourseRunId && isSessionType) {
       setInstructorOptions([]);
       setSelectedInstructors([]);
       return;
     }
     setInstructorsLoading(true);
-    setSelectedInstructors([]);
+    if (!isSessionType) { setSelectedInstructors([]); }
     fetchInstructors()
       .then((data) => setInstructorOptions(
         data.map((i) => ({ value: i.user_id, label: i.name, email: i.email })),
       ))
       .catch(() => {})
       .finally(() => setInstructorsLoading(false));
-  }, [isPastSession, isOpen, selectedCourseRunId]);
+  }, [isPastSession, isOpen, selectedCourseRunId, isSessionType]);
 
   // Pre-fill instructors once options are loaded (edit mode only).
   // Backend returns `instructor_emails` (ordered); match each to the loaded
@@ -243,6 +256,7 @@ const ScheduleMeetingModal = ({
   // Pre-fill form when editing
   useEffect(() => {
     if (session) {
+      setSessionType(session.session_type || 'session');
       const startDateTimeLocal = toDateTimeLocal(session.scheduled_start_time) || '';
       const endDateTimeLocal = toDateTimeLocal(session.scheduled_end_time) || '';
       const { date: startDate, time: startTime } = splitDateTimeLocal(startDateTimeLocal);
@@ -302,6 +316,7 @@ const ScheduleMeetingModal = ({
         }
       }
     } else {
+      setSessionType('session');
       setFormData({
         title: '',
         description: '',
@@ -396,18 +411,18 @@ const ScheduleMeetingModal = ({
       setTimeout(() => errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
       return false;
     }
-    if (!selectedCourseRun) {
-      setError('Course is required');
+    if (isSessionType && !selectedCourseRun) {
+      setError('Course is required for this session type');
       setTimeout(() => errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
       return false;
     }
-    if (selectedInstructors.length === 0) {
-      setError('Instructor is required');
+    if (isSessionType && selectedInstructors.length === 0) {
+      setError('At least one instructor is required for this session type');
       setTimeout(() => errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
       return false;
     }
-    if (!isPastSession && !selectedLocation) {
-      setError('Location is required');
+    if (!isPastSession && isSessionType && !selectedLocation) {
+      setError('Location is required for this session type');
       setTimeout(() => errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
       return false;
     }
@@ -547,6 +562,7 @@ const ScheduleMeetingModal = ({
         const recurrence = buildRecurrence();
         const sessionData = {
           program_key: programKey,
+          session_type: sessionType,
           course_id: selectedCourseRun?.value || null,
           title: formData.title,
           description: formData.description,
@@ -655,6 +671,20 @@ const ScheduleMeetingModal = ({
             />
           </Form.Group>
 
+          <Form.Group className="mb-3">
+            <Form.Label>Session Type *</Form.Label>
+            <Form.Control
+              as="select"
+              value={sessionType}
+              onChange={(e) => setSessionType(e.target.value)}
+              disabled={isPastSession}
+            >
+              {sessionTypeOptions.map(({ value, label }) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </Form.Control>
+          </Form.Group>
+
           <SearchableSelect
             id="session-course-run"
             label="Course"
@@ -663,7 +693,7 @@ const ScheduleMeetingModal = ({
             onChange={setSelectedCourseRun}
             placeholder="Search by course title..."
             loading={courseRunsLoading}
-            required
+            required={isSessionType}
           />
 
           <SearchableSelect
@@ -673,10 +703,10 @@ const ScheduleMeetingModal = ({
             value={selectedInstructors}
             onChange={setSelectedInstructors}
             multiple
-            placeholder={isPastSession || selectedCourseRun ? 'Search by name...' : 'Select a course first'}
+            placeholder={isPastSession || selectedCourseRun || !isSessionType ? 'Search by name...' : 'Select a course first'}
             loading={instructorsLoading}
-            disabled={!isPastSession && !selectedCourseRun}
-            required
+            disabled={!isPastSession && isSessionType && !selectedCourseRun}
+            required={isSessionType}
           />
 
           <SearchableSelect
@@ -687,7 +717,7 @@ const ScheduleMeetingModal = ({
             onChange={setSelectedLocation}
             placeholder={locationsLoading ? 'Loading locations…' : 'Search locations…'}
             loading={locationsLoading}
-            required={!isPastSession}
+            required={!isPastSession && isSessionType}
           />
 
           <Form.Group className="mb-3">
