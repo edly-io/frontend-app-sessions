@@ -15,6 +15,7 @@ import MyAttendanceView from '../attendance/MyAttendanceView';
 import PerLearnerHistoryReport from '../attendance/reports/PerLearnerHistoryReport';
 import CourseSummaryReport from '../attendance/reports/CourseSummaryReport';
 import LocationsPage from '../locations/LocationsPage';
+import HolidaysPage from '../holidays/HolidaysPage';
 
 /**
  * Route paths owned by the sessions-admin area. Importing from here keeps
@@ -37,6 +38,7 @@ export const SESSIONS_CALENDAR_PATH = '/:programId/calendar';
 export const SESSIONS_REQUESTS_PATH = '/:programId/requests';
 export const SESSIONS_ATTENDANCE_PATH = '/:programId/attendance';
 export const SESSIONS_LOCATIONS_PATH = '/:programId/locations';
+export const SESSIONS_HOLIDAYS_PATH = '/:programId/holidays';
 
 const wrapInShell = (Component: React.ComponentType) => (
   <PageWrap>
@@ -64,6 +66,7 @@ export const sessionsAdminRoutes = (
     <Route path={SESSIONS_CALENDAR_PATH} element={wrapInShell(CalendarPage)} />
     <Route path={SESSIONS_REQUESTS_PATH} element={wrapInShell(RequestsPage)} />
     <Route path={SESSIONS_LOCATIONS_PATH} element={wrapInShell(LocationsPage)} />
+    <Route path={SESSIONS_HOLIDAYS_PATH} element={wrapInShell(HolidaysPage)} />
     {/* Attendance tab is a layout route — children render inside the
         AttendancePage shell's <Outlet />. Sub-paths follow the role-aware
         pill nav: admin gets sessions/summary/by-session/by-learner; learner

@@ -1,4 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, {
+  useState, useRef, useEffect, useMemo,
+} from 'react';
 import PropTypes from 'prop-types';
 import {
   StandardModal, Button, Form, Spinner, Alert, OverlayTrigger, Tooltip,
@@ -116,7 +118,7 @@ const buildSummary = ({
 };
 
 const ScheduleMeetingModal = ({
-  isOpen, onClose, programKey, onSuccess, session,
+  isOpen, onClose, programKey, onSuccess, session, holidays,
 }) => {
   const timezoneName = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
@@ -124,10 +126,10 @@ const ScheduleMeetingModal = ({
   // location fields are editable. Uses scheduled_end_time so in-progress
   // sessions are not incorrectly treated as past (consistent with CalendarView).
   const isPastSession = !!session && new Date(session.scheduled_end_time || session.scheduled_start_time) <= new Date();
-  const isSessionType = sessionType === 'session';
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const errorRef = useRef(null);
+  const conflictRef = useRef(null);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -165,6 +167,47 @@ const ScheduleMeetingModal = ({
   const [instructorsLoading, setInstructorsLoading] = useState(false);
   const [sessionType, setSessionType] = useState('session');
   const [sessionTypeOptions, setSessionTypeOptions] = useState([]);
+  const isSessionType = sessionType === 'session';
+
+  // Conflict detection — set when the API returns HTTP 409.
+  const [conflictData, setConflictData] = useState(null);
+  const [pendingPayload, setPendingPayload] = useState(null);
+
+  // Which fields to highlight red, derived from the active conflict type.
+  const fieldErrors = useMemo(() => {
+    if (!conflictData) { return {}; }
+    switch (conflictData.conflict_type) {
+      case 'INSTRUCTOR_DOUBLE_BOOKING': return { instructors: true };
+      case 'ROOM_DOUBLE_BOOKING': return { location: true };
+      case 'TRAINEE_CLASH': return { startTime: true, endTime: true };
+      case 'PROTECTED_DATE': return { startDate: true };
+      default: return {};
+    }
+  }, [conflictData]);
+
+  useEffect(() => {
+    if (conflictData) {
+      setTimeout(() => conflictRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+    }
+  }, [conflictData]);
+
+  // Soft scheduling warning — shown when the selected start date is a weekend
+  // or a public holiday. Does not block form submission.
+  const schedulingWarning = useMemo(() => {
+    if (!startDateInput || isPastSession) { return ''; }
+    const d = new Date(`${startDateInput}T00:00:00`);
+    const dow = d.getDay(); // 0 = Sunday, 6 = Saturday
+    if (dow === 0 || dow === 6) {
+      return `${dow === 0 ? 'Sunday' : 'Saturday'} is a weekend day. You can still schedule this session.`;
+    }
+    const holidayMatch = holidays.find(
+      (h) => h.start_date <= startDateInput && startDateInput <= h.end_date,
+    );
+    if (holidayMatch) {
+      return `${holidayMatch.name} is a public holiday on this date. You can still schedule this session.`;
+    }
+    return '';
+  }, [startDateInput, holidays, isPastSession]);
 
   // Fetch the full course run list once each time the modal opens
   useEffect(() => {
@@ -519,9 +562,23 @@ const ScheduleMeetingModal = ({
     return recurrence;
   };
 
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      description: '',
+      scheduled_start_time: '',
+      scheduled_end_time: '',
+    });
+    setStartDateInput('');
+    setStartTimeInput('');
+    setEndDateInput('');
+    setEndTimeInput('');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setConflictData(null);
 
     if (!validateForm()) {
       return;
@@ -577,6 +634,7 @@ const ScheduleMeetingModal = ({
         if (recurrence) {
           sessionData.recurrence = recurrence;
         }
+        setPendingPayload(sessionData);
         if (session) {
           result = await updateSession(session.id, sessionData);
         } else {
@@ -585,20 +643,35 @@ const ScheduleMeetingModal = ({
       }
 
       onSuccess(result);
-
-      // Reset form
-      setFormData({
-        title: '',
-        description: '',
-        scheduled_start_time: '',
-        scheduled_end_time: '',
-      });
-      setStartDateInput('');
-      setStartTimeInput('');
-      setEndDateInput('');
-      setEndTimeInput('');
+      resetForm();
     } catch (err) {
-      setError(extractApiError(err, 'Failed to save session. Please try again.'));
+      if (err.response?.status === 409) {
+        setConflictData(err.response.data);
+      } else {
+        setError(extractApiError(err, 'Failed to save session. Please try again.'));
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleProceedAnyway = async () => {
+    setConflictData(null);
+    setLoading(true);
+    try {
+      const acknowledgedPayload = { ...pendingPayload, acknowledge: true };
+      const result = session
+        ? await updateSession(session.id, acknowledgedPayload)
+        : await createSession(acknowledgedPayload);
+      onSuccess(result);
+      resetForm();
+    } catch (err) {
+      if (err.response?.status === 409) {
+        setConflictData(err.response.data);
+        setPendingPayload({ ...pendingPayload, acknowledge: true });
+      } else {
+        setError(extractApiError(err, 'Failed to save session. Please try again.'));
+      }
     } finally {
       setLoading(false);
     }
@@ -606,6 +679,7 @@ const ScheduleMeetingModal = ({
 
   const handleClose = () => {
     setError('');
+    setConflictData(null);
     onClose();
   };
 
@@ -645,9 +719,87 @@ const ScheduleMeetingModal = ({
       }}
       >
         {error && (
-        <Alert variant="danger" dismissible onClose={() => setError('')} ref={errorRef}>
-          {error}
-        </Alert>
+          <Alert variant="danger" dismissible onClose={() => setError('')} ref={errorRef}>
+            {error}
+          </Alert>
+        )}
+
+        {/* Hard-block conflict — admin must resolve before saving */}
+        {conflictData && !conflictData.override_allowed && (
+          <Alert variant="danger" className="mb-3" ref={conflictRef}>
+            <strong>{conflictData.message}</strong>
+            <ul className="mt-2 mb-0 pl-4">
+              {conflictData.affected_entities.map((entity, i) => (
+                // eslint-disable-next-line react/no-array-index-key
+                <li key={i}>
+                  {entity.type === 'instructor' && (
+                    <>
+                      <strong>{entity.email}</strong>
+                      {' → '}
+                      &ldquo;{entity.conflicting_session_name}&rdquo;
+                      {entity.program_name && ` (${entity.program_name})`}
+                      {entity.scheduled_start_time && (
+                        <>
+                          {' · '}
+                          {new Date(entity.scheduled_start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {' – '}
+                          {new Date(entity.scheduled_end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </>
+                      )}
+                    </>
+                  )}
+                  {entity.type === 'room' && (
+                    <>
+                      &ldquo;{entity.name}&rdquo; is booked
+                      {entity.session_title && ` for “${entity.session_title}”`}
+                      {entity.program_name && ` (${entity.program_name})`}
+                      {entity.scheduled_start_time && (
+                        <>
+                          {' · '}
+                          {new Date(entity.scheduled_start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {' – '}
+                          {new Date(entity.scheduled_end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </>
+                      )}
+                    </>
+                  )}
+                  {entity.type === 'session' && (
+                    <>
+                      <strong>{entity.title}</strong>
+                      {': '}
+                      {new Date(entity.scheduled_start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {' – '}
+                      {new Date(entity.scheduled_end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </>
+                  )}
+                </li>
+              ))}
+            </ul>
+            {conflictData.conflict_type === 'ROOM_DOUBLE_BOOKING' && conflictData.resolution_hints.length > 0 && (
+              <div className="mt-2" style={{ fontSize: 13 }}>
+                Available rooms:{' '}
+                {conflictData.resolution_hints
+                  .map((id) => locationOptions.find((o) => o.value === id)?.label)
+                  .filter(Boolean)
+                  .join(', ') || 'check Locations for availability'}
+              </div>
+            )}
+          </Alert>
+        )}
+
+        {/* Soft warn (PROTECTED_DATE) — admin can override */}
+        {conflictData?.override_allowed && (
+          <Alert variant="warning" className="mb-3" ref={conflictRef}>
+            <strong>{conflictData.message}</strong>
+            <div className="mt-2">
+              <Button size="sm" variant="primary" onClick={handleProceedAnyway} disabled={loading}>
+                Proceed anyway
+              </Button>
+              <Button size="sm" variant="tertiary" onClick={() => setConflictData(null)} className="ml-2">
+                Cancel
+              </Button>
+            </div>
+          </Alert>
         )}
 
         <Form onSubmit={handleSubmit}>
@@ -707,6 +859,7 @@ const ScheduleMeetingModal = ({
             loading={instructorsLoading}
             disabled={!isPastSession && isSessionType && !selectedCourseRun}
             required={isSessionType}
+            isInvalid={!!fieldErrors.instructors}
           />
 
           <SearchableSelect
@@ -718,6 +871,7 @@ const ScheduleMeetingModal = ({
             placeholder={locationsLoading ? 'Loading locations…' : 'Search locations…'}
             loading={locationsLoading}
             required={!isPastSession && isSessionType}
+            isInvalid={!!fieldErrors.location}
           />
 
           <Form.Group className="mb-3">
@@ -744,6 +898,7 @@ const ScheduleMeetingModal = ({
                   aria-label="Start date"
                   required={!isPastSession}
                   disabled={isPastSession}
+                  style={(fieldErrors.startDate || fieldErrors.startTime) ? { borderColor: '#dc3545' } : undefined}
                 />
               </div>
               <div className="col-5">
@@ -755,10 +910,17 @@ const ScheduleMeetingModal = ({
                   step="60"
                   required={!isPastSession}
                   disabled={isPastSession}
+                  style={fieldErrors.startTime ? { borderColor: '#dc3545' } : undefined}
                 />
               </div>
             </div>
           </Form.Group>
+
+          {schedulingWarning && (
+            <Alert variant="warning" className="mb-3 py-2" style={{ fontSize: 13 }}>
+              {schedulingWarning}
+            </Alert>
+          )}
 
           <Form.Group className="mb-3">
             <Form.Label>End date and time {!isPastSession && '*'}</Form.Label>
@@ -771,6 +933,7 @@ const ScheduleMeetingModal = ({
                   aria-label="End date"
                   required={!isPastSession}
                   disabled={isPastSession}
+                  style={fieldErrors.endTime ? { borderColor: '#dc3545' } : undefined}
                 />
               </div>
               <div className="col-5">
@@ -782,6 +945,7 @@ const ScheduleMeetingModal = ({
                   step="60"
                   required={!isPastSession}
                   disabled={isPastSession}
+                  style={fieldErrors.endTime ? { borderColor: '#dc3545' } : undefined}
                 />
               </div>
             </div>
@@ -1005,6 +1169,7 @@ const ScheduleMeetingModal = ({
             </div>
           </fieldset>
           )}
+
         </Form>
       </div>
     </StandardModal>
@@ -1021,10 +1186,16 @@ ScheduleMeetingModal.propTypes = {
   onSuccess: PropTypes.func.isRequired,
   // eslint-disable-next-line react/forbid-prop-types
   session: PropTypes.object,
+  holidays: PropTypes.arrayOf(PropTypes.shape({
+    id: PropTypes.number,
+    date: PropTypes.string,
+    name: PropTypes.string,
+  })),
 };
 ScheduleMeetingModal.defaultProps = {
   programKey: '',
   session: null,
+  holidays: [],
 };
 
 export default ScheduleMeetingModal;

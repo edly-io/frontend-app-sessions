@@ -44,6 +44,7 @@ const SearchableSelect = ({
   disabled,
   loading,
   required,
+  isInvalid,
 }) => {
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
@@ -201,6 +202,8 @@ const SearchableSelect = ({
                 paddingLeft: '2.5rem',
                 backgroundColor: disabled ? '#e9ecef' : '#fff',
                 cursor: disabled ? 'not-allowed' : 'text',
+                border: isInvalid ? '1px solid #dc3545' : undefined,
+                borderRadius: isInvalid ? '0.375rem' : undefined,
               }}
             >
               {selectedList.map((opt) => (
@@ -240,6 +243,7 @@ const SearchableSelect = ({
             {...inputCommonProps}
             onFocus={() => { if (!value) { setIsOpen(true); } }}
             leadingElement={<Icon src={Search} />}
+            isInvalid={isInvalid}
           />
         )}
 
@@ -324,6 +328,7 @@ SearchableSelect.propTypes = {
   disabled: PropTypes.bool,
   loading: PropTypes.bool,
   required: PropTypes.bool,
+  isInvalid: PropTypes.bool,
 };
 
 SearchableSelect.defaultProps = {
@@ -334,6 +339,7 @@ SearchableSelect.defaultProps = {
   disabled: false,
   loading: false,
   required: false,
+  isInvalid: false,
 };
 
 export default SearchableSelect;

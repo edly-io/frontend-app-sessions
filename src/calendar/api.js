@@ -104,12 +104,10 @@ export const getSessionsConfig = async () => {
 // learners see enrolled courses). The window is required and must be
 // <= 45 days — the calendar re-fetches on navigation, so one month/week/day
 // at a time is all we ever load.
-export const getCalendarSessions = async (startDate, endDate) => {
+export const getCalendarSessions = async (startDate, endDate, programKey = '') => {
   const client = getAuthenticatedHttpClient();
-  const params = new URLSearchParams({
-    start_date: startDate,
-    end_date: endDate,
-  });
+  const params = new URLSearchParams({ start_date: startDate, end_date: endDate });
+  if (programKey) { params.set('program_key', programKey); }
   const { data } = await client.get(`${getBaseUrl()}/calendar-sessions/?${params}`);
   return { sessions: data.results, userRole: data.user_role };
 };

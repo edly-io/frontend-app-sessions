@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import {
   Button,
@@ -661,7 +661,7 @@ const DayCell = ({
   openPopoverId, setOpenPopoverId,
   openDayKey, setOpenDayKey,
   isOutsideMonth = false, cellMinHeight = 110, canManageSessions = false,
-  isLearner = false, studentRequestMap, onRequestSession,
+  isLearner = false, studentRequestMap, onRequestSession, holidays = [],
 }) => {
   const dateKey = toDateKey(date);
   const today = toDateKey(new Date());
@@ -730,6 +730,26 @@ const DayCell = ({
       >
         {date.getDate()}
       </span>
+
+      {/* Holiday banners — one per holiday covering this day */}
+      {holidays.map((h) => (
+        <div
+          key={h.id}
+          style={{
+            fontSize: 10,
+            color: '#92400e',
+            background: '#fef3c7',
+            borderRadius: 3,
+            padding: '1px 4px',
+            marginBottom: 3,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {h.name}
+        </div>
+      ))}
 
       {/* Session chips — each individually clickable, opens session popover */}
       {visible.map((session) => (
@@ -829,7 +849,7 @@ const MonthGrid = ({
   currentDate, sessionMap, onEditSession, onDeleteSession, onCancelSession, onSessionDetail,
   openPopoverId, setOpenPopoverId,
   openDayKey, setOpenDayKey, canManageSessions = false,
-  isLearner = false, studentRequestMap, onRequestSession,
+  isLearner = false, studentRequestMap, onRequestSession, holidayMap = new Map(),
 }) => {
   const days = getMonthGridDays(currentDate);
   const currentMonth = currentDate.getMonth();
@@ -887,6 +907,7 @@ const MonthGrid = ({
             canManageSessions={canManageSessions}
             isLearner={isLearner}
             studentRequestMap={studentRequestMap}
+            holidays={holidayMap.get(toDateKey(day)) || []}
             onRequestSession={onRequestSession}
           />
         ))}
@@ -977,7 +998,7 @@ const layoutSessions = (sessions) => {
 const TimeGrid = ({
   days, sessionMap, onEditSession, onDeleteSession, onCancelSession, onSessionDetail,
   openPopoverId, setOpenPopoverId, canManageSessions = false,
-  isLearner = false, studentRequestMap, onRequestSession,
+  isLearner = false, studentRequestMap, onRequestSession, holidayMap = new Map(),
 }) => {
   const todayKey = toDateKey(new Date());
 
@@ -1012,6 +1033,25 @@ const TimeGrid = ({
               }}
             >
               {day.toLocaleDateString('en-US', { weekday: 'short' })} {day.getDate()}
+              {(holidayMap.get(toDateKey(day)) || []).map((h) => (
+                <div
+                  key={h.id}
+                  style={{
+                    fontSize: 9,
+                    color: '#92400e',
+                    background: '#fef3c7',
+                    borderRadius: 2,
+                    padding: '0 3px',
+                    marginTop: 2,
+                    lineHeight: 1.4,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {h.name}
+                </div>
+              ))}
             </div>
           );
         })}
@@ -1171,7 +1211,7 @@ const TimeGrid = ({
 const WeekGrid = ({
   currentDate, sessionMap, onEditSession, onDeleteSession, onCancelSession, onSessionDetail,
   openPopoverId, setOpenPopoverId, canManageSessions = false,
-  isLearner = false, studentRequestMap, onRequestSession,
+  isLearner = false, studentRequestMap, onRequestSession, holidayMap = new Map(),
 }) => (
   <TimeGrid
     days={getWeekDays(currentDate)}
@@ -1186,6 +1226,7 @@ const WeekGrid = ({
     isLearner={isLearner}
     studentRequestMap={studentRequestMap}
     onRequestSession={onRequestSession}
+    holidayMap={holidayMap}
   />
 );
 
@@ -1194,7 +1235,7 @@ const WeekGrid = ({
 const DayView = ({
   currentDate, sessionMap, onEditSession, onDeleteSession, onCancelSession, onSessionDetail,
   openPopoverId, setOpenPopoverId, canManageSessions = false,
-  isLearner = false, studentRequestMap, onRequestSession,
+  isLearner = false, studentRequestMap, onRequestSession, holidayMap = new Map(),
 }) => (
   <TimeGrid
     days={[currentDate]}
@@ -1209,6 +1250,7 @@ const DayView = ({
     isLearner={isLearner}
     studentRequestMap={studentRequestMap}
     onRequestSession={onRequestSession}
+    holidayMap={holidayMap}
   />
 );
 
@@ -1218,7 +1260,7 @@ const CalendarView = ({
   sessions, view, currentDate, onViewChange, onNavigate, onGoToToday,
   onScheduleNew, onEditSession, onDeleteSession, onCancelSession, onSessionDetail,
   loading = false, canManageSessions = false,
-  isLearner = false, studentRequestMap, onRequestSession,
+  isLearner = false, studentRequestMap, onRequestSession, holidays = [],
 }) => {
   // Only one popover open at a time; null = none. Chip clicks and outside
   // clicks flip this; Edit/Delete actions also reset it before bubbling up.
@@ -1227,6 +1269,20 @@ const CalendarView = ({
   const [openDayKey, setOpenDayKey] = useState(null);
 
   const sessionMap = bucketSessionsByDay(sessions);
+  const holidayMap = useMemo(() => {
+    const map = new Map();
+    holidays.forEach((h) => {
+      const cur = new Date(`${h.start_date}T00:00:00`);
+      const last = new Date(`${h.end_date}T00:00:00`);
+      while (cur <= last) {
+        const key = toDateKey(cur);
+        const slot = map.get(key);
+        if (slot) { slot.push(h); } else { map.set(key, [h]); }
+        cur.setDate(cur.getDate() + 1);
+      }
+    });
+    return map;
+  }, [holidays]);
 
   // ── Navigation ──
   const navigate = (direction) => {
@@ -1352,6 +1408,7 @@ const CalendarView = ({
           isLearner={isLearner}
           studentRequestMap={studentRequestMap}
           onRequestSession={onRequestSession}
+          holidayMap={holidayMap}
         />
         )}
         {view === VIEWS.WEEK && (
@@ -1368,6 +1425,7 @@ const CalendarView = ({
           isLearner={isLearner}
           studentRequestMap={studentRequestMap}
           onRequestSession={onRequestSession}
+          holidayMap={holidayMap}
         />
         )}
         {view === VIEWS.DAY && (
@@ -1384,6 +1442,7 @@ const CalendarView = ({
           isLearner={isLearner}
           studentRequestMap={studentRequestMap}
           onRequestSession={onRequestSession}
+          holidayMap={holidayMap}
         />
         )}
       </div>
@@ -1489,6 +1548,9 @@ DayCell.propTypes = {
   isLearner: PropTypes.bool,
   studentRequestMap: PropTypes.instanceOf(Map),
   onRequestSession: PropTypes.func,
+  holidays: PropTypes.arrayOf(PropTypes.shape({
+    id: PropTypes.number, start_date: PropTypes.string, end_date: PropTypes.string, name: PropTypes.string,
+  })),
 };
 DayCell.defaultProps = {
   sessions: [],
@@ -1521,6 +1583,7 @@ MonthGrid.propTypes = {
   isLearner: PropTypes.bool,
   studentRequestMap: PropTypes.instanceOf(Map),
   onRequestSession: PropTypes.func,
+  holidayMap: PropTypes.instanceOf(Map),
 };
 MonthGrid.defaultProps = {
   onEditSession: () => {},
@@ -1533,6 +1596,7 @@ MonthGrid.defaultProps = {
   isLearner: false,
   studentRequestMap: null,
   onRequestSession: () => {},
+  holidayMap: null,
 };
 
 TimeGrid.propTypes = {
@@ -1548,6 +1612,7 @@ TimeGrid.propTypes = {
   isLearner: PropTypes.bool,
   studentRequestMap: PropTypes.instanceOf(Map),
   onRequestSession: PropTypes.func,
+  holidayMap: PropTypes.instanceOf(Map),
 };
 TimeGrid.defaultProps = {
   onEditSession: () => {},
@@ -1559,6 +1624,7 @@ TimeGrid.defaultProps = {
   isLearner: false,
   studentRequestMap: null,
   onRequestSession: () => {},
+  holidayMap: null,
 };
 
 WeekGrid.propTypes = {
@@ -1574,6 +1640,7 @@ WeekGrid.propTypes = {
   isLearner: PropTypes.bool,
   studentRequestMap: PropTypes.instanceOf(Map),
   onRequestSession: PropTypes.func,
+  holidayMap: PropTypes.instanceOf(Map),
 };
 WeekGrid.defaultProps = {
   onEditSession: () => {},
@@ -1585,6 +1652,7 @@ WeekGrid.defaultProps = {
   isLearner: false,
   studentRequestMap: null,
   onRequestSession: () => {},
+  holidayMap: null,
 };
 
 DayView.propTypes = {
@@ -1600,6 +1668,7 @@ DayView.propTypes = {
   isLearner: PropTypes.bool,
   studentRequestMap: PropTypes.instanceOf(Map),
   onRequestSession: PropTypes.func,
+  holidayMap: PropTypes.instanceOf(Map),
 };
 DayView.defaultProps = {
   onEditSession: () => {},
@@ -1611,6 +1680,7 @@ DayView.defaultProps = {
   isLearner: false,
   studentRequestMap: null,
   onRequestSession: () => {},
+  holidayMap: null,
 };
 
 CalendarView.propTypes = {
@@ -1630,6 +1700,11 @@ CalendarView.propTypes = {
   isLearner: PropTypes.bool,
   studentRequestMap: PropTypes.instanceOf(Map),
   onRequestSession: PropTypes.func,
+  holidays: PropTypes.arrayOf(PropTypes.shape({
+    id: PropTypes.number,
+    date: PropTypes.string,
+    name: PropTypes.string,
+  })),
 };
 CalendarView.defaultProps = {
   onEditSession: () => {},
@@ -1641,6 +1716,7 @@ CalendarView.defaultProps = {
   isLearner: false,
   studentRequestMap: null,
   onRequestSession: () => {},
+  holidays: [],
 };
 
 export default CalendarView;

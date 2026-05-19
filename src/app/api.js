@@ -1,10 +1,10 @@
-// TODO(phase-6B): swap this stub for a real GET /fbr/api/programs/v1/programs/
-// call once the programs team ships the endpoint. Shape of each item must
-// stay `{ id, slug, name }` so callers don't change.
-const STUB_PROGRAMS = [
-  { id: 1, slug: 'default', name: 'Default Program' },
-  { id: 2, slug: 'second', name: 'Second Program' },
-];
+import { getAuthenticatedHttpClient } from '@edx/frontend-platform/auth';
+import { getConfig } from '@edx/frontend-platform';
 
 // eslint-disable-next-line import/prefer-default-export
-export const getPrograms = async () => STUB_PROGRAMS;
+export const getPrograms = async () => {
+  const client = getAuthenticatedHttpClient();
+  const { data } = await client.get(`${getConfig().STUDIO_BASE_URL}/fbr/api/programs/`);
+  const list = Array.isArray(data) ? data : data.results ?? [];
+  return list.map((p) => ({ id: p.program_key, name: p.name }));
+};

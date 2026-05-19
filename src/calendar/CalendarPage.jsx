@@ -8,6 +8,7 @@ import {
 import {
   getCalendarSessions, deleteSession, cancelSession,
 } from './api';
+import { getHolidays } from '../holidays/api';
 import { getMySessionRequests } from '../requests/api';
 import { extractApiError } from '../shared/utils';
 import { USER_ROLE } from '../shared/constants';
@@ -81,6 +82,7 @@ const CalendarPage = () => {
   const [sessionToCancel, setSessionToCancel] = useState(null);
   const [cancelError, setCancelError] = useState('');
   const [sessionToView, setSessionToView] = useState(null);
+  const [holidays, setHolidays] = useState([]);
   const [toastMessage, setToastMessage] = useState('');
   const [showToast, setShowToast] = useState(false);
 
@@ -89,6 +91,11 @@ const CalendarPage = () => {
     [view, currentDate],
   );
 
+  // Fetch holidays once on mount — small dataset, changes rarely.
+  useEffect(() => {
+    getHolidays().then(setHolidays).catch(() => {});
+  }, []);
+
   // Re-fetch whenever the visible window changes or a mutation triggers a refresh.
   // The backend requires start_date + end_date and enforces a 45-day max window.
   useEffect(() => {
@@ -96,7 +103,9 @@ const CalendarPage = () => {
     const fetchSessions = async () => {
       setLoading(true);
       try {
-        const { sessions: data, userRole: role } = await getCalendarSessions(start.toISOString(), end.toISOString());
+        const startIso = start.toISOString();
+        const endIso = end.toISOString();
+        const { sessions: data, userRole: role } = await getCalendarSessions(startIso, endIso, programId);
         if (cancelled) { return; }
         setSessions(data);
         const resolvedRole = role || USER_ROLE.LEARNER;
@@ -130,7 +139,7 @@ const CalendarPage = () => {
     };
     fetchSessions();
     return () => { cancelled = true; };
-  }, [start, end, refreshKey]);
+  }, [start, end, refreshKey, programId]);
 
   const showSuccess = (message) => {
     setToastMessage(message);
@@ -274,6 +283,7 @@ const CalendarPage = () => {
           isLearner={isLearner}
           studentRequestMap={myRequests}
           onRequestSession={handleRequestSession}
+          holidays={holidays}
         />
       </Container>
     );
@@ -293,6 +303,7 @@ const CalendarPage = () => {
           programKey={programId || ''}
           session={modalSession}
           onSuccess={handleSessionSuccess}
+          holidays={holidays}
         />
       )}
 

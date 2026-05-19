@@ -7,6 +7,7 @@ const SECTIONS = [
   { slug: 'requests', label: 'Requests' },
   { slug: 'attendance', label: 'Attendance' },
   { slug: 'locations', label: 'Locations', adminOnly: true },
+  { slug: 'holidays', label: 'Holidays', adminOnly: true },
 ];
 
 const SectionNav = () => {
