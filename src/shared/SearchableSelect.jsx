@@ -187,12 +187,12 @@ const SearchableSelect = ({
         {isMulti ? (
           <div className="pgn__form-control-decorator-group">
             <div className="pgn__form-control-decorator pgn__form-control-decorator-leading">
-              <Icon src={Search} style={{ width: '1rem', height: '1rem' }} />
+              <Icon src={Search} />
             </div>
             <div
               onClick={() => { if (!disabled) { setIsOpen(true); inputRef.current?.focus(); } }}
               role="presentation"
-              className="form-control h-auto pgn__form-control-decorator-element--leading"
+              className="form-control pgn__form-control h-auto pgn__form-control-decorator-element--leading"
               style={{
                 display: 'flex',
                 flexWrap: 'wrap',
@@ -200,7 +200,7 @@ const SearchableSelect = ({
                 gap: '0.25rem',
                 padding: '0.3125rem 0.5rem',
                 paddingLeft: '2.5rem',
-                backgroundColor: disabled ? '#e9ecef' : '#fff',
+                backgroundColor: disabled ? '#e9ecef' : undefined,
                 cursor: disabled ? 'not-allowed' : 'text',
                 border: isInvalid ? '1px solid #dc3545' : undefined,
                 borderRadius: isInvalid ? '0.375rem' : undefined,

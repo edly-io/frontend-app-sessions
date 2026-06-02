@@ -96,6 +96,26 @@ const statusColors = {
   cancelled: '#dc3545',
 };
 
+// Small status-indicator dots rendered inside each session chip.
+// Light shades so they remain visible on the dark type-color background.
+const statusDotColors = {
+  scheduled: '#93c5fd',
+  in_progress: '#fb923c',
+  completed: '#4ade80',
+  cancelled: '#f87171',
+};
+
+// Returns the chip background: session type color when available, falling back to status.
+const getChipBg = (session, sessionTypeColors) => (
+  (sessionTypeColors && session.session_type && sessionTypeColors[session.session_type])
+  || statusColors[session.status]
+  || '#6c757d'
+);
+
+const GRADED_DATE_BORDER = '#f59e0b';
+const GRADED_DATE_BG = '#fffbeb';
+const GRADED_DATE_TEXT = '#92400e';
+
 const getDayHeaderColor = (isToday, isWeekend) => {
   if (isToday) { return '#4f46e5'; }
   if (isWeekend) { return '#adb5bd'; }
@@ -179,8 +199,8 @@ TitleLink.defaultProps = {
 // any time, and it closes cleanly when Edit/Delete opens another modal.
 const SessionPopover = ({
   session, children, isOpen, onOpenChange, onEdit, onDelete, onCancel, onSessionDetail,
-  canManageSessions = false,
-  isLearner = false, learnerRequest = null, onRequestSession,
+  canManageSessions = false, isInstructor = false,
+  isLearner = false, learnerRequest = null,
 }) => {
   // Derive display-only status: a session that has ended but was never
   // explicitly marked complete by the backend should show as "Completed".
@@ -190,11 +210,11 @@ const SessionPopover = ({
   const instructorDisplay = formatInstructors(session);
   // Prefer the per-session `my_request` returned by the API; fall back to the
   // window-level studentRequestMap for backward compatibility with older payloads.
-  const myRequest = session.my_request ?? learnerRequest;
+  const myRequest = learnerRequest || session.my_request;
   const hasMeeting = Boolean(session.meeting_id || session.meeting_join_url);
   const learnerCanJoin = (
     session.create_zoom_meeting
-    || (myRequest?.status === 'approved' && myRequest?.request_type === 'remote_zoom')
+    || (myRequest?.state === 'APPROVED' && myRequest?.type === 'remote_session')
   );
 
   const handleEdit = (e) => {
@@ -225,12 +245,6 @@ const SessionPopover = ({
     e.stopPropagation();
     onOpenChange(false);
     window.open(url, '_blank', 'noopener,noreferrer');
-  };
-
-  const handleRequest = (e) => {
-    e.stopPropagation();
-    onOpenChange(false);
-    onRequestSession?.(session);
   };
 
   const popover = (
@@ -287,8 +301,10 @@ const SessionPopover = ({
         </div>
         {session.status === 'scheduled' && (
           <div className="d-flex align-items-center" style={{ gap: 6, flexWrap: 'wrap' }}>
-            {/* Edit is available for past sessions too — opens correction mode. */}
-            {canManageSessions && (
+            {/* Admin: full edit. Instructor: description-only edit on own future sessions. */}
+            {(canManageSessions || (isInstructor
+              && session.user_role === USER_ROLE.INSTRUCTOR
+              && new Date(session.scheduled_start_time) > new Date())) && (
               <Button variant="tertiary" size="sm" iconBefore={EditOutline} onClick={handleEdit}>
                 Edit
               </Button>
@@ -332,28 +348,17 @@ const SessionPopover = ({
               if (isPast) { return null; }
               if (canManageSessions && session.meeting_start_url) { return null; }
               if (isLearner && !learnerCanJoin) { return null; }
-              const joinUrl = session.meeting_join_url || myRequest?.meeting_join_url;
+              const requestJoinUrl = myRequest?.data?.meetings?.[session.id]?.meeting_join_url;
+              const joinUrl = session.meeting_join_url || requestJoinUrl;
               return joinUrl ? (
                 <Button variant="primary" size="sm" iconAfter={Launch} onClick={(e) => handleJoin(e, joinUrl)}>
                   Join
                 </Button>
               ) : null;
             })()}
-            {/* Learner-only: request CTA or status badge. Hide when an approved
-                remote_zoom request was auto-resolved by promoting the session to
-                public — the per-learner row is now redundant. */}
-            {!isPast && isLearner && !(
-              session.create_zoom_meeting
-              && myRequest?.status === 'approved'
-              && myRequest?.request_type === 'remote_zoom'
-            ) && (
-              myRequest ? (
-                <RequestStatusBadge request={myRequest} />
-              ) : (
-                <Button variant="outline-primary" size="sm" onClick={handleRequest}>
-                  Request
-                </Button>
-              )
+            {/* Learner-only: request status badge (creation moved to Requests tab). */}
+            {!isPast && isLearner && myRequest && (
+              <RequestStatusBadge request={myRequest} />
             )}
           </div>
         )}
@@ -381,8 +386,8 @@ const SessionPopover = ({
 
 const DayPopover = ({
   date, sessions, children, isOpen, onOpenChange, onEdit, onDelete, onCancel, onSessionDetail,
-  canManageSessions = false,
-  isLearner = false, studentRequestMap, onRequestSession,
+  canManageSessions = false, isInstructor = false,
+  isLearner = false, studentRequestMap,
 }) => {
   const dateLabel = date.toLocaleDateString('en-US', {
     weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
@@ -429,12 +434,6 @@ const DayPopover = ({
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
-  const handleRequest = (e, session) => {
-    e.stopPropagation();
-    onOpenChange(false);
-    onRequestSession?.(session);
-  };
-
   const popover = (
     <Popover
       id={`day-popover-${toDateKey(date)}`}
@@ -471,11 +470,11 @@ const DayPopover = ({
         >
           {sessions.map((session) => {
             const instructorDisplay = formatInstructors(session);
-            const myRequest = session.my_request ?? studentRequestMap?.get(session.id);
+            const myRequest = studentRequestMap?.get(session.id) || session.my_request;
             const hasMeeting = Boolean(session.meeting_id || session.meeting_join_url);
             const learnerCanJoin = (
               session.create_zoom_meeting
-              || (myRequest?.status === 'approved' && myRequest?.request_type === 'remote_zoom')
+              || (myRequest?.state === 'APPROVED' && myRequest?.type === 'remote_session')
             );
             const isPast = new Date(session.scheduled_end_time || session.scheduled_start_time) <= new Date();
             const displayStatus = (isPast && session.status === 'scheduled') ? 'completed' : session.status;
@@ -510,6 +509,23 @@ const DayPopover = ({
                   <div className="text-muted" style={{ fontSize: 12 }}>Instructor: {instructorDisplay}</div>
                   )}
                   <div style={{ fontSize: 12, color: '#6c757d' }}>{formatTimeRange(session)}</div>
+                  {/* On Leave indicator for learner-approved leaves */}
+                  {studentRequestMap?.get(session.id) && (
+                    <div
+                      style={{
+                        display: 'inline-block',
+                        fontSize: 10,
+                        color: '#065f46',
+                        background: '#d1fae5',
+                        borderRadius: 3,
+                        padding: '1px 5px',
+                        marginTop: 2,
+                        fontWeight: 500,
+                      }}
+                    >
+                      On Leave
+                    </div>
+                  )}
                   {/* Cancelled session = dead end; suppress scope/instructor noise. */}
                   {session.status !== 'cancelled' && (
                     <>
@@ -528,8 +544,10 @@ const DayPopover = ({
                   )}
                   {session.status === 'scheduled' && (
                   <div className="mt-1 d-flex align-items-center" style={{ gap: 4, flexWrap: 'wrap' }}>
-                    {/* Edit is available for past sessions too — opens correction mode. */}
-                    {canManageSessions && (
+                    {/* Admin: full edit. Instructor: description-only edit on own future sessions. */}
+                    {(canManageSessions || (isInstructor
+                      && session.user_role === USER_ROLE.INSTRUCTOR
+                      && new Date(session.scheduled_start_time) > new Date())) && (
                       <Button
                         variant="tertiary"
                         size="sm"
@@ -578,7 +596,8 @@ const DayPopover = ({
                       if (isPast) { return null; }
                       if (canManageSessions && session.meeting_start_url) { return null; }
                       if (isLearner && !learnerCanJoin) { return null; }
-                      const joinUrl = session.meeting_join_url || myRequest?.meeting_join_url;
+                      const requestJoinUrl = myRequest?.data?.meetings?.[session.id]?.meeting_join_url;
+                      const joinUrl = session.meeting_join_url || requestJoinUrl;
                       return joinUrl ? (
                         <Button
                           variant="primary"
@@ -590,25 +609,9 @@ const DayPopover = ({
                         </Button>
                       ) : null;
                     })()}
-                    {/* Learner-only: request CTA or status badge. Hide when an
-                        approved remote_zoom request was auto-resolved by promoting
-                        the session to public. */}
-                    {!isPast && isLearner && !(
-                      session.create_zoom_meeting
-                      && myRequest?.status === 'approved'
-                      && myRequest?.request_type === 'remote_zoom'
-                    ) && (
-                      myRequest ? (
-                        <RequestStatusBadge request={myRequest} />
-                      ) : (
-                        <Button
-                          variant="outline-primary"
-                          size="sm"
-                          onClick={(e) => handleRequest(e, session)}
-                        >
-                          Request
-                        </Button>
-                      )
+                    {/* Learner-only: request status badge (creation moved to Requests tab). */}
+                    {!isPast && isLearner && myRequest && (
+                      <RequestStatusBadge request={myRequest} />
                     )}
                   </div>
                   )}
@@ -652,6 +655,90 @@ const DayPopover = ({
   );
 };
 
+// ─── GradedDatePopover ────────────────────────────────────────────────────────
+// Anchored to an amber chip/block. Shows due-date details and LMS link.
+
+const GradedDatePopover = ({
+  event, children, isOpen, onOpenChange,
+}) => {
+  const dueDate = new Date(event.date);
+  const dueDateLabel = dueDate.toLocaleString('en-US', {
+    weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+  });
+
+  const handleOpenLms = (e) => {
+    e.stopPropagation();
+    onOpenChange(false);
+    window.open(event.link, '_blank', 'noopener,noreferrer');
+  };
+
+  const popover = (
+    <Popover
+      id={`graded-date-popover-${CSS.escape(event.id)}`}
+      style={{
+        maxWidth: 300,
+        boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
+        border: `1px solid ${GRADED_DATE_BORDER}`,
+        borderRadius: 6,
+      }}
+    >
+      <Popover.Title
+        as="h5"
+        style={{
+          fontSize: 13,
+          margin: 0,
+          background: GRADED_DATE_BG,
+          borderBottom: '1px solid #fde68a',
+          padding: '8px 12px',
+          color: GRADED_DATE_TEXT,
+        }}
+      >
+        {event.courseName}
+      </Popover.Title>
+      <Popover.Content style={{ fontSize: 13 }}>
+        <div className="font-weight-bold mb-1">{event.title}</div>
+        <div className="text-muted mb-2">Due: {dueDateLabel}</div>
+        <div className="mb-2 d-flex" style={{ gap: 4, flexWrap: 'wrap' }}>
+          {event.assignmentType && (
+            <Badge
+              variant="light"
+              style={{ fontSize: 10, border: `1px solid ${GRADED_DATE_BORDER}`, color: GRADED_DATE_TEXT }}
+            >
+              {event.assignmentType}
+            </Badge>
+          )}
+          {event.complete && (
+            <Badge variant="success" style={{ fontSize: 10 }}>Completed</Badge>
+          )}
+        </div>
+        {event.link && (
+          <Button
+            variant="outline-primary"
+            size="sm"
+            iconAfter={Launch}
+            onClick={handleOpenLms}
+          >
+            Open in LMS
+          </Button>
+        )}
+      </Popover.Content>
+    </Popover>
+  );
+
+  return (
+    <OverlayTrigger
+      show={isOpen}
+      onToggle={(next) => onOpenChange(next)}
+      trigger="click"
+      placement="auto"
+      rootClose
+      overlay={popover}
+    >
+      {children}
+    </OverlayTrigger>
+  );
+};
+
 // ─── DayCell (Month view only) ────────────────────────────────────────────────
 
 const MAX_CHIPS = 2;
@@ -661,7 +748,8 @@ const DayCell = ({
   openPopoverId, setOpenPopoverId,
   openDayKey, setOpenDayKey,
   isOutsideMonth = false, cellMinHeight = 110, canManageSessions = false,
-  isLearner = false, studentRequestMap, onRequestSession, holidays = [],
+  isInstructor = false, isLearner = false, studentRequestMap, leaveDateMap = null, holidays = [],
+  gradedDates = [], sessionTypeColors = {},
 }) => {
   const dateKey = toDateKey(date);
   const today = toDateKey(new Date());
@@ -751,35 +839,46 @@ const DayCell = ({
         </div>
       ))}
 
-      {/* Session chips — each individually clickable, opens session popover */}
-      {visible.map((session) => (
-        <SessionPopover
-          key={session.id}
-          session={session}
-          isOpen={openPopoverId === session.id}
+      {/* Leave banner — shown when at least one session on this day has an approved leave */}
+      {isLearner && leaveDateMap?.get(dateKey) && (
+        <div
+          style={{
+            fontSize: 10,
+            color: '#065f46',
+            background: '#d1fae5',
+            borderRadius: 3,
+            padding: '1px 4px',
+            marginBottom: 3,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          On Leave
+        </div>
+      )}
+
+      {/* Graded date chips — amber, clickable, opens due-date detail popover */}
+      {gradedDates.slice(0, MAX_CHIPS).map((event) => (
+        <GradedDatePopover
+          key={event.id}
+          event={event}
+          isOpen={openPopoverId === `gd::${event.id}`}
           onOpenChange={(next) => setOpenPopoverId((curr) => {
-            if (next) { return session.id; }
-            return curr === session.id ? null : curr;
+            if (next) { return `gd::${event.id}`; }
+            return curr === `gd::${event.id}` ? null : curr;
           })}
-          onEdit={onEditSession}
-          onDelete={onDeleteSession}
-          onCancel={onCancelSession}
-          onSessionDetail={onSessionDetail}
-          canManageSessions={canManageSessions}
-          isLearner={isLearner}
-          learnerRequest={studentRequestMap?.get(session.id) || null}
-          onRequestSession={onRequestSession}
         >
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); setOpenDayKey(null); }}
             onKeyDown={(e) => e.stopPropagation()}
-            title={session.title}
+            title={`Due: ${event.title} (${event.courseName})`}
             style={{
               display: 'block',
-              background: statusColors[session.status] || '#6c757d',
-              color: '#fff',
-              border: 'none',
+              background: GRADED_DATE_BG,
+              color: GRADED_DATE_TEXT,
+              border: `1px solid ${GRADED_DATE_BORDER}`,
               borderRadius: 3,
               fontSize: 11,
               padding: '1px 5px',
@@ -792,10 +891,112 @@ const DayCell = ({
               width: '100%',
             }}
           >
-            {session.title}
+            {event.title}
           </button>
-        </SessionPopover>
+        </GradedDatePopover>
       ))}
+      {gradedDates.length > MAX_CHIPS && (
+        <div style={{
+          fontSize: 10, color: GRADED_DATE_TEXT, marginBottom: 2, lineHeight: 1.4,
+        }}
+        >
+          +{gradedDates.length - MAX_CHIPS} due date{gradedDates.length - MAX_CHIPS > 1 ? 's' : ''}
+        </div>
+      )}
+
+      {/* Session chips — each individually clickable, opens session popover.
+          Sessions covered by an approved leave render as non-interactive grey chips. */}
+      {visible.map((session) => {
+        const leaveRequest = studentRequestMap?.get(session.id);
+        if (leaveRequest) {
+          return (
+            <div
+              key={session.id}
+              title={`${session.title} — On Leave`}
+              style={{
+                display: 'block',
+                background: '#e5e7eb',
+                color: '#6b7280',
+                borderRadius: 3,
+                fontSize: 11,
+                padding: '1px 5px',
+                marginBottom: 2,
+                width: '100%',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                textDecoration: 'line-through',
+                userSelect: 'none',
+              }}
+            >
+              {session.title}
+            </div>
+          );
+        }
+        return (
+          <SessionPopover
+            key={session.id}
+            session={session}
+            isOpen={openPopoverId === session.id}
+            onOpenChange={(next) => setOpenPopoverId((curr) => {
+              if (next) { return session.id; }
+              return curr === session.id ? null : curr;
+            })}
+            onEdit={onEditSession}
+            onDelete={onDeleteSession}
+            onCancel={onCancelSession}
+            onSessionDetail={onSessionDetail}
+            canManageSessions={canManageSessions}
+            isInstructor={isInstructor}
+            isLearner={isLearner}
+            learnerRequest={null}
+          >
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setOpenDayKey(null); }}
+              onKeyDown={(e) => e.stopPropagation()}
+              title={session.title}
+              style={{
+                display: 'block',
+                background: getChipBg(session, sessionTypeColors),
+                color: '#fff',
+                border: 'none',
+                borderRadius: 3,
+                fontSize: 11,
+                padding: '1px 5px',
+                marginBottom: 2,
+                cursor: 'pointer',
+                width: '100%',
+              }}
+            >
+              {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
+              <span style={{
+                display: 'flex', alignItems: 'center', gap: 2, overflow: 'hidden',
+              }}
+              >
+                <span style={{
+                  width: 6,
+                  height: 6,
+                  minWidth: 6,
+                  borderRadius: '50%',
+                  background: statusDotColors[session.status] || '#e5e7eb',
+                  flexShrink: 0,
+                }}
+                />
+                <span style={{
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  textDecoration: session.status === 'cancelled' ? 'line-through' : 'none',
+                }}
+                >
+                  {session.title}
+                </span>
+              </span>
+            </button>
+          </SessionPopover>
+        );
+      })}
 
       {/* Overflow — clickable, opens the day popover */}
       {overflow > 0 && (
@@ -834,9 +1035,9 @@ const DayCell = ({
       onCancel={onCancelSession}
       onSessionDetail={onSessionDetail}
       canManageSessions={canManageSessions}
+      isInstructor={isInstructor}
       isLearner={isLearner}
       studentRequestMap={studentRequestMap}
-      onRequestSession={onRequestSession}
     >
       {cellContent}
     </DayPopover>
@@ -848,8 +1049,9 @@ const DayCell = ({
 const MonthGrid = ({
   currentDate, sessionMap, onEditSession, onDeleteSession, onCancelSession, onSessionDetail,
   openPopoverId, setOpenPopoverId,
-  openDayKey, setOpenDayKey, canManageSessions = false,
-  isLearner = false, studentRequestMap, onRequestSession, holidayMap = new Map(),
+  openDayKey, setOpenDayKey, canManageSessions = false, isInstructor = false,
+  isLearner = false, studentRequestMap, leaveDateMap = null, holidayMap = new Map(),
+  gradedDatesMap = new Map(), sessionTypeColors = {},
 }) => {
   const days = getMonthGridDays(currentDate);
   const currentMonth = currentDate.getMonth();
@@ -905,10 +1107,13 @@ const MonthGrid = ({
             isOutsideMonth={day.getMonth() !== currentMonth}
             cellMinHeight={110}
             canManageSessions={canManageSessions}
+            isInstructor={isInstructor}
             isLearner={isLearner}
             studentRequestMap={studentRequestMap}
+            leaveDateMap={leaveDateMap}
             holidays={holidayMap.get(toDateKey(day)) || []}
-            onRequestSession={onRequestSession}
+            gradedDates={gradedDatesMap.get(toDateKey(day)) || []}
+            sessionTypeColors={sessionTypeColors}
           />
         ))}
       </div>
@@ -997,8 +1202,9 @@ const layoutSessions = (sessions) => {
 
 const TimeGrid = ({
   days, sessionMap, onEditSession, onDeleteSession, onCancelSession, onSessionDetail,
-  openPopoverId, setOpenPopoverId, canManageSessions = false,
-  isLearner = false, studentRequestMap, onRequestSession, holidayMap = new Map(),
+  openPopoverId, setOpenPopoverId, canManageSessions = false, isInstructor = false,
+  isLearner = false, studentRequestMap, leaveDateMap = null, holidayMap = new Map(),
+  programDatesMap = new Map(), sessionTypeColors = {},
 }) => {
   const todayKey = toDateKey(new Date());
 
@@ -1052,6 +1258,24 @@ const TimeGrid = ({
                   {h.name}
                 </div>
               ))}
+              {isLearner && leaveDateMap?.get(toDateKey(day)) && (
+                <div
+                  style={{
+                    fontSize: 9,
+                    color: '#065f46',
+                    background: '#d1fae5',
+                    borderRadius: 2,
+                    padding: '0 3px',
+                    marginTop: 2,
+                    lineHeight: 1.4,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  On Leave
+                </div>
+              )}
             </div>
           );
         })}
@@ -1113,15 +1337,119 @@ const TimeGrid = ({
                   />
                 ))}
 
-                {/* Session blocks — each opens a popover with Edit/Delete/Join */}
+                {/* Graded due-date blocks — amber, positioned at due time */}
+                {(programDatesMap.get(key) || []).map((event) => {
+                  const dueDate = new Date(event.date);
+                  const startDec = dueDate.getHours() + dueDate.getMinutes() / 60;
+                  const top = (Math.max(startDec, START_HOUR) - START_HOUR) * HOUR_HEIGHT;
+                  const dueTimeLabel = dueDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                  return (
+                    <GradedDatePopover
+                      key={event.id}
+                      event={event}
+                      isOpen={openPopoverId === `gd::${event.id}`}
+                      onOpenChange={(next) => setOpenPopoverId((curr) => {
+                        if (next) { return `gd::${event.id}`; }
+                        return curr === `gd::${event.id}` ? null : curr;
+                      })}
+                    >
+                      <button
+                        type="button"
+                        title={`Due: ${event.title} — ${dueTimeLabel}`}
+                        style={{
+                          position: 'absolute',
+                          top,
+                          left: 2,
+                          right: 2,
+                          height: 22,
+                          background: GRADED_DATE_BG,
+                          color: GRADED_DATE_TEXT,
+                          border: `1px solid ${GRADED_DATE_BORDER}`,
+                          borderRadius: 3,
+                          padding: '1px 4px',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          overflow: 'hidden',
+                          zIndex: 0,
+                          fontSize: 10,
+                          lineHeight: 1.25,
+                          whiteSpace: 'nowrap',
+                          textOverflow: 'ellipsis',
+                        }}
+                      >
+                        {dueTimeLabel} Due: {event.title}
+                      </button>
+                    </GradedDatePopover>
+                  );
+                })}
+
+                {/* Session blocks — each opens a popover with Edit/Delete/Join.
+                    Sessions covered by an approved leave render as non-interactive grey blocks. */}
                 {daySessions.map((session) => {
                   const { top, height } = getSessionPosition(session);
                   const { lane, totalLanes } = layout[session.id] || { lane: 0, totalLanes: 1 };
                   const colWidthPct = (100 / totalLanes).toFixed(2);
                   const colLeftPct = ((lane / totalLanes) * 100).toFixed(2);
-                  const bg = statusColors[session.status] || '#6c757d';
                   const startTime = new Date(session.scheduled_start_time)
                     .toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                  const leaveRequest = studentRequestMap?.get(session.id);
+
+                  if (leaveRequest) {
+                    return (
+                      <div
+                        key={session.id}
+                        title={`${session.title} — On Leave`}
+                        style={{
+                          position: 'absolute',
+                          top,
+                          left: `calc(${colLeftPct}% + 2px)`,
+                          width: `calc(${colWidthPct}% - 4px)`,
+                          height,
+                          background: '#e5e7eb',
+                          color: '#6b7280',
+                          borderRadius: 3,
+                          padding: '2px 6px',
+                          textAlign: 'left',
+                          overflow: 'hidden',
+                          zIndex: 1,
+                          fontSize: totalLanes >= 2 ? 10 : 11,
+                          lineHeight: 1.25,
+                          userSelect: 'none',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 3 }}>
+                          <span style={{
+                            width: 7,
+                            height: 7,
+                            minWidth: 7,
+                            borderRadius: '50%',
+                            background: '#9ca3af',
+                            marginTop: 2,
+                            flexShrink: 0,
+                          }}
+                          />
+                          <strong style={{
+                            display: '-webkit-box',
+                            WebkitLineClamp: Math.max(1, Math.min(3, Math.floor((height - 4) / 14))),
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                            overflowWrap: 'anywhere',
+                            wordBreak: 'break-word',
+                            textDecoration: 'line-through',
+                          }}
+                          >
+                            {session.title}
+                          </strong>
+                        </div>
+                        {height >= 28 && totalLanes < 3 && (
+                          <span style={{ opacity: 0.8, fontSize: 9 }}>On Leave</span>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  const bg = getChipBg(session, sessionTypeColors);
+                  const isStrikethrough = session.status === 'cancelled';
 
                   return (
                     <SessionPopover
@@ -1137,9 +1465,9 @@ const TimeGrid = ({
                       onCancel={onCancelSession}
                       onSessionDetail={onSessionDetail}
                       canManageSessions={canManageSessions}
+                      isInstructor={isInstructor}
                       isLearner={isLearner}
-                      learnerRequest={studentRequestMap?.get(session.id) || null}
-                      onRequestSession={onRequestSession}
+                      learnerRequest={null}
                     >
                       <button
                         type="button"
@@ -1163,17 +1491,30 @@ const TimeGrid = ({
                           lineHeight: 1.25,
                         }}
                       >
-                        <strong style={{
-                          display: '-webkit-box',
-                          WebkitLineClamp: Math.max(1, Math.min(3, Math.floor((height - 4) / 14))),
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
-                          overflowWrap: 'anywhere',
-                          wordBreak: 'break-word',
-                        }}
-                        >
-                          {session.title}
-                        </strong>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 3 }}>
+                          <span style={{
+                            width: 7,
+                            height: 7,
+                            minWidth: 7,
+                            borderRadius: '50%',
+                            background: statusDotColors[session.status] || '#e5e7eb',
+                            marginTop: 2,
+                            flexShrink: 0,
+                          }}
+                          />
+                          <strong style={{
+                            display: '-webkit-box',
+                            WebkitLineClamp: Math.max(1, Math.min(3, Math.floor((height - 4) / 14))),
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                            overflowWrap: 'anywhere',
+                            wordBreak: 'break-word',
+                            textDecoration: isStrikethrough ? 'line-through' : 'none',
+                          }}
+                          >
+                            {session.title}
+                          </strong>
+                        </div>
                         {/* Time label — hidden in narrow (3+ lane) columns; popover has it */}
                         {height >= 30 && totalLanes < 3 && (
                           <span style={{ opacity: 0.85, fontSize: 10 }}>{startTime}</span>
@@ -1210,8 +1551,9 @@ const TimeGrid = ({
 
 const WeekGrid = ({
   currentDate, sessionMap, onEditSession, onDeleteSession, onCancelSession, onSessionDetail,
-  openPopoverId, setOpenPopoverId, canManageSessions = false,
-  isLearner = false, studentRequestMap, onRequestSession, holidayMap = new Map(),
+  openPopoverId, setOpenPopoverId, canManageSessions = false, isInstructor = false,
+  isLearner = false, studentRequestMap, leaveDateMap = null, holidayMap = new Map(),
+  programDatesMap = new Map(), sessionTypeColors = {},
 }) => (
   <TimeGrid
     days={getWeekDays(currentDate)}
@@ -1223,10 +1565,13 @@ const WeekGrid = ({
     openPopoverId={openPopoverId}
     setOpenPopoverId={setOpenPopoverId}
     canManageSessions={canManageSessions}
+    isInstructor={isInstructor}
     isLearner={isLearner}
     studentRequestMap={studentRequestMap}
-    onRequestSession={onRequestSession}
+    leaveDateMap={leaveDateMap}
     holidayMap={holidayMap}
+    programDatesMap={programDatesMap}
+    sessionTypeColors={sessionTypeColors}
   />
 );
 
@@ -1234,8 +1579,9 @@ const WeekGrid = ({
 
 const DayView = ({
   currentDate, sessionMap, onEditSession, onDeleteSession, onCancelSession, onSessionDetail,
-  openPopoverId, setOpenPopoverId, canManageSessions = false,
-  isLearner = false, studentRequestMap, onRequestSession, holidayMap = new Map(),
+  openPopoverId, setOpenPopoverId, canManageSessions = false, isInstructor = false,
+  isLearner = false, studentRequestMap, leaveDateMap = null, holidayMap = new Map(),
+  programDatesMap = new Map(), sessionTypeColors = {},
 }) => (
   <TimeGrid
     days={[currentDate]}
@@ -1247,10 +1593,13 @@ const DayView = ({
     openPopoverId={openPopoverId}
     setOpenPopoverId={setOpenPopoverId}
     canManageSessions={canManageSessions}
+    isInstructor={isInstructor}
     isLearner={isLearner}
     studentRequestMap={studentRequestMap}
-    onRequestSession={onRequestSession}
+    leaveDateMap={leaveDateMap}
     holidayMap={holidayMap}
+    programDatesMap={programDatesMap}
+    sessionTypeColors={sessionTypeColors}
   />
 );
 
@@ -1259,8 +1608,9 @@ const DayView = ({
 const CalendarView = ({
   sessions, view, currentDate, onViewChange, onNavigate, onGoToToday,
   onScheduleNew, onEditSession, onDeleteSession, onCancelSession, onSessionDetail,
-  loading = false, canManageSessions = false,
-  isLearner = false, studentRequestMap, onRequestSession, holidays = [],
+  loading = false, canManageSessions = false, isInstructor = false,
+  isLearner = false, studentRequestMap, leaveDateMap = null, holidays = [],
+  programDates = [], sessionTypeColors = {},
 }) => {
   // Only one popover open at a time; null = none. Chip clicks and outside
   // clicks flip this; Edit/Delete actions also reset it before bubbling up.
@@ -1269,6 +1619,17 @@ const CalendarView = ({
   const [openDayKey, setOpenDayKey] = useState(null);
 
   const sessionMap = bucketSessionsByDay(sessions);
+
+  const programDatesMap = useMemo(() => {
+    const map = new Map();
+    programDates.forEach((event) => {
+      const key = toDateKey(new Date(event.date));
+      const slot = map.get(key);
+      if (slot) { slot.push(event); } else { map.set(key, [event]); }
+    });
+    return map;
+  }, [programDates]);
+
   const holidayMap = useMemo(() => {
     const map = new Map();
     holidays.forEach((h) => {
@@ -1405,10 +1766,13 @@ const CalendarView = ({
           openDayKey={openDayKey}
           setOpenDayKey={setOpenDayKey}
           canManageSessions={canManageSessions}
+          isInstructor={isInstructor}
           isLearner={isLearner}
           studentRequestMap={studentRequestMap}
-          onRequestSession={onRequestSession}
+          leaveDateMap={leaveDateMap}
           holidayMap={holidayMap}
+          gradedDatesMap={programDatesMap}
+          sessionTypeColors={sessionTypeColors}
         />
         )}
         {view === VIEWS.WEEK && (
@@ -1422,10 +1786,13 @@ const CalendarView = ({
           openPopoverId={openPopoverId}
           setOpenPopoverId={setOpenPopoverId}
           canManageSessions={canManageSessions}
+          isInstructor={isInstructor}
           isLearner={isLearner}
           studentRequestMap={studentRequestMap}
-          onRequestSession={onRequestSession}
+          leaveDateMap={leaveDateMap}
           holidayMap={holidayMap}
+          programDatesMap={programDatesMap}
+          sessionTypeColors={sessionTypeColors}
         />
         )}
         {view === VIEWS.DAY && (
@@ -1439,10 +1806,13 @@ const CalendarView = ({
           openPopoverId={openPopoverId}
           setOpenPopoverId={setOpenPopoverId}
           canManageSessions={canManageSessions}
+          isInstructor={isInstructor}
           isLearner={isLearner}
           studentRequestMap={studentRequestMap}
-          onRequestSession={onRequestSession}
+          leaveDateMap={leaveDateMap}
           holidayMap={holidayMap}
+          programDatesMap={programDatesMap}
+          sessionTypeColors={sessionTypeColors}
         />
         )}
       </div>
@@ -1451,12 +1821,26 @@ const CalendarView = ({
   );
 };
 
-// ─── PropTypes ───────────────────────────────────────────────────────────────
+// ─── PropTypes ────────────────────────────────────────────────────────────────
+
+GradedDatePopover.propTypes = {
+  event: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    courseName: PropTypes.string,
+    title: PropTypes.string,
+    date: PropTypes.string,
+    link: PropTypes.string,
+    assignmentType: PropTypes.string,
+    complete: PropTypes.bool,
+  }).isRequired,
+  children: PropTypes.node.isRequired,
+  isOpen: PropTypes.bool.isRequired,
+  onOpenChange: PropTypes.func.isRequired,
+};
 
 const requestShape = PropTypes.shape({
-  status: PropTypes.string,
-  request_type: PropTypes.string,
-  meeting_join_url: PropTypes.string,
+  state: PropTypes.string,
+  type: PropTypes.string,
 });
 
 const sessionShape = PropTypes.shape({
@@ -1472,6 +1856,7 @@ const sessionShape = PropTypes.shape({
   meeting_start_url: PropTypes.string,
   create_zoom_meeting: PropTypes.bool,
   user_role: PropTypes.string,
+  session_type: PropTypes.string,
   my_request: requestShape,
   location: PropTypes.shape({
     id: PropTypes.string,
@@ -1490,9 +1875,9 @@ SessionPopover.propTypes = {
   onCancel: PropTypes.func,
   onSessionDetail: PropTypes.func,
   canManageSessions: PropTypes.bool,
+  isInstructor: PropTypes.bool,
   isLearner: PropTypes.bool,
   learnerRequest: requestShape,
-  onRequestSession: PropTypes.func,
 };
 SessionPopover.defaultProps = {
   onEdit: () => {},
@@ -1500,9 +1885,9 @@ SessionPopover.defaultProps = {
   onCancel: () => {},
   onSessionDetail: () => {},
   canManageSessions: false,
+  isInstructor: false,
   isLearner: false,
   learnerRequest: null,
-  onRequestSession: () => {},
 };
 
 DayPopover.propTypes = {
@@ -1516,9 +1901,9 @@ DayPopover.propTypes = {
   onCancel: PropTypes.func,
   onSessionDetail: PropTypes.func,
   canManageSessions: PropTypes.bool,
+  isInstructor: PropTypes.bool,
   isLearner: PropTypes.bool,
   studentRequestMap: PropTypes.instanceOf(Map),
-  onRequestSession: PropTypes.func,
 };
 DayPopover.defaultProps = {
   onEdit: () => {},
@@ -1526,10 +1911,21 @@ DayPopover.defaultProps = {
   onCancel: () => {},
   onSessionDetail: () => {},
   canManageSessions: false,
+  isInstructor: false,
   isLearner: false,
   studentRequestMap: null,
-  onRequestSession: () => {},
 };
+
+const gradedDateShape = PropTypes.shape({
+  id: PropTypes.string,
+  courseKey: PropTypes.string,
+  courseName: PropTypes.string,
+  title: PropTypes.string,
+  date: PropTypes.string,
+  link: PropTypes.string,
+  assignmentType: PropTypes.string,
+  complete: PropTypes.bool,
+});
 
 DayCell.propTypes = {
   date: PropTypes.instanceOf(Date).isRequired,
@@ -1545,12 +1941,15 @@ DayCell.propTypes = {
   isOutsideMonth: PropTypes.bool,
   cellMinHeight: PropTypes.number,
   canManageSessions: PropTypes.bool,
+  isInstructor: PropTypes.bool,
   isLearner: PropTypes.bool,
   studentRequestMap: PropTypes.instanceOf(Map),
-  onRequestSession: PropTypes.func,
+  leaveDateMap: PropTypes.instanceOf(Map),
+  sessionTypeColors: PropTypes.objectOf(PropTypes.string),
   holidays: PropTypes.arrayOf(PropTypes.shape({
     id: PropTypes.number, start_date: PropTypes.string, end_date: PropTypes.string, name: PropTypes.string,
   })),
+  gradedDates: PropTypes.arrayOf(gradedDateShape),
 };
 DayCell.defaultProps = {
   sessions: [],
@@ -1563,9 +1962,12 @@ DayCell.defaultProps = {
   isOutsideMonth: false,
   cellMinHeight: 110,
   canManageSessions: false,
+  isInstructor: false,
   isLearner: false,
   studentRequestMap: null,
-  onRequestSession: () => {},
+  leaveDateMap: null,
+  sessionTypeColors: {},
+  gradedDates: [],
 };
 
 MonthGrid.propTypes = {
@@ -1580,10 +1982,13 @@ MonthGrid.propTypes = {
   openDayKey: PropTypes.string,
   setOpenDayKey: PropTypes.func.isRequired,
   canManageSessions: PropTypes.bool,
+  isInstructor: PropTypes.bool,
   isLearner: PropTypes.bool,
   studentRequestMap: PropTypes.instanceOf(Map),
-  onRequestSession: PropTypes.func,
+  leaveDateMap: PropTypes.instanceOf(Map),
+  sessionTypeColors: PropTypes.objectOf(PropTypes.string),
   holidayMap: PropTypes.instanceOf(Map),
+  gradedDatesMap: PropTypes.instanceOf(Map),
 };
 MonthGrid.defaultProps = {
   onEditSession: () => {},
@@ -1593,10 +1998,13 @@ MonthGrid.defaultProps = {
   openPopoverId: null,
   openDayKey: null,
   canManageSessions: false,
+  isInstructor: false,
   isLearner: false,
   studentRequestMap: null,
-  onRequestSession: () => {},
+  leaveDateMap: null,
+  sessionTypeColors: {},
   holidayMap: null,
+  gradedDatesMap: null,
 };
 
 TimeGrid.propTypes = {
@@ -1609,10 +2017,13 @@ TimeGrid.propTypes = {
   openPopoverId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   setOpenPopoverId: PropTypes.func.isRequired,
   canManageSessions: PropTypes.bool,
+  isInstructor: PropTypes.bool,
   isLearner: PropTypes.bool,
   studentRequestMap: PropTypes.instanceOf(Map),
-  onRequestSession: PropTypes.func,
+  leaveDateMap: PropTypes.instanceOf(Map),
+  sessionTypeColors: PropTypes.objectOf(PropTypes.string),
   holidayMap: PropTypes.instanceOf(Map),
+  programDatesMap: PropTypes.instanceOf(Map),
 };
 TimeGrid.defaultProps = {
   onEditSession: () => {},
@@ -1621,10 +2032,13 @@ TimeGrid.defaultProps = {
   onSessionDetail: () => {},
   openPopoverId: null,
   canManageSessions: false,
+  isInstructor: false,
   isLearner: false,
   studentRequestMap: null,
-  onRequestSession: () => {},
+  leaveDateMap: null,
+  sessionTypeColors: {},
   holidayMap: null,
+  programDatesMap: null,
 };
 
 WeekGrid.propTypes = {
@@ -1637,10 +2051,13 @@ WeekGrid.propTypes = {
   openPopoverId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   setOpenPopoverId: PropTypes.func.isRequired,
   canManageSessions: PropTypes.bool,
+  isInstructor: PropTypes.bool,
   isLearner: PropTypes.bool,
   studentRequestMap: PropTypes.instanceOf(Map),
-  onRequestSession: PropTypes.func,
+  leaveDateMap: PropTypes.instanceOf(Map),
+  sessionTypeColors: PropTypes.objectOf(PropTypes.string),
   holidayMap: PropTypes.instanceOf(Map),
+  programDatesMap: PropTypes.instanceOf(Map),
 };
 WeekGrid.defaultProps = {
   onEditSession: () => {},
@@ -1649,10 +2066,13 @@ WeekGrid.defaultProps = {
   onSessionDetail: () => {},
   openPopoverId: null,
   canManageSessions: false,
+  isInstructor: false,
   isLearner: false,
   studentRequestMap: null,
-  onRequestSession: () => {},
+  leaveDateMap: null,
+  sessionTypeColors: {},
   holidayMap: null,
+  programDatesMap: null,
 };
 
 DayView.propTypes = {
@@ -1665,10 +2085,13 @@ DayView.propTypes = {
   openPopoverId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   setOpenPopoverId: PropTypes.func.isRequired,
   canManageSessions: PropTypes.bool,
+  isInstructor: PropTypes.bool,
   isLearner: PropTypes.bool,
   studentRequestMap: PropTypes.instanceOf(Map),
-  onRequestSession: PropTypes.func,
+  leaveDateMap: PropTypes.instanceOf(Map),
+  sessionTypeColors: PropTypes.objectOf(PropTypes.string),
   holidayMap: PropTypes.instanceOf(Map),
+  programDatesMap: PropTypes.instanceOf(Map),
 };
 DayView.defaultProps = {
   onEditSession: () => {},
@@ -1677,10 +2100,13 @@ DayView.defaultProps = {
   onSessionDetail: () => {},
   openPopoverId: null,
   canManageSessions: false,
+  isInstructor: false,
   isLearner: false,
   studentRequestMap: null,
-  onRequestSession: () => {},
+  leaveDateMap: null,
+  sessionTypeColors: {},
   holidayMap: null,
+  programDatesMap: null,
 };
 
 CalendarView.propTypes = {
@@ -1697,14 +2123,17 @@ CalendarView.propTypes = {
   onSessionDetail: PropTypes.func,
   loading: PropTypes.bool,
   canManageSessions: PropTypes.bool,
+  isInstructor: PropTypes.bool,
   isLearner: PropTypes.bool,
   studentRequestMap: PropTypes.instanceOf(Map),
-  onRequestSession: PropTypes.func,
+  leaveDateMap: PropTypes.instanceOf(Map),
+  sessionTypeColors: PropTypes.objectOf(PropTypes.string),
   holidays: PropTypes.arrayOf(PropTypes.shape({
     id: PropTypes.number,
     date: PropTypes.string,
     name: PropTypes.string,
   })),
+  programDates: PropTypes.arrayOf(gradedDateShape),
 };
 CalendarView.defaultProps = {
   onEditSession: () => {},
@@ -1713,10 +2142,13 @@ CalendarView.defaultProps = {
   onSessionDetail: () => {},
   loading: false,
   canManageSessions: false,
+  isInstructor: false,
   isLearner: false,
   studentRequestMap: null,
-  onRequestSession: () => {},
+  leaveDateMap: null,
+  sessionTypeColors: {},
   holidays: [],
+  programDates: [],
 };
 
 export default CalendarView;

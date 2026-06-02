@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink, useParams } from 'react-router-dom';
-import { getAuthenticatedUser } from '@edx/frontend-platform/auth';
+import { USER_ROLE } from '../shared/constants';
+import { useConfig } from './useConfig';
 
 const SECTIONS = [
   { slug: 'calendar', label: 'Calendar' },
@@ -12,7 +13,8 @@ const SECTIONS = [
 
 const SectionNav = () => {
   const { programId } = useParams();
-  const isAdmin = Boolean(getAuthenticatedUser()?.administrator);
+  const { data: config } = useConfig();
+  const isAdmin = config?.user_role === USER_ROLE.ADMIN;
   const visibleSections = SECTIONS.filter((s) => !s.adminOnly || isAdmin);
 
   return (

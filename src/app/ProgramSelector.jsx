@@ -3,7 +3,6 @@ import PropTypes from 'prop-types';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Form, Spinner, Icon } from '@openedx/paragon';
 import { KeyboardArrowDown } from '@openedx/paragon/icons';
-import { usePrograms } from './hooks';
 
 const Label = ({ text }) => (
   <span
@@ -22,8 +21,9 @@ const Stack = ({ children }) => (
 
 Stack.propTypes = { children: PropTypes.node.isRequired };
 
-const ProgramSelector = ({ section }) => {
-  const { programs, loading, error } = usePrograms();
+const ProgramSelector = ({
+  section, programs, loading, error,
+}) => {
   const { programId } = useParams();
   const navigate = useNavigate();
 
@@ -129,6 +129,9 @@ const ProgramSelector = ({ section }) => {
 
 ProgramSelector.propTypes = {
   section: PropTypes.oneOf(['calendar', 'requests', 'attendance']).isRequired,
+  programs: PropTypes.arrayOf(PropTypes.shape({ id: PropTypes.string, name: PropTypes.string })).isRequired,
+  loading: PropTypes.bool.isRequired,
+  error: PropTypes.string.isRequired,
 };
 
 export default ProgramSelector;

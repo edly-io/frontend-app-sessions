@@ -1,16 +1,17 @@
 // LocationsPage — admin CRUD for the global Location catalogue.
 // Visible inside the sessions-admin shell at /sessions/:programId/locations.
 
-import React, { useState } from 'react';
+import React, {
+  useState, useEffect, useCallback, useMemo,
+} from 'react';
 import {
-  Alert, Button, Container, DataTable, Spinner, StandardModal, Toast,
+  Alert, Button, Container, DataTable, Form, Spinner, StandardModal, Toast,
 } from '@openedx/paragon';
 import { Add, DeleteOutline, EditOutline } from '@openedx/paragon/icons';
 import PropTypes from 'prop-types';
-import { getAuthenticatedUser } from '@edx/frontend-platform/auth';
-
-import { useLocations } from '../app/hooks';
-import { deleteLocation } from './api';
+import { useConfig } from '../app/useConfig';
+import { USER_ROLE } from '../shared/constants';
+import { getLocations, deleteLocation } from './api';
 import { extractApiError } from '../shared/utils';
 import LocationModal from './LocationModal';
 
@@ -26,9 +27,6 @@ const SerialCell = ({ value }) => (
 SerialCell.propTypes = { value: PropTypes.string };
 SerialCell.defaultProps = { value: '' };
 
-// react-table passes the column definition through as `column`, so callbacks
-// and flags hang off the column rather than being closed-over inside the Cell.
-// That keeps the Cell module-scoped (no nested-component lint warning).
 const ActionsCell = ({ row, column }) => {
   const { isAdmin, onEdit, onDelete } = column;
   if (!isAdmin) { return null; }
@@ -68,18 +66,69 @@ ActionsCell.propTypes = {
   }).isRequired,
 };
 
-const LocationsPage = () => {
-  const isAdmin = Boolean(getAuthenticatedUser()?.administrator);
-  const {
-    locations, loading, error, refresh,
-  } = useLocations();
+const PAGE_SIZE = 20;
 
-  const [editTarget, setEditTarget] = useState(null); // null = create, object = edit
+const LocationsPage = () => {
+  const { data: config } = useConfig();
+  const isAdmin = config?.user_role === USER_ROLE.ADMIN;
+
+  const [locations, setLocations] = useState([]);
+  const [count, setCount] = useState(0);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  const [editTarget, setEditTarget] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteError, setDeleteError] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [toast, setToast] = useState('');
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchInput), 300);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  const fetchData = useCallback(async ({ pageIndex: nextIndex = 0 } = {}) => {
+    setCurrentPage(nextIndex);
+    setError('');
+    try {
+      const { count: total, results } = await getLocations({
+        search: debouncedSearch,
+        page: nextIndex + 1,
+        pageSize: PAGE_SIZE,
+      });
+      setLocations(results);
+      setCount(total);
+    } catch (err) {
+      setError(extractApiError(err, 'Failed to load locations'));
+    } finally {
+      setInitialLoading(false);
+    }
+  }, [debouncedSearch]);
+
+  useEffect(() => { fetchData({ pageIndex: 0 }); }, [fetchData]);
+
+  /* eslint-disable react/no-unstable-nested-components, react/prop-types */
+  const columns = useMemo(() => [
+    { Header: 'Name', accessor: 'name' },
+    { Header: 'Description', accessor: 'description', Cell: DescriptionCell },
+    { Header: 'Biometric serial', accessor: 'biometric_machine_serial_number', Cell: SerialCell },
+    {
+      Header: 'Actions',
+      id: 'actions',
+      Cell: ActionsCell,
+      isAdmin,
+      onEdit: (loc) => { setEditTarget(loc); setModalOpen(true); },
+      onDelete: setDeleteTarget,
+    },
+  // isAdmin is stable for the lifetime of this component
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [isAdmin]);
+  /* eslint-enable react/no-unstable-nested-components, react/prop-types */
 
   if (!isAdmin) {
     return (
@@ -89,17 +138,9 @@ const LocationsPage = () => {
     );
   }
 
-  const openCreate = () => {
-    setEditTarget(null);
-    setModalOpen(true);
-  };
-  const openEdit = (location) => {
-    setEditTarget(location);
-    setModalOpen(true);
-  };
   const handleSaved = (saved) => {
     setModalOpen(false);
-    refresh();
+    fetchData({ pageIndex: currentPage });
     setToast(editTarget ? `Updated ${saved.name}.` : `Created ${saved.name}.`);
   };
 
@@ -111,7 +152,7 @@ const LocationsPage = () => {
       await deleteLocation(deleteTarget.id);
       const { name } = deleteTarget;
       setDeleteTarget(null);
-      refresh();
+      fetchData({ pageIndex: currentPage });
       setToast(`Deleted ${name}.`);
     } catch (err) {
       setDeleteError(extractApiError(err, 'Failed to delete location'));
@@ -119,21 +160,6 @@ const LocationsPage = () => {
       setDeleting(false);
     }
   };
-
-  const columns = [
-    { Header: 'Name', accessor: 'name' },
-    { Header: 'Description', accessor: 'description', Cell: DescriptionCell },
-    { Header: 'Biometric serial', accessor: 'biometric_machine_serial_number', Cell: SerialCell },
-    {
-      Header: 'Actions',
-      id: 'actions',
-      Cell: ActionsCell,
-      // Custom keys are passed through to the Cell via the `column` arg.
-      isAdmin,
-      onEdit: openEdit,
-      onDelete: setDeleteTarget,
-    },
-  ];
 
   return (
     <Container className="py-3">
@@ -145,27 +171,41 @@ const LocationsPage = () => {
             here, then pick one when scheduling a meeting.
           </p>
         </div>
-        <Button variant="primary" iconBefore={Add} onClick={openCreate}>
+        <Button variant="primary" iconBefore={Add} onClick={() => { setEditTarget(null); setModalOpen(true); }}>
           New location
         </Button>
       </div>
 
-      {error && (
-        <Alert variant="danger" className="mb-3">{error}</Alert>
-      )}
+      <Form.Control
+        type="search"
+        placeholder="Search locations…"
+        value={searchInput}
+        onChange={(e) => setSearchInput(e.target.value)}
+        className="mb-3"
+        style={{ maxWidth: 320 }}
+      />
 
-      {loading ? (
+      {error && <Alert variant="danger" className="mb-3">{error}</Alert>}
+
+      {initialLoading ? (
         <div className="py-5 text-center">
           <Spinner animation="border" screenReaderText="Loading locations" />
         </div>
       ) : (
         <DataTable
+          key={debouncedSearch}
+          isPaginated
+          manualPagination
+          fetchData={fetchData}
+          pageCount={Math.max(1, Math.ceil(count / PAGE_SIZE))}
+          itemCount={count}
           data={locations}
           columns={columns}
-          itemCount={locations.length}
+          initialState={{ pageIndex: 0, pageSize: PAGE_SIZE }}
         >
           <DataTable.Table />
-          <DataTable.EmptyTable content="No locations yet — click 'New location' to add one." />
+          <DataTable.EmptyTable content="No locations found." />
+          <DataTable.TableFooter />
         </DataTable>
       )}
 

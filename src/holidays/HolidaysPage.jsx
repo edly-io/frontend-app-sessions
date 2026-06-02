@@ -1,16 +1,17 @@
 // HolidaysPage — admin CRUD for public holidays.
 // Visible inside the sessions-admin shell at /sessions/:programId/holidays.
 
-import React, { useState } from 'react';
+import React, {
+  useState, useEffect, useCallback, useMemo,
+} from 'react';
 import {
-  Alert, Button, Container, DataTable, Spinner, StandardModal, Toast,
+  Alert, Button, Container, DataTable, Form, Spinner, StandardModal, Toast,
 } from '@openedx/paragon';
 import { Add, DeleteOutline, EditOutline } from '@openedx/paragon/icons';
 import PropTypes from 'prop-types';
-import { getAuthenticatedUser } from '@edx/frontend-platform/auth';
-
-import { useHolidays } from '../app/hooks';
-import { deleteHoliday } from './api';
+import { useConfig } from '../app/useConfig';
+import { USER_ROLE } from '../shared/constants';
+import { getHolidays, deleteHoliday } from './api';
 import { extractApiError } from '../shared/utils';
 import HolidayModal from './HolidayModal';
 
@@ -72,11 +73,19 @@ ActionsCell.propTypes = {
   }).isRequired,
 };
 
+const PAGE_SIZE = 20;
+
 const HolidaysPage = () => {
-  const isAdmin = Boolean(getAuthenticatedUser()?.administrator);
-  const {
-    holidays, loading, error, refresh,
-  } = useHolidays();
+  const { data: config } = useConfig();
+  const isAdmin = config?.user_role === USER_ROLE.ADMIN;
+
+  const [holidays, setHolidays] = useState([]);
+  const [count, setCount] = useState(0);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
   const [editTarget, setEditTarget] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -84,6 +93,48 @@ const HolidaysPage = () => {
   const [deleteError, setDeleteError] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [toast, setToast] = useState('');
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchInput), 300);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  const fetchData = useCallback(async ({ pageIndex: nextIndex = 0 } = {}) => {
+    setCurrentPage(nextIndex);
+    setError('');
+    try {
+      const { count: total, results } = await getHolidays({
+        search: debouncedSearch,
+        page: nextIndex + 1,
+        pageSize: PAGE_SIZE,
+      });
+      setHolidays(results);
+      setCount(total);
+    } catch (err) {
+      setError(extractApiError(err, 'Failed to load holidays'));
+    } finally {
+      setInitialLoading(false);
+    }
+  }, [debouncedSearch]);
+
+  useEffect(() => { fetchData({ pageIndex: 0 }); }, [fetchData]);
+
+  /* eslint-disable react/no-unstable-nested-components, react/prop-types */
+  const columns = useMemo(() => [
+    { Header: 'Name', accessor: 'name' },
+    { Header: 'Date Range', id: 'date_range', Cell: DateRangeCell },
+    { Header: 'Description', accessor: 'description', Cell: DescriptionCell },
+    {
+      Header: 'Actions',
+      id: 'actions',
+      Cell: ActionsCell,
+      isAdmin,
+      onEdit: (h) => { setEditTarget(h); setModalOpen(true); },
+      onDelete: setDeleteTarget,
+    },
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [isAdmin]);
+  /* eslint-enable react/no-unstable-nested-components, react/prop-types */
 
   if (!isAdmin) {
     return (
@@ -93,17 +144,9 @@ const HolidaysPage = () => {
     );
   }
 
-  const openCreate = () => {
-    setEditTarget(null);
-    setModalOpen(true);
-  };
-  const openEdit = (holiday) => {
-    setEditTarget(holiday);
-    setModalOpen(true);
-  };
   const handleSaved = (saved) => {
     setModalOpen(false);
-    refresh();
+    fetchData({ pageIndex: currentPage });
     setToast(editTarget ? `Updated ${saved.name}.` : `Created ${saved.name}.`);
   };
 
@@ -115,7 +158,7 @@ const HolidaysPage = () => {
       await deleteHoliday(deleteTarget.id);
       const { name } = deleteTarget;
       setDeleteTarget(null);
-      refresh();
+      fetchData({ pageIndex: currentPage });
       setToast(`Deleted ${name}.`);
     } catch (err) {
       setDeleteError(extractApiError(err, 'Failed to delete holiday'));
@@ -123,20 +166,6 @@ const HolidaysPage = () => {
       setDeleting(false);
     }
   };
-
-  const columns = [
-    { Header: 'Name', accessor: 'name' },
-    { Header: 'Date Range', id: 'date_range', Cell: DateRangeCell },
-    { Header: 'Description', accessor: 'description', Cell: DescriptionCell },
-    {
-      Header: 'Actions',
-      id: 'actions',
-      Cell: ActionsCell,
-      isAdmin,
-      onEdit: openEdit,
-      onDelete: setDeleteTarget,
-    },
-  ];
 
   return (
     <Container className="py-3">
@@ -148,27 +177,41 @@ const HolidaysPage = () => {
             appears when scheduling a session on a holiday or weekend.
           </p>
         </div>
-        <Button variant="primary" iconBefore={Add} onClick={openCreate}>
+        <Button variant="primary" iconBefore={Add} onClick={() => { setEditTarget(null); setModalOpen(true); }}>
           New holiday
         </Button>
       </div>
 
-      {error && (
-        <Alert variant="danger" className="mb-3">{error}</Alert>
-      )}
+      <Form.Control
+        type="search"
+        placeholder="Search holidays…"
+        value={searchInput}
+        onChange={(e) => setSearchInput(e.target.value)}
+        className="mb-3"
+        style={{ maxWidth: 320 }}
+      />
 
-      {loading ? (
+      {error && <Alert variant="danger" className="mb-3">{error}</Alert>}
+
+      {initialLoading ? (
         <div className="py-5 text-center">
           <Spinner animation="border" screenReaderText="Loading holidays" />
         </div>
       ) : (
         <DataTable
+          key={debouncedSearch}
+          isPaginated
+          manualPagination
+          fetchData={fetchData}
+          pageCount={Math.max(1, Math.ceil(count / PAGE_SIZE))}
+          itemCount={count}
           data={holidays}
           columns={columns}
-          itemCount={holidays.length}
+          initialState={{ pageIndex: 0, pageSize: PAGE_SIZE }}
         >
           <DataTable.Table />
-          <DataTable.EmptyTable content="No holidays yet — click 'New holiday' to add one." />
+          <DataTable.EmptyTable content="No holidays found." />
+          <DataTable.TableFooter />
         </DataTable>
       )}
 

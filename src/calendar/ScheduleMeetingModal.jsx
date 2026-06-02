@@ -118,7 +118,7 @@ const buildSummary = ({
 };
 
 const ScheduleMeetingModal = ({
-  isOpen, onClose, programKey, onSuccess, session, holidays,
+  isOpen, onClose, programKey, onSuccess, session, holidays, descriptionOnly = false,
 }) => {
   const timezoneName = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
@@ -209,23 +209,25 @@ const ScheduleMeetingModal = ({
     return '';
   }, [startDateInput, holidays, isPastSession]);
 
-  // Fetch the full course run list once each time the modal opens
+  // Fetch the full course run list once each time the modal opens.
+  // Skipped in description-only (instructor) mode — course field is disabled and
+  // pre-filled directly from the session object (the /course-runs/ endpoint is admin-only).
   useEffect(() => {
-    if (!isOpen) { return; }
+    if (!isOpen || descriptionOnly) { return; }
     setCourseRunsLoading(true);
     fetchCourseRuns()
       .then((data) => setCourseRunOptions(data.map((r) => ({ value: r.id, label: r.title }))))
       .catch(() => {}) // silently fail — modal remains usable
       .finally(() => setCourseRunsLoading(false));
-  }, [isOpen]);
+  }, [isOpen, descriptionOnly]);
 
   // Fetch the locations catalogue when the modal opens.
   useEffect(() => {
     if (!isOpen) { return; }
     setLocationsLoading(true);
-    getLocations()
-      .then((data) => setLocationOptions(
-        (data || []).map((loc) => ({ value: loc.id, label: loc.name })),
+    getLocations({ pageSize: 100 })
+      .then(({ results }) => setLocationOptions(
+        (results || []).map((loc) => ({ value: loc.id, label: loc.name })),
       ))
       .catch(() => {}) // silently fail — admin can still save without a location
       .finally(() => setLocationsLoading(false));
@@ -240,20 +242,35 @@ const ScheduleMeetingModal = ({
   }, [isOpen]);
 
   // Pre-fill course run once options are loaded (edit mode only).
+  // In description-only mode the options list is never fetched, so we synthesize
+  // a single-entry option directly from the session's course_id / course_name.
   useEffect(() => {
-    if (courseRunOptions.length === 0 || !session) { return; }
+    if (!isOpen || !session) { return; }
+    if (descriptionOnly) {
+      if (session.course_id) {
+        setSelectedCourseRun({
+          value: String(session.course_id),
+          label: session.course_name || String(session.course_id),
+        });
+      }
+      return;
+    }
+    if (courseRunOptions.length === 0) { return; }
     const targetId = String(session.course_id);
     if (!targetId) { return; }
     const match = courseRunOptions.find((r) => r.value === targetId);
     if (match) { setSelectedCourseRun(match); }
-  }, [courseRunOptions, session]);
+  }, [courseRunOptions, session, isOpen, descriptionOnly]);
 
   // Fetch instructors whenever the selected course run changes.
   // In correction mode we fetch the global instructor list once on open (the
   // course itself may be changing, so scoping to the old course is misleading).
   // In normal mode we scope the fetch to the selected course run.
+  // Skipped in description-only mode — instructor field is disabled and pre-filled
+  // from the session object (/instructors/ endpoint is admin-only).
   const selectedCourseRunId = selectedCourseRun?.value ?? null;
   useEffect(() => {
+    if (descriptionOnly) { return; }
     if (isPastSession) {
       // Correction mode: load all instructors once; don't clear on course change.
       if (!isOpen) { return; }
@@ -281,20 +298,34 @@ const ScheduleMeetingModal = ({
       ))
       .catch(() => {})
       .finally(() => setInstructorsLoading(false));
-  }, [isPastSession, isOpen, selectedCourseRunId, isSessionType]);
+  }, [descriptionOnly, isPastSession, isOpen, selectedCourseRunId, isSessionType]);
 
   // Pre-fill instructors once options are loaded (edit mode only).
   // Backend returns `instructor_emails` (ordered); match each to the loaded
   // instructor options and preserve order.
+  // In description-only mode the options list is never fetched, so we synthesize
+  // instructor entries directly from session.instructor_names / instructor_emails.
   useEffect(() => {
-    if (!session || instructorOptions.length === 0) { return; }
+    if (!isOpen || !session) { return; }
+    if (descriptionOnly) {
+      const names = session.instructor_names || [];
+      const emails = session.instructor_emails || [];
+      const instructors = names.map((name, i) => ({
+        value: emails[i] || name,
+        label: name,
+        email: emails[i] || '',
+      }));
+      if (instructors.length > 0) { setSelectedInstructors(instructors); }
+      return;
+    }
+    if (instructorOptions.length === 0) { return; }
     const emails = session.instructor_emails || [];
     if (emails.length === 0) { return; }
     const matched = emails
       .map((email) => instructorOptions.find((i) => i.email === email))
       .filter(Boolean);
     if (matched.length > 0) { setSelectedInstructors(matched); }
-  }, [instructorOptions, session]);
+  }, [instructorOptions, session, isOpen, descriptionOnly]);
 
   // Pre-fill form when editing
   useEffect(() => {
@@ -580,6 +611,21 @@ const ScheduleMeetingModal = ({
     setError('');
     setConflictData(null);
 
+    // Description-only mode (instructor editing their own session).
+    if (descriptionOnly) {
+      setLoading(true);
+      try {
+        const result = await updateSession(session.id, { description: formData.description });
+        onSuccess(result);
+        resetForm();
+      } catch (err) {
+        setError(extractApiError(err, 'Failed to save description. Please try again.'));
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
     if (!validateForm()) {
       return;
     }
@@ -685,7 +731,7 @@ const ScheduleMeetingModal = ({
 
   // Derived labels — avoid nested ternaries in JSX.
   let modalTitle = 'Schedule New Session';
-  if (isPastSession) { modalTitle = 'Correct Session Details'; } else if (session) { modalTitle = 'Edit Session'; }
+  if (descriptionOnly) { modalTitle = 'Edit Description'; } else if (isPastSession) { modalTitle = 'Correct Session Details'; } else if (session) { modalTitle = 'Edit Session'; }
 
   let savingLabel = 'Creating...';
   if (isPastSession) { savingLabel = 'Saving...'; } else if (session) { savingLabel = 'Updating...'; }
@@ -810,6 +856,12 @@ const ScheduleMeetingModal = ({
             </Alert>
           )}
 
+          {descriptionOnly && (
+            <Alert variant="info" className="mb-3">
+              You can only edit the <strong>description</strong> of this session.
+            </Alert>
+          )}
+
           <Form.Group className="mb-3">
             <Form.Label>Title {!isPastSession && '*'}</Form.Label>
             <Form.Control
@@ -819,7 +871,7 @@ const ScheduleMeetingModal = ({
               onChange={handleChange}
               required={!isPastSession}
               placeholder="e.g., Week 5 Live Session"
-              disabled={isPastSession}
+              disabled={isPastSession || descriptionOnly}
             />
           </Form.Group>
 
@@ -829,7 +881,7 @@ const ScheduleMeetingModal = ({
               as="select"
               value={sessionType}
               onChange={(e) => setSessionType(e.target.value)}
-              disabled={isPastSession}
+              disabled={isPastSession || descriptionOnly}
             >
               {sessionTypeOptions.map(({ value, label }) => (
                 <option key={value} value={value}>{label}</option>
@@ -845,7 +897,8 @@ const ScheduleMeetingModal = ({
             onChange={setSelectedCourseRun}
             placeholder="Search by course title..."
             loading={courseRunsLoading}
-            required={isSessionType}
+            required={isSessionType && !descriptionOnly}
+            disabled={descriptionOnly}
           />
 
           <SearchableSelect
@@ -857,8 +910,8 @@ const ScheduleMeetingModal = ({
             multiple
             placeholder={isPastSession || selectedCourseRun || !isSessionType ? 'Search by name...' : 'Select a course first'}
             loading={instructorsLoading}
-            disabled={!isPastSession && isSessionType && !selectedCourseRun}
-            required={isSessionType}
+            disabled={descriptionOnly || (!isPastSession && isSessionType && !selectedCourseRun)}
+            required={isSessionType && !descriptionOnly}
             isInvalid={!!fieldErrors.instructors}
           />
 
@@ -870,8 +923,9 @@ const ScheduleMeetingModal = ({
             onChange={setSelectedLocation}
             placeholder={locationsLoading ? 'Loading locations…' : 'Search locations…'}
             loading={locationsLoading}
-            required={!isPastSession && isSessionType}
+            required={!isPastSession && isSessionType && !descriptionOnly}
             isInvalid={!!fieldErrors.location}
+            disabled={descriptionOnly}
           />
 
           <Form.Group className="mb-3">
@@ -896,8 +950,8 @@ const ScheduleMeetingModal = ({
                   value={startDateInput}
                   onChange={handleStartDateChange}
                   aria-label="Start date"
-                  required={!isPastSession}
-                  disabled={isPastSession}
+                  required={!isPastSession && !descriptionOnly}
+                  disabled={isPastSession || descriptionOnly}
                   style={(fieldErrors.startDate || fieldErrors.startTime) ? { borderColor: '#dc3545' } : undefined}
                 />
               </div>
@@ -908,8 +962,8 @@ const ScheduleMeetingModal = ({
                   onChange={handleStartTimeChange}
                   aria-label="Start time"
                   step="60"
-                  required={!isPastSession}
-                  disabled={isPastSession}
+                  required={!isPastSession && !descriptionOnly}
+                  disabled={isPastSession || descriptionOnly}
                   style={fieldErrors.startTime ? { borderColor: '#dc3545' } : undefined}
                 />
               </div>
@@ -931,8 +985,8 @@ const ScheduleMeetingModal = ({
                   value={endDateInput}
                   onChange={handleEndDateChange}
                   aria-label="End date"
-                  required={!isPastSession}
-                  disabled={isPastSession}
+                  required={!isPastSession && !descriptionOnly}
+                  disabled={isPastSession || descriptionOnly}
                   style={fieldErrors.endTime ? { borderColor: '#dc3545' } : undefined}
                 />
               </div>
@@ -943,8 +997,8 @@ const ScheduleMeetingModal = ({
                   onChange={handleEndTimeChange}
                   aria-label="End time"
                   step="60"
-                  required={!isPastSession}
-                  disabled={isPastSession}
+                  required={!isPastSession && !descriptionOnly}
+                  disabled={isPastSession || descriptionOnly}
                   style={fieldErrors.endTime ? { borderColor: '#dc3545' } : undefined}
                 />
               </div>
@@ -960,7 +1014,7 @@ const ScheduleMeetingModal = ({
                 const next = e.target.checked;
                 setCreateZoomMeeting(next);
               }}
-              disabled={isPastSession || Boolean(session?.create_zoom_meeting)}
+              disabled={isPastSession || descriptionOnly || Boolean(session?.create_zoom_meeting)}
             >
               Create Zoom meeting for this session
             </Form.Checkbox>
@@ -987,7 +1041,7 @@ const ScheduleMeetingModal = ({
               name="is_recurring"
               checked={isRecurring}
               onChange={(e) => setIsRecurring(e.target.checked)}
-              disabled={isPastSession || Boolean(session?.is_recurring)}
+              disabled={isPastSession || descriptionOnly || Boolean(session?.is_recurring)}
             >
               Recurring meeting
             </Form.Checkbox>
@@ -1191,11 +1245,13 @@ ScheduleMeetingModal.propTypes = {
     date: PropTypes.string,
     name: PropTypes.string,
   })),
+  descriptionOnly: PropTypes.bool,
 };
 ScheduleMeetingModal.defaultProps = {
   programKey: '',
   session: null,
   holidays: [],
+  descriptionOnly: false,
 };
 
 export default ScheduleMeetingModal;

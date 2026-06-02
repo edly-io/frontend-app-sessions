@@ -6,14 +6,14 @@ import {
   Container, Spinner, Alert, Toast, StandardModal, Button,
 } from '@openedx/paragon';
 import {
-  getCalendarSessions, deleteSession, cancelSession,
+  getCalendarSessions, deleteSession, cancelSession, getProgramDates,
 } from './api';
 import { getHolidays } from '../holidays/api';
-import { getMySessionRequests } from '../requests/api';
+import { getApprovedLeaves } from '../requests/api';
 import { extractApiError } from '../shared/utils';
 import { USER_ROLE } from '../shared/constants';
+import { useConfig } from '../app/useConfig';
 import ScheduleMeetingModal from './ScheduleMeetingModal';
-import SessionRequestModal from '../requests/SessionRequestModal';
 import CalendarView, { getMonthGridDays, getWeekDays } from './CalendarView';
 import SessionDetailModal from './SessionDetailModal';
 
@@ -52,20 +52,37 @@ const computeFetchWindow = (view, currentDate) => {
   return { start, end };
 };
 
+const TYPE_COLOR_PALETTE = [
+  '#1565c0', // blue
+  '#be185d', // rose
+  '#c2410c', // orange
+  '#0e7490', // cyan
+  '#0f766e', // teal
+  '#7e22ce', // purple
+  '#92400e', // amber-dark
+  '#1e3a5f', // navy
+];
+
 const CalendarPage = () => {
   const { programId } = useParams();
+  const { data: config } = useConfig();
+  const userRole = config?.user_role ?? USER_ROLE.LEARNER;
   const [sessions, setSessions] = useState([]);
-  const [userRole, setUserRole] = useState(USER_ROLE.LEARNER);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const canManageSessions = userRole === USER_ROLE.ADMIN;
+  const isInstructor = userRole === USER_ROLE.INSTRUCTOR;
   const isLearner = userRole === USER_ROLE.LEARNER;
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Learner-only: map of sessionId → SessionRequest for the visible window.
-  // Drives "Request"/"Pending"/"Approved" state inside session popovers.
-  const [myRequests, setMyRequests] = useState(() => new Map());
-  const [requestModalSession, setRequestModalSession] = useState(null);
+  const sessionTypeColors = useMemo(() => {
+    const types = config?.session_types || [];
+    const map = {};
+    types.forEach((t, i) => {
+      map[t.value] = TYPE_COLOR_PALETTE[i % TYPE_COLOR_PALETTE.length];
+    });
+    return map;
+  }, [config]);
 
   // Calendar navigation state — lifted here because it drives the fetch window.
   const [view, setView] = useState(VIEWS.MONTH);
@@ -83,6 +100,8 @@ const CalendarPage = () => {
   const [cancelError, setCancelError] = useState('');
   const [sessionToView, setSessionToView] = useState(null);
   const [holidays, setHolidays] = useState([]);
+  const [programDates, setProgramDates] = useState([]);
+  const [approvedLeaves, setApprovedLeaves] = useState([]);
   const [toastMessage, setToastMessage] = useState('');
   const [showToast, setShowToast] = useState(false);
 
@@ -91,10 +110,22 @@ const CalendarPage = () => {
     [view, currentDate],
   );
 
-  // Fetch holidays once on mount — small dataset, changes rarely.
+  // Fetch all holidays once on mount (page_size=100 covers any realistic dataset).
   useEffect(() => {
-    getHolidays().then(setHolidays).catch(() => {});
+    getHolidays({ pageSize: 100 }).then(({ results }) => setHolidays(results)).catch(() => {});
   }, []);
+
+  // Fetch program dates (graded due dates) once per program — not windowed.
+  useEffect(() => {
+    if (!programId) { return; }
+    getProgramDates(programId).then(setProgramDates).catch(() => {});
+  }, [programId]);
+
+  // Fetch approved leaves for learners — used to highlight leave days on the calendar.
+  useEffect(() => {
+    if (!isLearner || !programId) { return; }
+    getApprovedLeaves({ program_key: programId }).then(setApprovedLeaves).catch(() => {});
+  }, [isLearner, programId]);
 
   // Re-fetch whenever the visible window changes or a mutation triggers a refresh.
   // The backend requires start_date + end_date and enforces a 45-day max window.
@@ -103,32 +134,11 @@ const CalendarPage = () => {
     const fetchSessions = async () => {
       setLoading(true);
       try {
-        const startIso = start.toISOString();
-        const endIso = end.toISOString();
-        const { sessions: data, userRole: role } = await getCalendarSessions(startIso, endIso, programId);
+        const toDateStr = (d) => d.toISOString().slice(0, 10);
+        const { sessions: data } = await getCalendarSessions(toDateStr(start), toDateStr(end), programId);
         if (cancelled) { return; }
         setSessions(data);
-        const resolvedRole = role || USER_ROLE.LEARNER;
-        setUserRole(resolvedRole);
         setError('');
-
-        // Hydrate learner's request state for the visible window so popovers
-        // render the correct CTA (Request / Pending / Approved + Join).
-        if (resolvedRole === USER_ROLE.LEARNER) {
-          const requests = await getMySessionRequests({
-            startDate: start.toISOString(),
-            endDate: end.toISOString(),
-            // Pull the full window in one shot — backend now paginates /me/
-            // (default 50). The calendar wants every visible request to render
-            // its session badge correctly. 200 is the backend max_page_size.
-            pageSize: 200,
-          });
-          if (cancelled) { return; }
-          const list = Array.isArray(requests) ? requests : requests.results || [];
-          setMyRequests(new Map(list.map((r) => [r.session, r])));
-        } else {
-          setMyRequests(new Map());
-        }
       } catch (err) {
         if (!cancelled) {
           setError('Failed to load sessions. Please try again later.');
@@ -140,6 +150,46 @@ const CalendarPage = () => {
     fetchSessions();
     return () => { cancelled = true; };
   }, [start, end, refreshKey, programId]);
+
+  // Build sessionId → leaveRequest map from the learner's approved leaves.
+  // Session-specific leaves: map each linked session directly.
+  // Full-day leaves (leave_start_date/leave_end_date set, no sessions): cross-check
+  // each loaded calendar session's date against the leave date range.
+  const studentRequestMap = useMemo(() => {
+    const map = new Map();
+    approvedLeaves.forEach((leave) => {
+      if (leave.sessions && leave.sessions.length > 0) {
+        leave.sessions.forEach((s) => { map.set(s.id, leave); });
+      } else if (leave.leave_start_date && leave.leave_end_date) {
+        const leaveStart = new Date(`${leave.leave_start_date}T00:00:00`);
+        const leaveEnd = new Date(`${leave.leave_end_date}T23:59:59`);
+        sessions.forEach((s) => {
+          if (!s.scheduled_start_time) { return; }
+          const sessionDate = new Date(s.scheduled_start_time);
+          if (sessionDate >= leaveStart && sessionDate <= leaveEnd) {
+            map.set(s.id, leave);
+          }
+        });
+      }
+    });
+    return map;
+  }, [approvedLeaves, sessions]);
+
+  // Full-day leave banner map: date string (YYYY-MM-DD) → leave request.
+  // Used by CalendarView to show a non-clickable "On Leave" day banner.
+  const leaveDateMap = useMemo(() => {
+    const map = new Map();
+    approvedLeaves.forEach((leave) => {
+      if (!leave.leave_start_date || !leave.leave_end_date) { return; }
+      const cur = new Date(`${leave.leave_start_date}T12:00:00`);
+      const last = new Date(`${leave.leave_end_date}T12:00:00`);
+      while (cur <= last) {
+        map.set(cur.toISOString().slice(0, 10), leave);
+        cur.setDate(cur.getDate() + 1);
+      }
+    });
+    return map;
+  }, [approvedLeaves]);
 
   const showSuccess = (message) => {
     setToastMessage(message);
@@ -228,22 +278,6 @@ const CalendarPage = () => {
     setView(nextView);
   }, []);
 
-  // Learner request flow — open modal from a session chip / popover.
-  const handleRequestSession = useCallback((session) => {
-    setRequestModalSession(session);
-  }, []);
-
-  const handleRequestSuccess = (created) => {
-    // Optimistically merge the new request so the popover flips to "Pending"
-    // without waiting for a full calendar refetch.
-    setMyRequests((prev) => {
-      const next = new Map(prev);
-      next.set(created.session, created);
-      return next;
-    });
-    showSuccess('Request submitted.');
-  };
-
   const renderContent = () => {
     // Initial load — show full-page spinner. Subsequent navigations use the
     // inline loading opacity inside CalendarView instead so the grid stays visible.
@@ -280,10 +314,13 @@ const CalendarPage = () => {
           onSessionDetail={handleViewSession}
           loading={loading}
           canManageSessions={canManageSessions}
+          isInstructor={isInstructor}
           isLearner={isLearner}
-          studentRequestMap={myRequests}
-          onRequestSession={handleRequestSession}
+          studentRequestMap={studentRequestMap}
+          leaveDateMap={leaveDateMap}
           holidays={holidays}
+          programDates={programDates}
+          sessionTypeColors={sessionTypeColors}
         />
       </Container>
     );
@@ -295,26 +332,16 @@ const CalendarPage = () => {
         {renderContent()}
       </main>
 
-      {/* Create / Edit modal — only for admins */}
-      {canManageSessions && (
+      {/* Schedule modal: admins get full edit; instructors get description-only edit */}
+      {(canManageSessions || isInstructor) && modalSession !== undefined && (
         <ScheduleMeetingModal
-          isOpen={modalSession !== undefined}
+          isOpen
           onClose={() => setModalSession(undefined)}
           programKey={programId || ''}
           session={modalSession}
           onSuccess={handleSessionSuccess}
           holidays={holidays}
-        />
-      )}
-
-      {/* Learner request submission */}
-      {isLearner && (
-        <SessionRequestModal
-          isOpen={Boolean(requestModalSession)}
-          onClose={() => setRequestModalSession(null)}
-          session={requestModalSession}
-          sessionHasZoom={!!(requestModalSession?.meeting_join_url)}
-          onSuccess={handleRequestSuccess}
+          descriptionOnly={isInstructor && !canManageSessions}
         />
       )}
 
