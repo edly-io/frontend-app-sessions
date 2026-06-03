@@ -11,9 +11,10 @@ const typeUrl = (type, suffix = '') => (type === 'leave' ? leaveUrl(suffix) : re
 /**
  * Learner submits a new request.
  *
- * Leave (full-day):          POST /v1/requests/leave/   { reason, program_key, leave_start_date, leave_end_date }
- * Leave (session-specific):  POST /v1/requests/leave/   { reason, program_key, session_ids: [uuid, ...] }
- * Remote session:             POST /v1/requests/remote-session/  { reason, program_key, session_ids: [uuid, ...] }
+ * Leave:          POST /v1/requests/leave/
+ *   leave_start_date + leave_end_date always required.
+ *   session_ids optional — present for session-specific leave, absent for full-day.
+ * Remote session: POST /v1/requests/remote-session/  { reason, program_key, session_ids: [uuid, ...] }
  */
 export const createRequest = async ({
   // eslint-disable-next-line camelcase

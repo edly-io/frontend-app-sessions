@@ -135,7 +135,11 @@ const CreateRequestModal = ({
 
   const isValid = () => {
     if (!reason.trim()) { return false; }
-    if (isFullDayLeave) { return true; }
+    if (typeSlug === REQUEST_TYPE.LEAVE) {
+      if (!startDate || !endDate) { return false; }
+      if (isFullDayLeave) { return true; }
+      return selectedSessionIds.length > 0;
+    }
     return selectedSessionIds.length > 0;
   };
 
@@ -149,8 +153,12 @@ const CreateRequestModal = ({
         type: typeSlug,
         reason: reason.trim(),
         program_key: programKey,
-        ...(isFullDayLeave
-          ? { leave_start_date: startDate, leave_end_date: endDate }
+        ...(typeSlug === REQUEST_TYPE.LEAVE
+          ? {
+            leave_start_date: startDate,
+            leave_end_date: endDate,
+            ...(!isFullDayLeave && { session_ids: selectedSessionIds }),
+          }
           : { session_ids: selectedSessionIds }),
         attachment: attachment || undefined,
       });
