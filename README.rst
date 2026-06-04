@@ -12,7 +12,7 @@ Purpose
 - Per-learner session request submission (remote Zoom join, leave requests)
 - Instructor and admin tools: attendance roster, per-session/per-learner/course-summary reports, location management
 
-This MFE is part of the `tutor-contrib-fbr <https://github.com/edly-io/tutor-contrib-fbr>`_ plugin ecosystem and is deployed via Tutor at port **1998** (``http://apps.local.openedx.io:1998``).
+This MFE is part of the `tutor-contrib-fbr <https://github.com/edly-io/tutor-contrib-fbr>`_ plugin ecosystem and is deployed via Tutor at port **2013** (``http://apps.local.openedx.io:2013``).
 
 Getting Started
 ***************
@@ -33,7 +33,7 @@ Local Development
 
     # 2. Start the webpack dev server (hot reload)
     npm start
-    # → http://apps.local.openedx.io:1998
+    # → http://apps.local.openedx.io:2013
 
 The dev server talks to the LMS at ``http://local.openedx.io:8000`` (configured in ``.env.development``).
 
@@ -46,7 +46,7 @@ Tutor Setup
     pip install -e path/to/tutor-contrib-fbr
     tutor plugins enable fbr
 
-    # Generate Caddy route and CORS whitelist for port 1998
+    # Generate Caddy route and CORS whitelist for port 2013
     tutor config save
 
     # Restart services to pick up config changes
@@ -61,7 +61,7 @@ Key variables in ``.env.development``:
 +------------------------------+-----------------------------------------------+
 | Variable                     | Description                                   |
 +==============================+===============================================+
-| ``PORT``                     | Dev server port (``1998``)                    |
+| ``PORT``                     | Dev server port (``2013``)                    |
 +------------------------------+-----------------------------------------------+
 | ``APP_ID``                   | MFE identifier (``sessions``)                 |
 +------------------------------+-----------------------------------------------+
