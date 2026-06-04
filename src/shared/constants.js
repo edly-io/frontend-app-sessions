@@ -24,23 +24,29 @@ export const SESSION_PLATFORM_LABELS = {
   [SESSION_PLATFORM.MANUAL]: 'In Class',
 };
 
-// ─── Session Requests ───────────────────────────────────────────────────────
-// Learner-submitted exceptions to in-person attendance: attend remotely or skip.
+// ─── Requests ───────────────────────────────────────────────────────────────
+// Generic Request/RequestType system. Two built-in types ship with the backend.
 
 export const REQUEST_TYPE = {
-  REMOTE_ZOOM: 'remote_zoom',
+  REMOTE_SESSION: 'remote_session',
   LEAVE: 'leave',
 };
 
 export const REQUEST_TYPE_LABELS = {
-  [REQUEST_TYPE.REMOTE_ZOOM]: 'Remote Session via Zoom',
-  [REQUEST_TYPE.LEAVE]: 'Leave',
+  [REQUEST_TYPE.REMOTE_SESSION]: 'Remote Session',
+  [REQUEST_TYPE.LEAVE]: 'Leave Request',
 };
 
+export const REQUEST_TYPE_VARIANTS = {
+  [REQUEST_TYPE.REMOTE_SESSION]: 'info',
+  [REQUEST_TYPE.LEAVE]: 'secondary',
+};
+
+// Backend returns uppercase state values.
 export const REQUEST_STATUS = {
-  PENDING: 'pending',
-  APPROVED: 'approved',
-  REJECTED: 'rejected',
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
 };
 
 export const REQUEST_STATUS_LABELS = {

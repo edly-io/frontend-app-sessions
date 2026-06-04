@@ -1,19 +1,18 @@
 import React from 'react';
-import { getAuthenticatedUser } from '@edx/frontend-platform/auth';
 
-import StudentRequestsTab from './StudentRequestsTab';
-import MyRequestsView from './MyRequestsView';
+import { useConfig } from '../app/useConfig';
+import { USER_ROLE } from '../shared/constants';
+import AdminRequestsView from './AdminRequestsView';
+import InstructorRequestsView from './InstructorRequestsView';
+import LearnerRequestsView from './LearnerRequestsView';
 
-// Role-aware Requests tab. Admin sees the cross-course review queue (existing
-// StudentRequestsTab without a `courseId` filter); everyone else sees their
-// own requests across all sessions.
 const RequestsPage = () => {
-  const { administrator } = getAuthenticatedUser() || {};
+  const { data: config } = useConfig();
+  const userRole = config?.user_role ?? USER_ROLE.LEARNER;
 
-  if (administrator) {
-    return <StudentRequestsTab />;
-  }
-  return <MyRequestsView />;
+  if (userRole === USER_ROLE.ADMIN) { return <AdminRequestsView />; }
+  if (userRole === USER_ROLE.INSTRUCTOR) { return <InstructorRequestsView />; }
+  return <LearnerRequestsView />;
 };
 
 export default RequestsPage;

@@ -1,10 +1,13 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, {
+  useState, useRef, useEffect, useMemo,
+} from 'react';
 import PropTypes from 'prop-types';
 import {
   StandardModal, Button, Form, Spinner, Alert, OverlayTrigger, Tooltip,
 } from '@openedx/paragon';
 import {
   correctSession, createSession, updateSession, fetchAllInstructors, fetchCourseRuns, fetchInstructors,
+  getSessionsConfig,
 } from './api';
 import { getLocations } from '../locations/api';
 import { toISOString, toDateTimeLocal, extractApiError } from '../shared/utils';
@@ -115,7 +118,7 @@ const buildSummary = ({
 };
 
 const ScheduleMeetingModal = ({
-  isOpen, onClose, courseId, onSuccess, session,
+  isOpen, onClose, programKey, onSuccess, session, holidays, descriptionOnly = false,
 }) => {
   const timezoneName = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
@@ -126,6 +129,7 @@ const ScheduleMeetingModal = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const errorRef = useRef(null);
+  const conflictRef = useRef(null);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -161,46 +165,112 @@ const ScheduleMeetingModal = ({
   const [locationsLoading, setLocationsLoading] = useState(false);
   const [courseRunsLoading, setCourseRunsLoading] = useState(false);
   const [instructorsLoading, setInstructorsLoading] = useState(false);
+  const [sessionType, setSessionType] = useState('session');
+  const [sessionTypeOptions, setSessionTypeOptions] = useState([]);
+  const isSessionType = sessionType === 'session';
 
-  // Fetch the full course run list once each time the modal opens
+  // Conflict detection — set when the API returns HTTP 409.
+  const [conflictData, setConflictData] = useState(null);
+  const [pendingPayload, setPendingPayload] = useState(null);
+
+  // Which fields to highlight red, derived from the active conflict type.
+  const fieldErrors = useMemo(() => {
+    if (!conflictData) { return {}; }
+    switch (conflictData.conflict_type) {
+      case 'INSTRUCTOR_DOUBLE_BOOKING': return { instructors: true };
+      case 'ROOM_DOUBLE_BOOKING': return { location: true };
+      case 'TRAINEE_CLASH': return { startTime: true, endTime: true };
+      case 'PROTECTED_DATE': return { startDate: true };
+      default: return {};
+    }
+  }, [conflictData]);
+
   useEffect(() => {
-    if (!isOpen) { return; }
+    if (conflictData) {
+      setTimeout(() => conflictRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+    }
+  }, [conflictData]);
+
+  // Soft scheduling warning — shown when the selected start date is a weekend
+  // or a public holiday. Does not block form submission.
+  const schedulingWarning = useMemo(() => {
+    if (!startDateInput || isPastSession) { return ''; }
+    const d = new Date(`${startDateInput}T00:00:00`);
+    const dow = d.getDay(); // 0 = Sunday, 6 = Saturday
+    if (dow === 0 || dow === 6) {
+      return `${dow === 0 ? 'Sunday' : 'Saturday'} is a weekend day. You can still schedule this session.`;
+    }
+    const holidayMatch = holidays.find(
+      (h) => h.start_date <= startDateInput && startDateInput <= h.end_date,
+    );
+    if (holidayMatch) {
+      return `${holidayMatch.name} is a public holiday on this date. You can still schedule this session.`;
+    }
+    return '';
+  }, [startDateInput, holidays, isPastSession]);
+
+  // Fetch the full course run list once each time the modal opens.
+  // Skipped in description-only (instructor) mode — course field is disabled and
+  // pre-filled directly from the session object (the /course-runs/ endpoint is admin-only).
+  useEffect(() => {
+    if (!isOpen || descriptionOnly) { return; }
     setCourseRunsLoading(true);
     fetchCourseRuns()
       .then((data) => setCourseRunOptions(data.map((r) => ({ value: r.id, label: r.title }))))
       .catch(() => {}) // silently fail — modal remains usable
       .finally(() => setCourseRunsLoading(false));
-  }, [isOpen]);
+  }, [isOpen, descriptionOnly]);
 
   // Fetch the locations catalogue when the modal opens.
   useEffect(() => {
     if (!isOpen) { return; }
     setLocationsLoading(true);
-    getLocations()
-      .then((data) => setLocationOptions(
-        (data || []).map((loc) => ({ value: loc.id, label: loc.name })),
+    getLocations({ pageSize: 100 })
+      .then(({ results }) => setLocationOptions(
+        (results || []).map((loc) => ({ value: loc.id, label: loc.name })),
       ))
       .catch(() => {}) // silently fail — admin can still save without a location
       .finally(() => setLocationsLoading(false));
   }, [isOpen]);
 
-  // Pre-fill course run once options are loaded:
-  //   edit mode  → match session.course_id
-  //   create mode → match the courseId prop (course-scoped sessions tab)
+  // Fetch session type options from the attendance config endpoint.
   useEffect(() => {
+    if (!isOpen) { return; }
+    getSessionsConfig()
+      .then((cfg) => setSessionTypeOptions(cfg.session_types || []))
+      .catch(() => {});
+  }, [isOpen]);
+
+  // Pre-fill course run once options are loaded (edit mode only).
+  // In description-only mode the options list is never fetched, so we synthesize
+  // a single-entry option directly from the session's course_id / course_name.
+  useEffect(() => {
+    if (!isOpen || !session) { return; }
+    if (descriptionOnly) {
+      if (session.course_id) {
+        setSelectedCourseRun({
+          value: String(session.course_id),
+          label: session.course_name || String(session.course_id),
+        });
+      }
+      return;
+    }
     if (courseRunOptions.length === 0) { return; }
-    const targetId = session ? String(session.course_id) : courseId;
+    const targetId = String(session.course_id);
     if (!targetId) { return; }
     const match = courseRunOptions.find((r) => r.value === targetId);
     if (match) { setSelectedCourseRun(match); }
-  }, [courseRunOptions, session, courseId]);
+  }, [courseRunOptions, session, isOpen, descriptionOnly]);
 
   // Fetch instructors whenever the selected course run changes.
   // In correction mode we fetch the global instructor list once on open (the
   // course itself may be changing, so scoping to the old course is misleading).
   // In normal mode we scope the fetch to the selected course run.
+  // Skipped in description-only mode — instructor field is disabled and pre-filled
+  // from the session object (/instructors/ endpoint is admin-only).
   const selectedCourseRunId = selectedCourseRun?.value ?? null;
   useEffect(() => {
+    if (descriptionOnly) { return; }
     if (isPastSession) {
       // Correction mode: load all instructors once; don't clear on course change.
       if (!isOpen) { return; }
@@ -213,38 +283,54 @@ const ScheduleMeetingModal = ({
         .finally(() => setInstructorsLoading(false));
       return;
     }
-    // Normal mode: scope to selected course run.
-    if (!selectedCourseRunId) {
+    // Normal mode: course is only required when session_type is 'session'.
+    // For other types load all instructors immediately even without a course.
+    if (!selectedCourseRunId && isSessionType) {
       setInstructorOptions([]);
       setSelectedInstructors([]);
       return;
     }
     setInstructorsLoading(true);
-    setSelectedInstructors([]);
-    fetchInstructors(selectedCourseRunId)
+    if (!isSessionType) { setSelectedInstructors([]); }
+    fetchInstructors()
       .then((data) => setInstructorOptions(
         data.map((i) => ({ value: i.user_id, label: i.name, email: i.email })),
       ))
       .catch(() => {})
       .finally(() => setInstructorsLoading(false));
-  }, [isPastSession, isOpen, selectedCourseRunId]);
+  }, [descriptionOnly, isPastSession, isOpen, selectedCourseRunId, isSessionType]);
 
   // Pre-fill instructors once options are loaded (edit mode only).
   // Backend returns `instructor_emails` (ordered); match each to the loaded
   // instructor options and preserve order.
+  // In description-only mode the options list is never fetched, so we synthesize
+  // instructor entries directly from session.instructor_names / instructor_emails.
   useEffect(() => {
-    if (!session || instructorOptions.length === 0) { return; }
+    if (!isOpen || !session) { return; }
+    if (descriptionOnly) {
+      const names = session.instructor_names || [];
+      const emails = session.instructor_emails || [];
+      const instructors = names.map((name, i) => ({
+        value: emails[i] || name,
+        label: name,
+        email: emails[i] || '',
+      }));
+      if (instructors.length > 0) { setSelectedInstructors(instructors); }
+      return;
+    }
+    if (instructorOptions.length === 0) { return; }
     const emails = session.instructor_emails || [];
     if (emails.length === 0) { return; }
     const matched = emails
       .map((email) => instructorOptions.find((i) => i.email === email))
       .filter(Boolean);
     if (matched.length > 0) { setSelectedInstructors(matched); }
-  }, [instructorOptions, session]);
+  }, [instructorOptions, session, isOpen, descriptionOnly]);
 
   // Pre-fill form when editing
   useEffect(() => {
     if (session) {
+      setSessionType(session.session_type || 'session');
       const startDateTimeLocal = toDateTimeLocal(session.scheduled_start_time) || '';
       const endDateTimeLocal = toDateTimeLocal(session.scheduled_end_time) || '';
       const { date: startDate, time: startTime } = splitDateTimeLocal(startDateTimeLocal);
@@ -304,6 +390,7 @@ const ScheduleMeetingModal = ({
         }
       }
     } else {
+      setSessionType('session');
       setFormData({
         title: '',
         description: '',
@@ -398,18 +485,18 @@ const ScheduleMeetingModal = ({
       setTimeout(() => errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
       return false;
     }
-    if (!selectedCourseRun) {
-      setError('Course is required');
+    if (isSessionType && !selectedCourseRun) {
+      setError('Course is required for this session type');
       setTimeout(() => errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
       return false;
     }
-    if (selectedInstructors.length === 0) {
-      setError('Instructor is required');
+    if (isSessionType && selectedInstructors.length === 0) {
+      setError('At least one instructor is required for this session type');
       setTimeout(() => errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
       return false;
     }
-    if (!isPastSession && !selectedLocation) {
-      setError('Location is required');
+    if (!isPastSession && isSessionType && !selectedLocation) {
+      setError('Location is required for this session type');
       setTimeout(() => errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
       return false;
     }
@@ -506,9 +593,38 @@ const ScheduleMeetingModal = ({
     return recurrence;
   };
 
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      description: '',
+      scheduled_start_time: '',
+      scheduled_end_time: '',
+    });
+    setStartDateInput('');
+    setStartTimeInput('');
+    setEndDateInput('');
+    setEndTimeInput('');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setConflictData(null);
+
+    // Description-only mode (instructor editing their own session).
+    if (descriptionOnly) {
+      setLoading(true);
+      try {
+        const result = await updateSession(session.id, { description: formData.description });
+        onSuccess(result);
+        resetForm();
+      } catch (err) {
+        setError(extractApiError(err, 'Failed to save description. Please try again.'));
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
 
     if (!validateForm()) {
       return;
@@ -547,9 +663,10 @@ const ScheduleMeetingModal = ({
       } else {
         // Normal mode: full scheduling edit / create.
         const recurrence = buildRecurrence();
-        // Use the explicitly selected course run; fall back to the prop for backwards-compat
-        const effectiveCourseId = selectedCourseRun?.value || courseId;
         const sessionData = {
+          program_key: programKey,
+          session_type: sessionType,
+          course_id: selectedCourseRun?.value || null,
           title: formData.title,
           description: formData.description,
           scheduled_start_time: toISOString(formData.scheduled_start_time),
@@ -558,33 +675,49 @@ const ScheduleMeetingModal = ({
           is_recurring: isRecurring,
           instructor_emails: selectedInstructors.map((i) => i.email),
           location_id: selectedLocation?.value || null,
+          create_zoom_meeting: createZoomMeeting,
         };
-        sessionData.create_zoom_meeting = createZoomMeeting;
         if (recurrence) {
           sessionData.recurrence = recurrence;
         }
+        setPendingPayload(sessionData);
         if (session) {
-          result = await updateSession(effectiveCourseId, session.id, sessionData);
+          result = await updateSession(session.id, sessionData);
         } else {
-          result = await createSession(effectiveCourseId, sessionData);
+          result = await createSession(sessionData);
         }
       }
 
       onSuccess(result);
-
-      // Reset form
-      setFormData({
-        title: '',
-        description: '',
-        scheduled_start_time: '',
-        scheduled_end_time: '',
-      });
-      setStartDateInput('');
-      setStartTimeInput('');
-      setEndDateInput('');
-      setEndTimeInput('');
+      resetForm();
     } catch (err) {
-      setError(extractApiError(err, 'Failed to save session. Please try again.'));
+      if (err.response?.status === 409) {
+        setConflictData(err.response.data);
+      } else {
+        setError(extractApiError(err, 'Failed to save session. Please try again.'));
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleProceedAnyway = async () => {
+    setConflictData(null);
+    setLoading(true);
+    try {
+      const acknowledgedPayload = { ...pendingPayload, acknowledge: true };
+      const result = session
+        ? await updateSession(session.id, acknowledgedPayload)
+        : await createSession(acknowledgedPayload);
+      onSuccess(result);
+      resetForm();
+    } catch (err) {
+      if (err.response?.status === 409) {
+        setConflictData(err.response.data);
+        setPendingPayload({ ...pendingPayload, acknowledge: true });
+      } else {
+        setError(extractApiError(err, 'Failed to save session. Please try again.'));
+      }
     } finally {
       setLoading(false);
     }
@@ -592,12 +725,13 @@ const ScheduleMeetingModal = ({
 
   const handleClose = () => {
     setError('');
+    setConflictData(null);
     onClose();
   };
 
   // Derived labels — avoid nested ternaries in JSX.
   let modalTitle = 'Schedule New Session';
-  if (isPastSession) { modalTitle = 'Correct Session Details'; } else if (session) { modalTitle = 'Edit Session'; }
+  if (descriptionOnly) { modalTitle = 'Edit Description'; } else if (isPastSession) { modalTitle = 'Correct Session Details'; } else if (session) { modalTitle = 'Edit Session'; }
 
   let savingLabel = 'Creating...';
   if (isPastSession) { savingLabel = 'Saving...'; } else if (session) { savingLabel = 'Updating...'; }
@@ -631,9 +765,87 @@ const ScheduleMeetingModal = ({
       }}
       >
         {error && (
-        <Alert variant="danger" dismissible onClose={() => setError('')} ref={errorRef}>
-          {error}
-        </Alert>
+          <Alert variant="danger" dismissible onClose={() => setError('')} ref={errorRef}>
+            {error}
+          </Alert>
+        )}
+
+        {/* Hard-block conflict — admin must resolve before saving */}
+        {conflictData && !conflictData.override_allowed && (
+          <Alert variant="danger" className="mb-3" ref={conflictRef}>
+            <strong>{conflictData.message}</strong>
+            <ul className="mt-2 mb-0 pl-4">
+              {conflictData.affected_entities.map((entity, i) => (
+                // eslint-disable-next-line react/no-array-index-key
+                <li key={i}>
+                  {entity.type === 'instructor' && (
+                    <>
+                      <strong>{entity.email}</strong>
+                      {' → '}
+                      &ldquo;{entity.conflicting_session_name}&rdquo;
+                      {entity.program_name && ` (${entity.program_name})`}
+                      {entity.scheduled_start_time && (
+                        <>
+                          {' · '}
+                          {new Date(entity.scheduled_start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {' – '}
+                          {new Date(entity.scheduled_end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </>
+                      )}
+                    </>
+                  )}
+                  {entity.type === 'room' && (
+                    <>
+                      &ldquo;{entity.name}&rdquo; is booked
+                      {entity.session_title && ` for “${entity.session_title}”`}
+                      {entity.program_name && ` (${entity.program_name})`}
+                      {entity.scheduled_start_time && (
+                        <>
+                          {' · '}
+                          {new Date(entity.scheduled_start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {' – '}
+                          {new Date(entity.scheduled_end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </>
+                      )}
+                    </>
+                  )}
+                  {entity.type === 'session' && (
+                    <>
+                      <strong>{entity.title}</strong>
+                      {': '}
+                      {new Date(entity.scheduled_start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {' – '}
+                      {new Date(entity.scheduled_end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </>
+                  )}
+                </li>
+              ))}
+            </ul>
+            {conflictData.conflict_type === 'ROOM_DOUBLE_BOOKING' && conflictData.resolution_hints.length > 0 && (
+              <div className="mt-2" style={{ fontSize: 13 }}>
+                Available rooms:{' '}
+                {conflictData.resolution_hints
+                  .map((id) => locationOptions.find((o) => o.value === id)?.label)
+                  .filter(Boolean)
+                  .join(', ') || 'check Locations for availability'}
+              </div>
+            )}
+          </Alert>
+        )}
+
+        {/* Soft warn (PROTECTED_DATE) — admin can override */}
+        {conflictData?.override_allowed && (
+          <Alert variant="warning" className="mb-3" ref={conflictRef}>
+            <strong>{conflictData.message}</strong>
+            <div className="mt-2">
+              <Button size="sm" variant="primary" onClick={handleProceedAnyway} disabled={loading}>
+                Proceed anyway
+              </Button>
+              <Button size="sm" variant="tertiary" onClick={() => setConflictData(null)} className="ml-2">
+                Cancel
+              </Button>
+            </div>
+          </Alert>
         )}
 
         <Form onSubmit={handleSubmit}>
@@ -641,6 +853,12 @@ const ScheduleMeetingModal = ({
             <Alert variant="info" className="mb-3">
               This session has already taken place. Only the <strong>course</strong>,
               {' '}<strong>instructors</strong>, and <strong>location</strong> can be corrected.
+            </Alert>
+          )}
+
+          {descriptionOnly && (
+            <Alert variant="info" className="mb-3">
+              You can only edit the <strong>description</strong> of this session.
             </Alert>
           )}
 
@@ -653,8 +871,22 @@ const ScheduleMeetingModal = ({
               onChange={handleChange}
               required={!isPastSession}
               placeholder="e.g., Week 5 Live Session"
-              disabled={isPastSession}
+              disabled={isPastSession || descriptionOnly}
             />
+          </Form.Group>
+
+          <Form.Group className="mb-3">
+            <Form.Label>Session Type *</Form.Label>
+            <Form.Control
+              as="select"
+              value={sessionType}
+              onChange={(e) => setSessionType(e.target.value)}
+              disabled={isPastSession || descriptionOnly}
+            >
+              {sessionTypeOptions.map(({ value, label }) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </Form.Control>
           </Form.Group>
 
           <SearchableSelect
@@ -665,7 +897,8 @@ const ScheduleMeetingModal = ({
             onChange={setSelectedCourseRun}
             placeholder="Search by course title..."
             loading={courseRunsLoading}
-            required
+            required={isSessionType && !descriptionOnly}
+            disabled={descriptionOnly}
           />
 
           <SearchableSelect
@@ -675,10 +908,11 @@ const ScheduleMeetingModal = ({
             value={selectedInstructors}
             onChange={setSelectedInstructors}
             multiple
-            placeholder={isPastSession || selectedCourseRun ? 'Search by name...' : 'Select a course first'}
+            placeholder={isPastSession || selectedCourseRun || !isSessionType ? 'Search by name...' : 'Select a course first'}
             loading={instructorsLoading}
-            disabled={!isPastSession && !selectedCourseRun}
-            required
+            disabled={descriptionOnly || (!isPastSession && isSessionType && !selectedCourseRun)}
+            required={isSessionType && !descriptionOnly}
+            isInvalid={!!fieldErrors.instructors}
           />
 
           <SearchableSelect
@@ -689,7 +923,9 @@ const ScheduleMeetingModal = ({
             onChange={setSelectedLocation}
             placeholder={locationsLoading ? 'Loading locations…' : 'Search locations…'}
             loading={locationsLoading}
-            required={!isPastSession}
+            required={!isPastSession && isSessionType && !descriptionOnly}
+            isInvalid={!!fieldErrors.location}
+            disabled={descriptionOnly}
           />
 
           <Form.Group className="mb-3">
@@ -714,8 +950,9 @@ const ScheduleMeetingModal = ({
                   value={startDateInput}
                   onChange={handleStartDateChange}
                   aria-label="Start date"
-                  required={!isPastSession}
-                  disabled={isPastSession}
+                  required={!isPastSession && !descriptionOnly}
+                  disabled={isPastSession || descriptionOnly}
+                  style={(fieldErrors.startDate || fieldErrors.startTime) ? { borderColor: '#dc3545' } : undefined}
                 />
               </div>
               <div className="col-5">
@@ -725,12 +962,19 @@ const ScheduleMeetingModal = ({
                   onChange={handleStartTimeChange}
                   aria-label="Start time"
                   step="60"
-                  required={!isPastSession}
-                  disabled={isPastSession}
+                  required={!isPastSession && !descriptionOnly}
+                  disabled={isPastSession || descriptionOnly}
+                  style={fieldErrors.startTime ? { borderColor: '#dc3545' } : undefined}
                 />
               </div>
             </div>
           </Form.Group>
+
+          {schedulingWarning && (
+            <Alert variant="warning" className="mb-3 py-2" style={{ fontSize: 13 }}>
+              {schedulingWarning}
+            </Alert>
+          )}
 
           <Form.Group className="mb-3">
             <Form.Label>End date and time {!isPastSession && '*'}</Form.Label>
@@ -741,8 +985,9 @@ const ScheduleMeetingModal = ({
                   value={endDateInput}
                   onChange={handleEndDateChange}
                   aria-label="End date"
-                  required={!isPastSession}
-                  disabled={isPastSession}
+                  required={!isPastSession && !descriptionOnly}
+                  disabled={isPastSession || descriptionOnly}
+                  style={fieldErrors.endTime ? { borderColor: '#dc3545' } : undefined}
                 />
               </div>
               <div className="col-5">
@@ -752,8 +997,9 @@ const ScheduleMeetingModal = ({
                   onChange={handleEndTimeChange}
                   aria-label="End time"
                   step="60"
-                  required={!isPastSession}
-                  disabled={isPastSession}
+                  required={!isPastSession && !descriptionOnly}
+                  disabled={isPastSession || descriptionOnly}
+                  style={fieldErrors.endTime ? { borderColor: '#dc3545' } : undefined}
                 />
               </div>
             </div>
@@ -768,7 +1014,7 @@ const ScheduleMeetingModal = ({
                 const next = e.target.checked;
                 setCreateZoomMeeting(next);
               }}
-              disabled={isPastSession || Boolean(session?.create_zoom_meeting)}
+              disabled={isPastSession || descriptionOnly || Boolean(session?.create_zoom_meeting)}
             >
               Create Zoom meeting for this session
             </Form.Checkbox>
@@ -795,7 +1041,7 @@ const ScheduleMeetingModal = ({
               name="is_recurring"
               checked={isRecurring}
               onChange={(e) => setIsRecurring(e.target.checked)}
-              disabled={isPastSession || Boolean(session?.is_recurring)}
+              disabled={isPastSession || descriptionOnly || Boolean(session?.is_recurring)}
             >
               Recurring meeting
             </Form.Checkbox>
@@ -977,6 +1223,7 @@ const ScheduleMeetingModal = ({
             </div>
           </fieldset>
           )}
+
         </Form>
       </div>
     </StandardModal>
@@ -989,14 +1236,22 @@ const ScheduleMeetingModal = ({
 ScheduleMeetingModal.propTypes = {
   isOpen: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
-  courseId: PropTypes.string,
+  programKey: PropTypes.string,
   onSuccess: PropTypes.func.isRequired,
   // eslint-disable-next-line react/forbid-prop-types
   session: PropTypes.object,
+  holidays: PropTypes.arrayOf(PropTypes.shape({
+    id: PropTypes.number,
+    date: PropTypes.string,
+    name: PropTypes.string,
+  })),
+  descriptionOnly: PropTypes.bool,
 };
 ScheduleMeetingModal.defaultProps = {
-  courseId: '',
+  programKey: '',
   session: null,
+  holidays: [],
+  descriptionOnly: false,
 };
 
 export default ScheduleMeetingModal;

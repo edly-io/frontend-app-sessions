@@ -1,5 +1,5 @@
-// LocationsPage — admin CRUD for the global Location catalogue.
-// Visible inside the sessions-admin shell at /sessions/:programId/locations.
+// HolidaysPage — admin CRUD for public holidays.
+// Visible inside the sessions-admin shell at /sessions/:programId/holidays.
 
 import React, {
   useState, useEffect, useCallback, useMemo,
@@ -11,21 +11,28 @@ import { Add, DeleteOutline, EditOutline } from '@openedx/paragon/icons';
 import PropTypes from 'prop-types';
 import { useConfig } from '../app/useConfig';
 import { USER_ROLE } from '../shared/constants';
-import { getLocations, deleteLocation } from './api';
+import { getHolidays, deleteHoliday } from './api';
 import { extractApiError } from '../shared/utils';
-import LocationModal from './LocationModal';
+import HolidayModal from './HolidayModal';
+
+const fmt = (d) => new Date(`${d}T00:00:00`).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+
+const DateRangeCell = ({ row }) => {
+  const { start_date: start, end_date: end } = row.original;
+  if (!start) { return <span className="text-muted">—</span>; }
+  return <span>{start === end ? fmt(start) : `${fmt(start)} – ${fmt(end)}`}</span>;
+};
+DateRangeCell.propTypes = {
+  row: PropTypes.shape({
+    original: PropTypes.shape({ start_date: PropTypes.string, end_date: PropTypes.string }),
+  }).isRequired,
+};
 
 const DescriptionCell = ({ value }) => (
   value ? <span>{value}</span> : <span className="text-muted">—</span>
 );
 DescriptionCell.propTypes = { value: PropTypes.string };
 DescriptionCell.defaultProps = { value: '' };
-
-const SerialCell = ({ value }) => (
-  value ? <code>{value}</code> : <span className="text-muted">—</span>
-);
-SerialCell.propTypes = { value: PropTypes.string };
-SerialCell.defaultProps = { value: '' };
 
 const ActionsCell = ({ row, column }) => {
   const { isAdmin, onEdit, onDelete } = column;
@@ -55,7 +62,7 @@ const ActionsCell = ({ row, column }) => {
 ActionsCell.propTypes = {
   row: PropTypes.shape({
     original: PropTypes.shape({
-      id: PropTypes.string,
+      id: PropTypes.number,
       name: PropTypes.string,
     }).isRequired,
   }).isRequired,
@@ -68,11 +75,11 @@ ActionsCell.propTypes = {
 
 const PAGE_SIZE = 20;
 
-const LocationsPage = () => {
+const HolidaysPage = () => {
   const { data: config } = useConfig();
   const isAdmin = config?.user_role === USER_ROLE.ADMIN;
 
-  const [locations, setLocations] = useState([]);
+  const [holidays, setHolidays] = useState([]);
   const [count, setCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(0);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -96,15 +103,15 @@ const LocationsPage = () => {
     setCurrentPage(nextIndex);
     setError('');
     try {
-      const { count: total, results } = await getLocations({
+      const { count: total, results } = await getHolidays({
         search: debouncedSearch,
         page: nextIndex + 1,
         pageSize: PAGE_SIZE,
       });
-      setLocations(results);
+      setHolidays(results);
       setCount(total);
     } catch (err) {
-      setError(extractApiError(err, 'Failed to load locations'));
+      setError(extractApiError(err, 'Failed to load holidays'));
     } finally {
       setInitialLoading(false);
     }
@@ -115,17 +122,16 @@ const LocationsPage = () => {
   /* eslint-disable react/no-unstable-nested-components, react/prop-types */
   const columns = useMemo(() => [
     { Header: 'Name', accessor: 'name' },
+    { Header: 'Date Range', id: 'date_range', Cell: DateRangeCell },
     { Header: 'Description', accessor: 'description', Cell: DescriptionCell },
-    { Header: 'Biometric serial', accessor: 'biometric_machine_serial_number', Cell: SerialCell },
     {
       Header: 'Actions',
       id: 'actions',
       Cell: ActionsCell,
       isAdmin,
-      onEdit: (loc) => { setEditTarget(loc); setModalOpen(true); },
+      onEdit: (h) => { setEditTarget(h); setModalOpen(true); },
       onDelete: setDeleteTarget,
     },
-  // isAdmin is stable for the lifetime of this component
   // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [isAdmin]);
   /* eslint-enable react/no-unstable-nested-components, react/prop-types */
@@ -149,13 +155,13 @@ const LocationsPage = () => {
     setDeleting(true);
     setDeleteError('');
     try {
-      await deleteLocation(deleteTarget.id);
+      await deleteHoliday(deleteTarget.id);
       const { name } = deleteTarget;
       setDeleteTarget(null);
       fetchData({ pageIndex: currentPage });
       setToast(`Deleted ${name}.`);
     } catch (err) {
-      setDeleteError(extractApiError(err, 'Failed to delete location'));
+      setDeleteError(extractApiError(err, 'Failed to delete holiday'));
     } finally {
       setDeleting(false);
     }
@@ -165,20 +171,20 @@ const LocationsPage = () => {
     <Container className="py-3">
       <div className="d-flex align-items-center justify-content-between mb-3">
         <div>
-          <h2 className="mb-1">Locations</h2>
+          <h2 className="mb-1">Public Holidays</h2>
           <p className="text-muted mb-0" style={{ fontSize: 13 }}>
-            Physical venues where in-person sessions are held. Create them once
-            here, then pick one when scheduling a meeting.
+            Holidays are shown as banners on the calendar. A soft reminder
+            appears when scheduling a session on a holiday or weekend.
           </p>
         </div>
         <Button variant="primary" iconBefore={Add} onClick={() => { setEditTarget(null); setModalOpen(true); }}>
-          New location
+          New holiday
         </Button>
       </div>
 
       <Form.Control
         type="search"
-        placeholder="Search locations…"
+        placeholder="Search holidays…"
         value={searchInput}
         onChange={(e) => setSearchInput(e.target.value)}
         className="mb-3"
@@ -189,7 +195,7 @@ const LocationsPage = () => {
 
       {initialLoading ? (
         <div className="py-5 text-center">
-          <Spinner animation="border" screenReaderText="Loading locations" />
+          <Spinner animation="border" screenReaderText="Loading holidays" />
         </div>
       ) : (
         <DataTable
@@ -199,20 +205,20 @@ const LocationsPage = () => {
           fetchData={fetchData}
           pageCount={Math.max(1, Math.ceil(count / PAGE_SIZE))}
           itemCount={count}
-          data={locations}
+          data={holidays}
           columns={columns}
           initialState={{ pageIndex: 0, pageSize: PAGE_SIZE }}
         >
           <DataTable.Table />
-          <DataTable.EmptyTable content="No locations found." />
+          <DataTable.EmptyTable content="No holidays found." />
           <DataTable.TableFooter />
         </DataTable>
       )}
 
-      <LocationModal
+      <HolidayModal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        location={editTarget}
+        holiday={editTarget}
         onSuccess={handleSaved}
       />
 
@@ -220,7 +226,7 @@ const LocationsPage = () => {
         <StandardModal
           isOpen
           onClose={() => { setDeleteTarget(null); setDeleteError(''); }}
-          title="Delete location"
+          title="Delete holiday"
           footerNode={(
             <>
               <Button
@@ -238,8 +244,7 @@ const LocationsPage = () => {
         >
           {deleteError && <Alert variant="danger" className="mb-3">{deleteError}</Alert>}
           <p>
-            Delete <strong>{deleteTarget.name}</strong>? The backend will block this if any
-            sessions still reference it.
+            Delete <strong>{deleteTarget.name}</strong>?
           </p>
         </StandardModal>
       )}
@@ -258,4 +263,4 @@ const LocationsPage = () => {
   );
 };
 
-export default LocationsPage;
+export default HolidaysPage;
