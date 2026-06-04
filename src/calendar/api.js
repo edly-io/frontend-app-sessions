@@ -97,19 +97,43 @@ export const getSessionsConfig = async () => {
   return data;
 };
 
+/**
+ * Fetch graded subsection due dates for all courses in a program.
+ * Not windowed — returns all dates for the whole program.
+ *
+ * GET /fbr/api/attendance/v1/program-dates/?program_key=KEY
+ * Returns flattened array of date events across all courses.
+ */
+export const getProgramDates = async (programKey) => {
+  const client = getAuthenticatedHttpClient();
+  const { data } = await client.get(`${getBaseUrl()}/program-dates/?program_key=${encodeURIComponent(programKey)}`);
+  const events = [];
+  (data.courses || []).forEach((course) => {
+    (course.date_blocks || []).forEach((block) => {
+      events.push({
+        id: `${course.course_key}::${block.title}`,
+        courseKey: course.course_key,
+        courseName: course.course_name,
+        title: block.title,
+        date: block.date,
+        link: block.link || '',
+        assignmentType: block.assignment_type || null,
+        complete: block.complete ?? null,
+      });
+    });
+  });
+  return events;
+};
+
 // ─── Calendar API ─────────────────────────────────────────────────────────────
 //
-// Returns sessions within a date window for the calendar UI. Visibility is
-// role-based on the backend (admins see all; instructors see their courses;
-// learners see enrolled courses). The window is required and must be
-// <= 45 days — the calendar re-fetches on navigation, so one month/week/day
-// at a time is all we ever load.
-export const getCalendarSessions = async (startDate, endDate) => {
+// Returns sessions within a date window for the calendar UI via the unified
+// SessionViewSet list endpoint. program_key + start_date + end_date are all
+// required; window must be <= 45 days. Visibility is role-scoped on the backend.
+export const getCalendarSessions = async (startDate, endDate, programKey = '') => {
   const client = getAuthenticatedHttpClient();
-  const params = new URLSearchParams({
-    start_date: startDate,
-    end_date: endDate,
-  });
-  const { data } = await client.get(`${getBaseUrl()}/calendar-sessions/?${params}`);
+  const params = new URLSearchParams({ start_date: startDate, end_date: endDate });
+  if (programKey) { params.set('program_key', programKey); }
+  const { data } = await client.get(`${getBaseUrl()}/sessions/?${params}`);
   return { sessions: data.results, userRole: data.user_role };
 };
