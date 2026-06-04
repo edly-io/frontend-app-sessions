@@ -47,9 +47,11 @@ describe('full-day leave', () => {
     expect(screen.queryByText('Select sessions')).not.toBeInTheDocument();
   });
 
-  it('enables Submit once a reason is entered (no sessions required)', () => {
+  it('enables Submit once dates and reason are entered (no sessions required)', () => {
     renderModal();
     switchToLeave();
+    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2026-07-01' } });
+    fireEvent.change(screen.getByLabelText('End date'), { target: { value: '2026-07-03' } });
     fireEvent.change(
       screen.getByPlaceholderText(/explain why you are making this request/i),
       { target: { value: 'Travelling' } },

@@ -1,5 +1,4 @@
 import { getAuthenticatedHttpClient } from '@edx/frontend-platform/auth';
-import { getConfig } from '@edx/frontend-platform';
 import {
   getHolidays, createHoliday, updateHoliday, deleteHoliday,
 } from './api';

@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
+// eslint-disable-next-line import/no-extraneous-dependencies
 import { IntlProvider } from 'react-intl';
 import LocationsPage from './LocationsPage';
 
@@ -46,7 +47,9 @@ describe('admin', () => {
   it('renders locations table after data loads', async () => {
     getLocations.mockResolvedValue({
       count: 1,
-      results: [{ id: 'loc1', name: 'IRSA 1', description: 'Ground floor', biometric_machine_serial_number: '' }],
+      results: [{
+        id: 'loc1', name: 'IRSA 1', description: 'Ground floor', biometric_machine_serial_number: '',
+      }],
     });
     wrap();
     await waitFor(() => expect(screen.getByText('IRSA 1')).toBeInTheDocument());
@@ -73,7 +76,9 @@ describe('admin', () => {
   it('renders description cell content', async () => {
     getLocations.mockResolvedValue({
       count: 1,
-      results: [{ id: 'loc1', name: 'Lab', description: 'Science lab', biometric_machine_serial_number: 'SN-001' }],
+      results: [{
+        id: 'loc1', name: 'Lab', description: 'Science lab', biometric_machine_serial_number: 'SN-001',
+      }],
     });
     wrap();
     await waitFor(() => expect(screen.getByText('Science lab')).toBeInTheDocument());

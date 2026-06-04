@@ -238,64 +238,66 @@ const LearnerRequestsView = () => {
           placeholder="Search..."
           style={{ width: 180 }}
         />
-        <Form.Control
-          as="select"
-          value={filterState}
-          onChange={(e) => setFilterState(e.target.value)}
-          style={{ width: 'auto' }}
-        >
-          <option value="">All statuses</option>
-          {Object.entries(REQUEST_STATUS_LABELS).map(([value, label]) => (
-            <option key={value} value={value}>{label}</option>
-          ))}
-        </Form.Control>
-        <Form.Control
-          as="select"
-          value={filterType}
-          onChange={(e) => setFilterType(e.target.value)}
-          style={{ width: 'auto' }}
-        >
-          <option value="">All types</option>
-          {Object.entries(REQUEST_TYPE_LABELS).map(([value, label]) => (
-            <option key={value} value={value}>{label}</option>
-          ))}
-        </Form.Control>
-        <div className="d-flex align-items-center" style={{ gap: 4 }}>
+        <div className="d-flex align-items-center flex-wrap ml-auto" style={{ gap: 8 }}>
           <Form.Control
-            type="date"
-            value={filterStartDate}
-            onChange={(e) => setFilterStartDate(e.target.value)}
+            as="select"
+            value={filterState}
+            onChange={(e) => setFilterState(e.target.value)}
             style={{ width: 'auto' }}
-            aria-label="From date"
-          />
-          <span className="text-muted">–</span>
+          >
+            <option value="">All statuses</option>
+            {Object.entries(REQUEST_STATUS_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </Form.Control>
           <Form.Control
-            type="date"
-            value={filterEndDate}
-            min={filterStartDate || undefined}
-            onChange={(e) => setFilterEndDate(e.target.value)}
+            as="select"
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value)}
             style={{ width: 'auto' }}
-            aria-label="To date"
-          />
-          {(filterStartDate || filterEndDate) && (
-            <Button
-              variant="tertiary"
-              size="sm"
-              onClick={() => { setFilterStartDate(''); setFilterEndDate(''); }}
-            >
-              Clear dates
-            </Button>
-          )}
+          >
+            <option value="">All types</option>
+            {Object.entries(REQUEST_TYPE_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </Form.Control>
+          <div className="d-flex align-items-center" style={{ gap: 4 }}>
+            <small className="text-muted text-nowrap">Submission date:</small>
+            <Form.Control
+              type="date"
+              value={filterStartDate}
+              onChange={(e) => setFilterStartDate(e.target.value)}
+              style={{ width: 'auto' }}
+              aria-label="From date"
+            />
+            <span className="text-muted">–</span>
+            <Form.Control
+              type="date"
+              value={filterEndDate}
+              min={filterStartDate || undefined}
+              onChange={(e) => setFilterEndDate(e.target.value)}
+              style={{ width: 'auto' }}
+              aria-label="To date"
+            />
+            {(filterStartDate || filterEndDate) && (
+              <Button
+                variant="tertiary"
+                size="sm"
+                onClick={() => { setFilterStartDate(''); setFilterEndDate(''); }}
+              >
+                Clear
+              </Button>
+            )}
+          </div>
+          <Button
+            variant="primary"
+            size="sm"
+            iconBefore={Add}
+            onClick={() => setShowCreateModal(true)}
+          >
+            New request
+          </Button>
         </div>
-        <Button
-          variant="primary"
-          size="sm"
-          iconBefore={Add}
-          onClick={() => setShowCreateModal(true)}
-          className="ml-auto"
-        >
-          New request
-        </Button>
       </div>
 
       {count === 0 ? (

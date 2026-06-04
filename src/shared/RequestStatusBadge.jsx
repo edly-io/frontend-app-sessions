@@ -19,21 +19,23 @@ import {
 const RequestStatusBadge = ({ request }) => {
   if (!request) { return null; }
 
-  const { state, type_slug: typeSlug } = request;
+  // my_request from the calendar API uses `type`; requests from the list API use `type_slug`.
+  const { state, type_slug: typeSlug, type: typeField } = request;
+  const effectiveType = typeSlug || typeField;
   const variant = REQUEST_STATUS_VARIANTS[state] || 'secondary';
   const label = REQUEST_STATUS_LABELS[state] || state;
 
-  if (state === REQUEST_STATUS.APPROVED && typeSlug === REQUEST_TYPE.REMOTE_SESSION) {
+  if (state === REQUEST_STATUS.APPROVED && effectiveType === REQUEST_TYPE.REMOTE_SESSION) {
     return <Badge variant={variant}>Remote approved</Badge>;
   }
 
-  if (state === REQUEST_STATUS.APPROVED && typeSlug === REQUEST_TYPE.LEAVE_REQUEST) {
+  if (state === REQUEST_STATUS.APPROVED && effectiveType === REQUEST_TYPE.LEAVE) {
     return <Badge variant={variant}>Leave approved</Badge>;
   }
 
   return (
-    <Badge variant={variant} title={REQUEST_TYPE_LABELS[typeSlug]}>
-      {`${label} · ${REQUEST_TYPE_LABELS[typeSlug] || typeSlug}`}
+    <Badge variant={variant} title={REQUEST_TYPE_LABELS[effectiveType]}>
+      {`${label} · ${REQUEST_TYPE_LABELS[effectiveType] || effectiveType}`}
     </Badge>
   );
 };
@@ -41,7 +43,8 @@ const RequestStatusBadge = ({ request }) => {
 RequestStatusBadge.propTypes = {
   request: PropTypes.shape({
     state: PropTypes.string.isRequired,
-    type_slug: PropTypes.string.isRequired,
+    type_slug: PropTypes.string,
+    type: PropTypes.string,
   }),
 };
 

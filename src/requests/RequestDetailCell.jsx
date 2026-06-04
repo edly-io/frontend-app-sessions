@@ -56,6 +56,7 @@ const ModeBadge = ({ mode }) => {
         padding: '2px 6px',
         display: 'inline-block',
         marginBottom: 4,
+        whiteSpace: 'nowrap',
       }}
     >
       {isFullDay ? 'Full Day' : 'Session-specific'}

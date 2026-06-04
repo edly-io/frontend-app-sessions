@@ -96,14 +96,28 @@ const LocationModal = ({
 
       <Form.Group className="mb-0">
         <Form.Label>Biometric machine serial</Form.Label>
+        <div
+          style={{
+            background: '#fef9c3',
+            border: '1px solid #fbbf24',
+            borderRadius: 4,
+            padding: '8px 12px',
+            marginBottom: 8,
+            fontSize: 13,
+            color: '#78350f',
+          }}
+        >
+          <strong>Required for attendance tracking:</strong> If sessions at this location
+          require biometric attendance, the serial number of the installed Biometric machine
+          must be entered here before sessions begin.
+        </div>
         <Form.Control
           value={form.biometric_machine_serial_number}
           onChange={handleChange('biometric_machine_serial_number')}
           placeholder="Optional — serial of the device installed here"
         />
         <Form.Text className="text-muted">
-          Used to match biometric punches to this location once the biometric
-          integration ships.
+          Used to match biometric punches to this location.
         </Form.Text>
       </Form.Group>
     </StandardModal>

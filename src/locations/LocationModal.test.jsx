@@ -2,6 +2,7 @@ import React from 'react';
 import {
   render, screen, fireEvent, waitFor,
 } from '@testing-library/react';
+// eslint-disable-next-line import/no-extraneous-dependencies
 import { IntlProvider } from 'react-intl';
 import LocationModal from './LocationModal';
 
@@ -54,6 +55,11 @@ describe('create mode', () => {
       expect.objectContaining({ name: 'IRSA 1' }),
     ));
     expect(onSuccess).toHaveBeenCalledWith({ id: 'loc1', name: 'IRSA 1' });
+  });
+
+  it('shows the biometric attendance note', () => {
+    wrap();
+    expect(screen.getByText(/Required for attendance tracking/i)).toBeInTheDocument();
   });
 
   it('includes description and biometric serial in payload', async () => {

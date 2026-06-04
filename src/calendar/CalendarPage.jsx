@@ -11,7 +11,7 @@ import {
 import { getHolidays } from '../holidays/api';
 import { getApprovedLeaves } from '../requests/api';
 import { extractApiError } from '../shared/utils';
-import { USER_ROLE } from '../shared/constants';
+import { USER_ROLE, REQUEST_TYPE } from '../shared/constants';
 import { useConfig } from '../app/useConfig';
 import ScheduleMeetingModal from './ScheduleMeetingModal';
 import CalendarView, { getMonthGridDays, getWeekDays } from './CalendarView';
@@ -121,11 +121,12 @@ const CalendarPage = () => {
     getProgramDates(programId).then(setProgramDates).catch(() => {});
   }, [programId]);
 
-  // Fetch approved leaves for learners — used to highlight leave days on the calendar.
+  // Fetch approved leaves for learners — re-fetch on every session refresh so
+  // a rejection made by the admin clears the grey overlay without a page reload.
   useEffect(() => {
     if (!isLearner || !programId) { return; }
     getApprovedLeaves({ program_key: programId }).then(setApprovedLeaves).catch(() => {});
-  }, [isLearner, programId]);
+  }, [isLearner, programId, refreshKey]);
 
   // Re-fetch whenever the visible window changes or a mutation triggers a refresh.
   // The backend requires start_date + end_date and enforces a 45-day max window.
@@ -158,6 +159,7 @@ const CalendarPage = () => {
   const studentRequestMap = useMemo(() => {
     const map = new Map();
     approvedLeaves.forEach((leave) => {
+      if (leave.state && leave.state !== 'APPROVED') { return; }
       if (leave.sessions && leave.sessions.length > 0) {
         leave.sessions.forEach((s) => { map.set(s.id, leave); });
       } else if (leave.leave_start_date && leave.leave_end_date) {
@@ -172,6 +174,19 @@ const CalendarPage = () => {
         });
       }
     });
+    // Supplement with session.my_request — covers session-specific leaves where
+    // the leave list serializer may not return nested session objects.
+    // Only leave requests belong in this map; remote session requests must not
+    // trigger the grey/strikethrough overlay.
+    sessions.forEach((s) => {
+      if (
+        !map.has(s.id)
+        && s.my_request?.state === 'APPROVED'
+        && s.my_request?.type === REQUEST_TYPE.LEAVE
+      ) {
+        map.set(s.id, s.my_request);
+      }
+    });
     return map;
   }, [approvedLeaves, sessions]);
 
@@ -180,6 +195,7 @@ const CalendarPage = () => {
   const leaveDateMap = useMemo(() => {
     const map = new Map();
     approvedLeaves.forEach((leave) => {
+      if (leave.state && leave.state !== 'APPROVED') { return; }
       if (!leave.leave_start_date || !leave.leave_end_date) { return; }
       const cur = new Date(`${leave.leave_start_date}T12:00:00`);
       const last = new Date(`${leave.leave_end_date}T12:00:00`);

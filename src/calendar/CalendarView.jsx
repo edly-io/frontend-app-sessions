@@ -11,7 +11,7 @@ import {
   ChevronLeft, ChevronRight, Launch, Add, EditOutline, DeleteOutline, EventBusy,
 } from '@openedx/paragon/icons';
 import { bucketSessionsByDay, getStatusVariant } from '../shared/utils';
-import { SESSION_STATUS_LABELS, USER_ROLE } from '../shared/constants';
+import { SESSION_STATUS_LABELS, USER_ROLE, REQUEST_STATUS } from '../shared/constants';
 import RequestStatusBadge from '../shared/RequestStatusBadge';
 import ScopeBadge from '../shared/ScopeBadge';
 import InstructingBadge from '../shared/InstructingBadge';
@@ -356,8 +356,8 @@ const SessionPopover = ({
                 </Button>
               ) : null;
             })()}
-            {/* Learner-only: request status badge (creation moved to Requests tab). */}
-            {!isPast && isLearner && myRequest && (
+            {/* Learner-only: request status badge — only show for approved requests. */}
+            {!isPast && isLearner && myRequest?.state === REQUEST_STATUS.APPROVED && (
               <RequestStatusBadge request={myRequest} />
             )}
           </div>

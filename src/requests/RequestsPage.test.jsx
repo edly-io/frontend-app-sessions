@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+// eslint-disable-next-line import/no-extraneous-dependencies
 import { IntlProvider } from 'react-intl';
 import RequestsPage from './RequestsPage';
 
@@ -9,9 +10,15 @@ const jestDomMatchers = require('@testing-library/jest-dom/matchers');
 expect.extend(jestDomMatchers);
 
 jest.mock('../app/useConfig', () => ({ useConfig: jest.fn() }));
-jest.mock('./AdminRequestsView', () => () => <div>AdminView</div>);
-jest.mock('./LearnerRequestsView', () => () => <div>LearnerView</div>);
-jest.mock('./InstructorRequestsView', () => () => <div>InstructorView</div>);
+jest.mock('./AdminRequestsView', () => function () {
+  return <div>AdminView</div>;
+});
+jest.mock('./LearnerRequestsView', () => function () {
+  return <div>LearnerView</div>;
+});
+jest.mock('./InstructorRequestsView', () => function () {
+  return <div>InstructorView</div>;
+});
 
 const { useConfig } = require('../app/useConfig');
 

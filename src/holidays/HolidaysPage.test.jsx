@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
+// eslint-disable-next-line import/no-extraneous-dependencies
 import { IntlProvider } from 'react-intl';
 import HolidaysPage from './HolidaysPage';
 
@@ -46,7 +47,9 @@ describe('admin', () => {
   it('renders holidays table after data loads', async () => {
     getHolidays.mockResolvedValue({
       count: 1,
-      results: [{ id: 1, name: 'Eid al-Fitr', start_date: '2026-04-01', end_date: '2026-04-01', description: '' }],
+      results: [{
+        id: 1, name: 'Eid al-Fitr', start_date: '2026-04-01', end_date: '2026-04-01', description: '',
+      }],
     });
     wrap();
     await waitFor(() => expect(screen.getByText('Eid al-Fitr')).toBeInTheDocument());

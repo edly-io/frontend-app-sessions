@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
+// eslint-disable-next-line import/no-extraneous-dependencies
 import { IntlProvider } from 'react-intl';
 import SearchableSelect from './SearchableSelect';
 
@@ -27,6 +28,7 @@ const wrap = (props) => render(
 );
 
 // Stateful wrapper that lets the component actually update value on select
+// eslint-disable-next-line react/prop-types
 const ControlledSelect = ({ multiple = false, onChange }) => {
   const [value, setValue] = useState(multiple ? [] : null);
   const handleChange = (next) => {
