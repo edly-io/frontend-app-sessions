@@ -77,7 +77,7 @@ describe('full-day leave', () => {
     expect(screen.getByText('No sessions in this range')).toBeInTheDocument();
   });
 
-  it('shows session count when sessions are in range', () => {
+  it('shows session count when sessions are present (informational, not a mode change)', () => {
     wrap({
       ...req,
       sessions: [
@@ -85,8 +85,8 @@ describe('full-day leave', () => {
         { id: 's2', title: 'S2', scheduled_start_time: '2026-06-02T10:00:00' },
       ],
     });
-    fireEvent.click(screen.getByRole('button', { name: /details/i }));
-    expect(screen.getByText('2 sessions in this range')).toBeInTheDocument();
+    // sessions non-empty → session-specific, not full-day
+    expect(screen.getByText('Session-specific')).toBeInTheDocument();
   });
 
   it('shows date range in expanded panel', () => {
@@ -110,10 +110,12 @@ describe('full-day leave', () => {
 // ─── session-specific leave ───────────────────────────────────────────────────
 
 describe('session-specific leave', () => {
+  // Backend always sends leave_start_date/leave_end_date for both leave types.
+  // The differentiator is sessions non-empty → session-specific.
   const req = {
     request_type_label: 'leave',
-    leave_start_date: null,
-    leave_end_date: null,
+    leave_start_date: '2026-06-05',
+    leave_end_date: '2026-06-05',
     sessions: [
       { id: 's1', title: 'Python Basics', scheduled_start_time: '2026-06-05T10:00:00' },
     ],
