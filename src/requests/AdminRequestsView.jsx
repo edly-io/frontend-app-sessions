@@ -7,6 +7,7 @@ import {
   Alert, Badge, Button, Container, DataTable, Form, Spinner, StandardModal,
 } from '@openedx/paragon';
 
+import { Add } from '@openedx/paragon/icons';
 import { getRequests, reviewRequest } from './api';
 import {
   REQUEST_STATUS,
@@ -17,6 +18,7 @@ import {
 } from '../shared/constants';
 import { extractApiError, formatDateTime } from '../shared/utils';
 import RequestDetailCell from './RequestDetailCell';
+import CreateRequestModal from './CreateRequestModal';
 
 const PAGE_SIZE = 50;
 
@@ -56,8 +58,9 @@ const CollapsibleText = ({ text, muted }) => {
 CollapsibleText.propTypes = { text: PropTypes.string, muted: PropTypes.bool };
 CollapsibleText.defaultProps = { text: '', muted: false };
 
-const AdminRequestsView = ({ readOnly }) => {
+const AdminRequestsView = ({ readOnly, showNewRequest }) => {
   const { programId } = useParams();
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [requests, setRequests] = useState([]);
   const [count, setCount] = useState(0);
   const [pageIndex, setPageIndex] = useState(0);
@@ -317,8 +320,27 @@ const AdminRequestsView = ({ readOnly }) => {
               </Button>
             )}
           </div>
+          {showNewRequest && (
+            <Button
+              variant="primary"
+              size="sm"
+              iconBefore={Add}
+              onClick={() => setShowCreateModal(true)}
+            >
+              New request
+            </Button>
+          )}
         </div>
       </div>
+
+      {showNewRequest && (
+        <CreateRequestModal
+          isOpen={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          programKey={programId || ''}
+          onSuccess={() => { setShowCreateModal(false); fetchData({ pageIndex: 0 }); }}
+        />
+      )}
 
       {count === 0 ? (
         <Alert variant="info">No requests found.</Alert>
@@ -378,10 +400,12 @@ const AdminRequestsView = ({ readOnly }) => {
 
 AdminRequestsView.propTypes = {
   readOnly: PropTypes.bool,
+  showNewRequest: PropTypes.bool,
 };
 
 AdminRequestsView.defaultProps = {
   readOnly: false,
+  showNewRequest: false,
 };
 
 export default AdminRequestsView;

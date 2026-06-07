@@ -72,9 +72,9 @@ const RequestDetailCell = ({ req }) => {
   const sessions = req.sessions || [];
   const isLeave = req.request_type_label === REQUEST_TYPE.LEAVE;
 
-  // Full-day leave: dates stored directly on the request.
-  // Session-specific leave: derive date range from linked sessions.
-  const isFullDay = isLeave && !!(req.leave_start_date || req.leave_end_date);
+  // Full-day leave: both dates present AND no linked sessions.
+  // Session-specific leave: sessions non-empty (dates may also be present).
+  const isFullDay = isLeave && !!(req.leave_start_date || req.leave_end_date) && sessions.length === 0;
   let dateRange = null;
   if (isFullDay) {
     const s = formatDate(req.leave_start_date);
