@@ -59,8 +59,10 @@ describe('remote_session', () => {
 // ─── full-day leave ───────────────────────────────────────────────────────────
 
 describe('full-day leave', () => {
+  // leave_type: 'full' is the backend-computed field used to distinguish leave types.
   const req = {
     request_type_label: 'leave',
+    leave_type: 'full',
     leave_start_date: '2026-06-01',
     leave_end_date: '2026-06-03',
     sessions: [],
@@ -71,22 +73,10 @@ describe('full-day leave', () => {
     expect(screen.getByText('Full Day')).toBeInTheDocument();
   });
 
-  it('expands to show "No sessions in this range" when no sessions', () => {
+  it('expands to show "No sessions scheduled in this period" when no sessions', () => {
     wrap(req);
     fireEvent.click(screen.getByRole('button', { name: /details/i }));
-    expect(screen.getByText('No sessions in this range')).toBeInTheDocument();
-  });
-
-  it('shows session count when sessions are present (informational, not a mode change)', () => {
-    wrap({
-      ...req,
-      sessions: [
-        { id: 's1', title: 'S1', scheduled_start_time: '2026-06-01T10:00:00' },
-        { id: 's2', title: 'S2', scheduled_start_time: '2026-06-02T10:00:00' },
-      ],
-    });
-    // sessions non-empty → session-specific, not full-day
-    expect(screen.getByText('Session-specific')).toBeInTheDocument();
+    expect(screen.getByText('No sessions scheduled in this period')).toBeInTheDocument();
   });
 
   it('shows date range in expanded panel', () => {
@@ -98,6 +88,7 @@ describe('full-day leave', () => {
   it('shows single date when start and end are the same', () => {
     wrap({
       request_type_label: 'leave',
+      leave_type: 'full',
       leave_start_date: '2026-06-01',
       leave_end_date: '2026-06-01',
       sessions: [],
@@ -110,10 +101,9 @@ describe('full-day leave', () => {
 // ─── session-specific leave ───────────────────────────────────────────────────
 
 describe('session-specific leave', () => {
-  // Backend always sends leave_start_date/leave_end_date for both leave types.
-  // The differentiator is sessions non-empty → session-specific.
   const req = {
     request_type_label: 'leave',
+    leave_type: 'session_specific',
     leave_start_date: '2026-06-05',
     leave_end_date: '2026-06-05',
     sessions: [

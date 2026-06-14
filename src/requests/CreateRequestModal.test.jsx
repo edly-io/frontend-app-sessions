@@ -12,10 +12,17 @@ expect.extend(jestDomMatchers);
 
 jest.mock('../calendar/api', () => ({
   getCalendarSessions: jest.fn().mockResolvedValue({ sessions: [] }),
+  getProgramDates: jest.fn().mockResolvedValue([]),
 }));
 jest.mock('./api', () => ({
   createRequest: jest.fn().mockResolvedValue({}),
+  getLeaveUsage: jest.fn().mockResolvedValue({ threshold: 7, leaves: [] }),
 }));
+jest.mock('../app/useConfig', () => ({
+  useConfig: () => ({ data: { user_role: 'learner' } }),
+}));
+
+const { createRequest } = require('./api');
 
 const renderModal = (props = {}) => render(
   <IntlProvider locale="en" messages={{}}>
@@ -89,6 +96,166 @@ describe('session-specific leave', () => {
       { target: { value: 'Reason given' } },
     );
     expect(screen.getByRole('button', { name: /submit/i })).toBeDisabled();
+  });
+});
+
+// ─── Attachment required for MED / EMER ───────────────────────────────────
+
+describe('attachment requirement for MED/EMER categories', () => {
+  const switchToLeave = () => {
+    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: 'leave' } });
+  };
+
+  const selectCategory = (value) => {
+    // After switching to leave: combobox[1] = leave category selector
+    fireEvent.change(screen.getAllByRole('combobox')[1], { target: { value } });
+  };
+
+  const fillDatesAndReason = () => {
+    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2026-07-01' } });
+    fireEvent.change(screen.getByLabelText('End date'), { target: { value: '2026-07-03' } });
+    fireEvent.change(
+      screen.getByPlaceholderText(/explain why you are making this request/i),
+      { target: { value: 'Medical visit' } },
+    );
+  };
+
+  it('keeps Submit disabled for MED category when no attachment is provided', () => {
+    renderModal();
+    switchToLeave();
+    selectCategory('MED');
+    fillDatesAndReason();
+    expect(screen.getByRole('button', { name: /submit/i })).toBeDisabled();
+  });
+
+  it('keeps Submit disabled for EMER category when no attachment is provided', () => {
+    renderModal();
+    switchToLeave();
+    selectCategory('EMER');
+    fillDatesAndReason();
+    expect(screen.getByRole('button', { name: /submit/i })).toBeDisabled();
+  });
+
+  it('enables Submit for CASUAL category without attachment', () => {
+    renderModal();
+    switchToLeave();
+    selectCategory('CASUAL');
+    fillDatesAndReason();
+    expect(screen.getByRole('button', { name: /submit/i })).not.toBeDisabled();
+  });
+
+  it('shows required asterisk for MED category attachment label', () => {
+    renderModal();
+    switchToLeave();
+    selectCategory('MED');
+    expect(screen.getByText('Attachment')).toBeInTheDocument();
+    expect(document.querySelector('.text-danger')).toBeInTheDocument();
+  });
+
+  it('shows (optional) text for CASUAL category attachment label', () => {
+    renderModal();
+    switchToLeave();
+    selectCategory('CASUAL');
+    expect(screen.getByText('(optional)')).toBeInTheDocument();
+  });
+});
+
+// ─── Threshold exceeded (422) ─────────────────────────────────────────────
+
+describe('threshold exceeded confirmation', () => {
+  const switchToLeaveAndFill = () => {
+    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: 'leave' } });
+    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2026-07-01' } });
+    fireEvent.change(screen.getByLabelText('End date'), { target: { value: '2026-07-03' } });
+    fireEvent.change(
+      screen.getByPlaceholderText(/explain why you are making this request/i),
+      { target: { value: 'Sick leave' } },
+    );
+  };
+
+  it('shows threshold warning when backend returns 422 threshold_exceeded', async () => {
+    createRequest.mockRejectedValue({
+      response: {
+        status: 422,
+        data: {
+          error: 'threshold_exceeded',
+          detail: 'This request would exceed your leave threshold of 5 days.',
+          current_usage: 4,
+          prospective_usage: 2,
+          threshold: 5,
+        },
+      },
+    });
+    renderModal();
+    switchToLeaveAndFill();
+    fireEvent.click(screen.getByRole('button', { name: /^submit$/i }));
+    expect(await screen.findByText(/leave threshold would be exceeded/i)).toBeInTheDocument();
+    expect(screen.getByText(/This request would exceed your leave threshold/i)).toBeInTheDocument();
+  });
+
+  it('shows Go back and Submit anyway buttons after 422', async () => {
+    createRequest.mockRejectedValue({
+      response: {
+        status: 422,
+        data: {
+          error: 'threshold_exceeded',
+          detail: 'Threshold exceeded.',
+          current_usage: 4,
+          prospective_usage: 2,
+          threshold: 5,
+        },
+      },
+    });
+    renderModal();
+    switchToLeaveAndFill();
+    fireEvent.click(screen.getByRole('button', { name: /^submit$/i }));
+    expect(await screen.findByRole('button', { name: /go back/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /submit anyway/i })).toBeInTheDocument();
+  });
+
+  it('Go back dismisses the warning and restores normal footer', async () => {
+    createRequest.mockRejectedValue({
+      response: {
+        status: 422,
+        data: {
+          error: 'threshold_exceeded',
+          detail: 'Threshold exceeded.',
+          current_usage: 4,
+          prospective_usage: 2,
+          threshold: 5,
+        },
+      },
+    });
+    renderModal();
+    switchToLeaveAndFill();
+    fireEvent.click(screen.getByRole('button', { name: /^submit$/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /go back/i }));
+    expect(screen.queryByText(/leave threshold would be exceeded/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^submit$/i })).toBeInTheDocument();
+  });
+
+  it('Submit anyway calls createRequest with override: true', async () => {
+    createRequest
+      .mockRejectedValueOnce({
+        response: {
+          status: 422,
+          data: {
+            error: 'threshold_exceeded',
+            detail: 'Threshold exceeded.',
+            current_usage: 4,
+            prospective_usage: 2,
+            threshold: 5,
+          },
+        },
+      })
+      .mockResolvedValueOnce({});
+    renderModal();
+    switchToLeaveAndFill();
+    fireEvent.click(screen.getByRole('button', { name: /^submit$/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /submit anyway/i }));
+    expect(createRequest).toHaveBeenLastCalledWith(
+      expect.objectContaining({ override: true }),
+    );
   });
 });
 

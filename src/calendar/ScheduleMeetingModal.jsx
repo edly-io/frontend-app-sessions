@@ -10,6 +10,7 @@ import {
   getSessionsConfig,
 } from './api';
 import { getLocations } from '../locations/api';
+import { getApprovedLeaves } from '../requests/api';
 import { toISOString, toDateTimeLocal, extractApiError } from '../shared/utils';
 import SearchableSelect from '../shared/SearchableSelect';
 
@@ -185,6 +186,21 @@ const ScheduleMeetingModal = ({
     }
   }, [conflictData]);
 
+  // Approved-leave conflict — front-end check before submitting.
+  // Fetched once per modal open; used to warn when a selected instructor is on leave.
+  const [approvedLeavesForProgram, setApprovedLeavesForProgram] = useState([]);
+  const instructorLeaveError = useMemo(() => {
+    if (!startDateInput || selectedInstructors.length === 0 || isPastSession) { return null; }
+    const conflicts = selectedInstructors.filter((instr) => approvedLeavesForProgram.some((leave) => {
+      if (leave.submitter_email !== instr.email) { return false; }
+      if (!leave.leave_start_date || !leave.leave_end_date) { return false; }
+      return startDateInput >= leave.leave_start_date && startDateInput <= leave.leave_end_date;
+    }));
+    if (!conflicts.length) { return null; }
+    const names = conflicts.map((i) => i.label || i.email).join(', ');
+    return `${names} ${conflicts.length === 1 ? 'is' : 'are'} on approved leave on this date and cannot be assigned to this session.`;
+  }, [selectedInstructors, startDateInput, approvedLeavesForProgram, isPastSession]);
+
   useEffect(() => {
     if (conflictData) {
       setTimeout(() => conflictRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
@@ -239,6 +255,15 @@ const ScheduleMeetingModal = ({
     getSessionsConfig()
       .then((cfg) => setSessionTypeOptions(cfg.session_types || []))
       .catch(() => {});
+  }, [isOpen]);
+
+  // Fetch approved leaves once per modal open to detect instructor-on-leave conflicts.
+  useEffect(() => {
+    if (!isOpen || !programKey || descriptionOnly || isPastSession) { return; }
+    getApprovedLeaves({ program_key: programKey })
+      .then(setApprovedLeavesForProgram)
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   // Pre-fill course run once options are loaded (edit mode only).
@@ -563,6 +588,11 @@ const ScheduleMeetingModal = ({
           return false;
         }
       }
+    }
+    if (instructorLeaveError) {
+      setError(instructorLeaveError);
+      setTimeout(() => errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+      return false;
     }
     return true;
   };
@@ -912,8 +942,17 @@ const ScheduleMeetingModal = ({
             loading={instructorsLoading}
             disabled={descriptionOnly || (!isPastSession && isSessionType && !selectedCourseRun)}
             required={isSessionType && !descriptionOnly}
-            isInvalid={!!fieldErrors.instructors}
+            isInvalid={!!fieldErrors.instructors || !!instructorLeaveError}
           />
+          {instructorLeaveError && (
+            <div
+              style={{
+                fontSize: 12, color: '#dc2626', marginTop: -8, marginBottom: 12,
+              }}
+            >
+              {instructorLeaveError}
+            </div>
+          )}
 
           <SearchableSelect
             id="session-location"

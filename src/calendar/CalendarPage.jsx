@@ -124,9 +124,9 @@ const CalendarPage = () => {
   // Fetch approved leaves for learners — re-fetch on every session refresh so
   // a rejection made by the admin clears the grey overlay without a page reload.
   useEffect(() => {
-    if (!isLearner || !programId) { return; }
+    if ((!isLearner && !isInstructor) || !programId) { return; }
     getApprovedLeaves({ program_key: programId }).then(setApprovedLeaves).catch(() => {});
-  }, [isLearner, programId, refreshKey]);
+  }, [isLearner, isInstructor, programId, refreshKey]);
 
   // Re-fetch whenever the visible window changes or a mutation triggers a refresh.
   // The backend requires start_date + end_date and enforces a 45-day max window.

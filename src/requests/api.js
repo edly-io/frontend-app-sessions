@@ -20,7 +20,8 @@ export const createRequest = async ({
   // eslint-disable-next-line camelcase
   type, reason, program_key, session_ids,
   // eslint-disable-next-line camelcase
-  attachment, leave_start_date, leave_end_date,
+  attachment, leave_start_date, leave_end_date, category,
+  override,
 }) => {
   const client = getAuthenticatedHttpClient();
   const form = new FormData();
@@ -28,11 +29,13 @@ export const createRequest = async ({
   form.append('program_key', program_key);
   if (leave_start_date) { form.append('leave_start_date', leave_start_date); }
   if (leave_end_date) { form.append('leave_end_date', leave_end_date); }
+  if (category) { form.append('category', category); }
   if (session_ids && session_ids.length) {
     session_ids.forEach((id) => form.append('session_ids', id));
   }
   if (attachment) { form.append('attachment', attachment); }
-  const { data } = await client.post(typeUrl(type), form);
+  const url = override ? `${typeUrl(type)}?override=true` : typeUrl(type);
+  const { data } = await client.post(url, form);
   return data;
 };
 
@@ -44,6 +47,51 @@ export const createRequest = async ({
 export const deleteRequest = async (requestId, requestType) => {
   const client = getAuthenticatedHttpClient();
   await client.delete(typeUrl(requestType, `${requestId}/`));
+};
+
+/**
+ * Learner initiates withdrawal of an APPROVED (or WITHDRAWAL_REJECTED) leave request.
+ * Leave-only — always uses the leave endpoint.
+ *
+ * POST /v1/requests/leave/{id}/withdraw/
+ */
+export const withdrawRequest = async (requestId) => {
+  const client = getAuthenticatedHttpClient();
+  const { data } = await client.post(leaveUrl(`${requestId}/withdraw/`));
+  return data;
+};
+
+/**
+ * Fetch leave usage for a program.
+ * Admin gets all trainees; learner/instructor gets own row only.
+ *
+ * GET /v1/leave-usage/?program_key=…
+ */
+export const getLeaveUsage = async ({
+  // eslint-disable-next-line camelcase
+  program_key, q, threshold_exceeded,
+}) => {
+  const client = getAuthenticatedHttpClient();
+  const params = new URLSearchParams({ program_key });
+  if (q) { params.set('q', q); }
+  // eslint-disable-next-line camelcase
+  if (threshold_exceeded) { params.set('threshold_exceeded', ''); }
+  const { data } = await client.get(`${getBaseUrl()}/leave-usage/?${params}`);
+  return data;
+};
+
+/**
+ * Admin bulk-approves a set of pending leave requests.
+ *
+ * POST /v1/requests/leave/bulk-approve/
+ */
+export const bulkApproveLeaves = async ({ program_key, leave_ids }) => {
+  const client = getAuthenticatedHttpClient();
+  const { data } = await client.post(`${getBaseUrl()}/requests/leave/bulk-approve/`, {
+    program_key,
+    leave_ids,
+  });
+  return data;
 };
 
 /**
@@ -130,6 +178,51 @@ export const getApprovedLeaves = async ({
 };
 
 /**
+ * Fetch sessions within a date range, scoped to the authenticated user's role.
+ * Used by the instructor leave panel to cross-reference approved leaves.
+ *
+ * GET /v1/sessions/?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD[&program_key=…]
+ */
+export const getSessions = async ({
+  // eslint-disable-next-line camelcase
+  program_key, start_date, end_date,
+} = {}) => {
+  const client = getAuthenticatedHttpClient();
+  // eslint-disable-next-line camelcase
+  const params = new URLSearchParams({ start_date, end_date });
+  // eslint-disable-next-line camelcase
+  if (program_key) { params.set('program_key', program_key); }
+  const { data } = await client.get(`${getBaseUrl()}/sessions/?${params}`);
+  return Array.isArray(data) ? data : data.results ?? [];
+};
+
+/**
+ * Fetch sessions with their approved-leave attendees, server-side paginated.
+ *
+ * GET /v1/sessions/approved-leaves/?program_key=…[&q=…&page=…&page_size=…]
+ * Returns { count, next, previous, results: [{ session_id, title, scheduled_start_time, status, students_on_leave }] }
+ */
+export const getSessionApprovedLeaves = async ({
+  // eslint-disable-next-line camelcase
+  program_key, q, page, page_size, date_from, date_to,
+} = {}) => {
+  const client = getAuthenticatedHttpClient();
+  const params = new URLSearchParams();
+  // eslint-disable-next-line camelcase
+  if (program_key) { params.set('program_key', program_key); }
+  if (q) { params.set('q', q); }
+  if (page) { params.set('page', String(page)); }
+  // eslint-disable-next-line camelcase
+  if (page_size) { params.set('page_size', String(page_size)); }
+  // eslint-disable-next-line camelcase
+  if (date_from) { params.set('date_from', date_from); }
+  // eslint-disable-next-line camelcase
+  if (date_to) { params.set('date_to', date_to); }
+  const { data } = await client.get(`${getBaseUrl()}/sessions/approved-leaves/?${params}`);
+  return data;
+};
+
+/**
  * Admin approves or rejects a pending request.
  *
  * PATCH /v1/requests/leave/{id}/review/  or  PATCH /v1/requests/remote-session/{id}/review/
@@ -140,5 +233,42 @@ export const reviewRequest = async (requestId, { state, reviewer_note = '' }, re
     typeUrl(requestType, `${requestId}/review/`),
     { state, reviewer_note },
   );
+  return data;
+};
+
+// ─── Substitute Requests ─────────────────────────────────────────────────────
+
+const substituteUrl = (suffix = '') => `${getBaseUrl()}/substitute-requests/${suffix}`;
+
+export const getSubstituteRequests = async ({
+  // eslint-disable-next-line camelcase
+  program_key, status, date_from, date_to, page, page_size,
+}) => {
+  // eslint-disable-next-line camelcase
+  const params = new URLSearchParams({ program_key });
+  if (status) { params.set('status', status); }
+  // eslint-disable-next-line camelcase
+  if (date_from) { params.set('date_from', date_from); }
+  // eslint-disable-next-line camelcase
+  if (date_to) { params.set('date_to', date_to); }
+  if (page) { params.set('page', String(page)); }
+  // eslint-disable-next-line camelcase
+  if (page_size) { params.set('page_size', String(page_size)); }
+  const { data } = await getAuthenticatedHttpClient().get(`${substituteUrl()}?${params}`);
+  return data;
+};
+
+// eslint-disable-next-line camelcase
+export const assignSubstitute = async (id, substitute_instructor_email) => {
+  const { data } = await getAuthenticatedHttpClient().post(
+    substituteUrl(`${id}/assign/`),
+    // eslint-disable-next-line camelcase
+    { substitute_instructor_email },
+  );
+  return data;
+};
+
+export const closeSubstituteRequest = async (id) => {
+  const { data } = await getAuthenticatedHttpClient().post(substituteUrl(`${id}/close/`));
   return data;
 };

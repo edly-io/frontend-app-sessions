@@ -2,3 +2,16 @@
 
 @import "~@edx/frontend-component-header/dist/index";
 @import "~@edx/frontend-component-footer/dist/footer";
+
+.sticky-header-table .pgn__data-table-container {
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.sticky-header-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #FFFFFF;
+  box-shadow: 0 1px 0 #DEE2E6;
+}

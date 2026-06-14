@@ -6,7 +6,9 @@ import CalendarPage from '../calendar/CalendarPage';
 import AuthGate from './AuthGate';
 import SessionsAdminLayout from './SessionsAdminLayout';
 import SessionsLanding from './SessionsLanding';
-import RequestsPage from '../requests/RequestsPage';
+import RequestsPage, { RequestsTabPage } from '../requests/RequestsPage';
+import SubstituteRequestsView from '../requests/SubstituteRequestsView';
+import { REQUEST_TYPE } from '../shared/constants';
 import AttendancePage from '../attendance/AttendancePage';
 import AttendanceIndexRedirect from '../attendance/AttendanceIndexRedirect';
 import AdminSessionsList from '../attendance/AdminSessionsList';
@@ -64,7 +66,12 @@ export const sessionsAdminRoutes = (
       element={<PageWrap><AuthGate><SessionsLanding /></AuthGate></PageWrap>}
     />
     <Route path={SESSIONS_CALENDAR_PATH} element={wrapInShell(CalendarPage)} />
-    <Route path={SESSIONS_REQUESTS_PATH} element={wrapInShell(RequestsPage)} />
+    <Route path={SESSIONS_REQUESTS_PATH} element={wrapInShell(RequestsPage)}>
+      <Route index element={<Navigate to="leaves" replace />} />
+      <Route path="leaves" element={<RequestsTabPage lockedType={REQUEST_TYPE.LEAVE} />} />
+      <Route path="remote-sessions" element={<RequestsTabPage lockedType={REQUEST_TYPE.REMOTE_SESSION} />} />
+      <Route path="substitute-requests" element={<SubstituteRequestsView />} />
+    </Route>
     <Route path={SESSIONS_LOCATIONS_PATH} element={wrapInShell(LocationsPage)} />
     <Route path={SESSIONS_HOLIDAYS_PATH} element={wrapInShell(HolidaysPage)} />
     {/* Attendance tab is a layout route — children render inside the
