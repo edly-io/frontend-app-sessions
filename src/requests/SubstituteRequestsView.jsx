@@ -15,8 +15,9 @@ import {
 } from '../shared/constants';
 import { extractApiError, formatDateTime } from '../shared/utils';
 import { cancelSession } from '../calendar/api';
-import { getSubstituteRequests, closeSubstituteRequest } from './api';
+import { getSubstituteRequests, closeSubstituteRequest, getSubstituteRequest } from './api';
 import AssignSubstituteModal from './AssignSubstituteModal';
+import useModalParams from '../shared/useModalParams';
 
 const PAGE_SIZE = 15;
 
@@ -32,7 +33,11 @@ const SubstituteRequestsView = () => {
   const [filterStatus, setFilterStatus] = useState('');
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
-  const [assignModal, setAssignModal] = useState(null);
+  const {
+    modal, modalId, openModal, closeModal,
+  } = useModalParams();
+  const isAssignOpen = modal === 'assign-substitute';
+  const [assignModalData, setAssignModalData] = useState(null);
   const [cancellingId, setCancellingId] = useState(null);
 
   const fetchData = useCallback(async ({ pageIndex: nextIndex } = {}) => {
@@ -60,6 +65,16 @@ const SubstituteRequestsView = () => {
   }, [programId, filterStatus, filterDateFrom, filterDateTo]);
 
   useEffect(() => { fetchData({ pageIndex: 0 }); }, [fetchData]);
+
+  useEffect(() => {
+    if (!isAssignOpen || !modalId) { setAssignModalData(null); return; }
+    const found = requests.find((r) => String(r.id) === String(modalId));
+    if (found) { setAssignModalData(found); return; }
+    getSubstituteRequest(modalId)
+      .then(setAssignModalData)
+      .catch(() => closeModal());
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAssignOpen, modalId, requests]);
 
   const handleCancelSession = async (req) => {
     try {
@@ -164,7 +179,7 @@ const SubstituteRequestsView = () => {
             <Button
               variant="outline-primary"
               size="sm"
-              onClick={() => setAssignModal(req)}
+              onClick={() => openModal('assign-substitute', req.id)}
             >
               Assign Substitute
             </Button>
@@ -268,11 +283,12 @@ const SubstituteRequestsView = () => {
       )}
 
       <AssignSubstituteModal
-        isOpen={!!assignModal}
-        onClose={() => setAssignModal(null)}
-        substituteRequest={assignModal}
+        isOpen={isAssignOpen && !!assignModalData}
+        onClose={() => { closeModal(); setAssignModalData(null); }}
+        substituteRequest={assignModalData}
         onSuccess={() => {
-          setAssignModal(null);
+          closeModal();
+          setAssignModalData(null);
           fetchData({ pageIndex: 0 });
         }}
       />

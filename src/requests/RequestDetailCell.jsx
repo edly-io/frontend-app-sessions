@@ -116,8 +116,8 @@ const RequestDetailCell = ({ req, programKey }) => {
   const sessions = req.sessions || [];
   const isLeave = req.request_type_label === REQUEST_TYPE.LEAVE;
 
-  // Backend serializer computes leave_type: "full" | "session_specific".
-  const isFullDay = isLeave && req.leave_type === 'full';
+  // leave_type was previously computed as "full"; now stored as "full_day" from submitted value.
+  const isFullDay = isLeave && (req.leave_type === 'full' || req.leave_type === 'full_day');
   let dateRange = null;
   if (isFullDay) {
     const s = formatDate(req.leave_start_date);

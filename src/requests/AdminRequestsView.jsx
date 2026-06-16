@@ -23,6 +23,7 @@ import { extractApiError, formatDateTime } from '../shared/utils';
 import RequestDetailCell from './RequestDetailCell';
 import CreateRequestModal from './CreateRequestModal';
 import ThresholdControl from './ThresholdControl';
+import useModalParams from '../shared/useModalParams';
 import LeaveUsagePanel from './LeaveUsagePanel';
 import SessionLeavesPanel from './SessionLeavesPanel';
 import { getProgram } from '../app/api';
@@ -86,7 +87,8 @@ CollapsibleText.defaultProps = { text: '', muted: false };
 
 const AdminRequestsView = ({ readOnly, showNewRequest, lockedType }) => {
   const { programId } = useParams();
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const { modal, openModal, closeModal } = useModalParams();
+  const isCreateOpen = modal === 'new-request';
   const [requests, setRequests] = useState([]);
   const [count, setCount] = useState(0);
   const [pageIndex, setPageIndex] = useState(0);
@@ -487,7 +489,7 @@ const AdminRequestsView = ({ readOnly, showNewRequest, lockedType }) => {
                 variant="primary"
                 size="sm"
                 iconBefore={Add}
-                onClick={() => setShowCreateModal(true)}
+                onClick={() => openModal('new-request')}
               >
                 New request
               </Button>
@@ -497,10 +499,11 @@ const AdminRequestsView = ({ readOnly, showNewRequest, lockedType }) => {
 
         {showNewRequest && (
           <CreateRequestModal
-            isOpen={showCreateModal}
-            onClose={() => setShowCreateModal(false)}
+            isOpen={isCreateOpen}
+            onClose={closeModal}
             programKey={programId || ''}
-            onSuccess={() => { setShowCreateModal(false); fetchData({ pageIndex: 0 }); }}
+            lockedType={lockedType || null}
+            onSuccess={() => { closeModal(); fetchData({ pageIndex: 0 }); }}
           />
         )}
 

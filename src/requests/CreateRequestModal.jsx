@@ -22,12 +22,14 @@ const LEAVE_CATEGORIES = [
 ];
 
 const CreateRequestModal = ({
-  isOpen, onClose, programKey, onSuccess,
+  isOpen, onClose, programKey, onSuccess, lockedType,
 }) => {
   const { data: config } = useConfig();
   const isInstructor = config?.user_role === USER_ROLE.INSTRUCTOR;
 
-  const [typeSlug, setTypeSlug] = useState(REQUEST_TYPE.REMOTE_SESSION);
+  const defaultType = lockedType || REQUEST_TYPE.REMOTE_SESSION;
+  const [typeSlug, setTypeSlug] = useState(defaultType);
+  useEffect(() => { setTypeSlug(lockedType || REQUEST_TYPE.REMOTE_SESSION); }, [lockedType]);
   const [leaveMode, setLeaveMode] = useState('full_day');
   const [leaveCategory, setLeaveCategory] = useState('CASUAL');
   const [startDate, setStartDate] = useState('');
@@ -54,7 +56,7 @@ const CreateRequestModal = ({
   };
 
   const resetForm = () => {
-    setTypeSlug(REQUEST_TYPE.REMOTE_SESSION);
+    setTypeSlug(lockedType || REQUEST_TYPE.REMOTE_SESSION);
     setLeaveMode('full_day');
     setLeaveCategory('CASUAL');
     setStartDate('');
@@ -108,15 +110,12 @@ const CreateRequestModal = ({
       try {
         const { sessions: data } = await getCalendarSessions(startDate, endDate, programKey);
         if (cancelled) { return; }
-        const now = new Date();
-        const upcoming = (data || []).filter(
-          (s) => s.status === 'scheduled' && new Date(s.scheduled_start_time) > now,
-        );
-        setSessions(upcoming);
+        const scheduled = (data || []).filter((s) => s.status === 'scheduled');
+        setSessions(scheduled);
         setSessionsFetched(true);
         // Full-day leave: auto-select every session in the range
         if (typeSlug === REQUEST_TYPE.LEAVE && leaveMode === 'full_day') {
-          setSelectedSessionIds(upcoming.map((s) => s.id));
+          setSelectedSessionIds(scheduled.map((s) => s.id));
         }
       } catch (err) {
         if (!cancelled) { setFetchError(extractApiError(err, 'Failed to load sessions')); }
@@ -208,6 +207,7 @@ const CreateRequestModal = ({
         leave_start_date: startDate,
         leave_end_date: endDate,
         category: leaveCategory,
+        leave_type: leaveMode,
         ...(!isFullDayLeave && { session_ids: selectedSessionIds }),
       }
       : { session_ids: selectedSessionIds }),
@@ -349,19 +349,21 @@ const CreateRequestModal = ({
       )}
       {error && <Alert variant="danger" className="mb-3">{error}</Alert>}
 
-      {/* Request type selector */}
-      <Form.Group className="mb-3">
-        <Form.Label>Request type</Form.Label>
-        <Form.Control
-          as="select"
-          value={typeSlug}
-          onChange={(e) => handleTypeChange(e.target.value)}
-        >
-          {TYPE_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </Form.Control>
-      </Form.Group>
+      {/* Request type selector — hidden when opened from a specific tab */}
+      {!lockedType && (
+        <Form.Group className="mb-3">
+          <Form.Label>Request type</Form.Label>
+          <Form.Control
+            as="select"
+            value={typeSlug}
+            onChange={(e) => handleTypeChange(e.target.value)}
+          >
+            {TYPE_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </Form.Control>
+        </Form.Group>
+      )}
 
       {/* Leave category */}
       {typeSlug === REQUEST_TYPE.LEAVE && (
@@ -521,6 +523,11 @@ CreateRequestModal.propTypes = {
   onClose: PropTypes.func.isRequired,
   programKey: PropTypes.string.isRequired,
   onSuccess: PropTypes.func.isRequired,
+  lockedType: PropTypes.string,
+};
+
+CreateRequestModal.defaultProps = {
+  lockedType: null,
 };
 
 export default CreateRequestModal;

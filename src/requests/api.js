@@ -20,7 +20,7 @@ export const createRequest = async ({
   // eslint-disable-next-line camelcase
   type, reason, program_key, session_ids,
   // eslint-disable-next-line camelcase
-  attachment, leave_start_date, leave_end_date, category,
+  attachment, leave_start_date, leave_end_date, category, leave_type,
   override,
 }) => {
   const client = getAuthenticatedHttpClient();
@@ -30,6 +30,7 @@ export const createRequest = async ({
   if (leave_start_date) { form.append('leave_start_date', leave_start_date); }
   if (leave_end_date) { form.append('leave_end_date', leave_end_date); }
   if (category) { form.append('category', category); }
+  if (leave_type) { form.append('leave_type', leave_type); }
   if (session_ids && session_ids.length) {
     session_ids.forEach((id) => form.append('session_ids', id));
   }
@@ -270,5 +271,10 @@ export const assignSubstitute = async (id, substitute_instructor_email) => {
 
 export const closeSubstituteRequest = async (id) => {
   const { data } = await getAuthenticatedHttpClient().post(substituteUrl(`${id}/close/`));
+  return data;
+};
+
+export const getSubstituteRequest = async (id) => {
+  const { data } = await getAuthenticatedHttpClient().get(substituteUrl(`${id}/`));
   return data;
 };

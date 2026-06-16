@@ -21,6 +21,7 @@ import { extractApiError, formatDateTime } from '../shared/utils';
 import CreateRequestModal from './CreateRequestModal';
 import RequestDetailCell from './RequestDetailCell';
 import LeaveUsageSummary from './LeaveUsageSummary';
+import useModalParams from '../shared/useModalParams';
 
 const PAGE_SIZE = 15;
 
@@ -94,7 +95,8 @@ const LearnerRequestsView = ({ lockedType }) => {
   const [filterQ, setFilterQ] = useState('');
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const { modal, openModal, closeModal } = useModalParams();
+  const isCreateOpen = modal === 'new-request';
   const [confirmAction, setConfirmAction] = useState(null);
   // Shape: { id: string, kind: 'delete' | 'withdraw', requestTypeLabel?: string }
 
@@ -371,7 +373,7 @@ const LearnerRequestsView = ({ lockedType }) => {
             variant="primary"
             size="sm"
             iconBefore={Add}
-            onClick={() => setShowCreateModal(true)}
+            onClick={() => openModal('new-request')}
           >
             New request
           </Button>
@@ -401,11 +403,12 @@ const LearnerRequestsView = ({ lockedType }) => {
       )}
 
       <CreateRequestModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
+        isOpen={isCreateOpen}
+        onClose={closeModal}
         programKey={programId || ''}
+        lockedType={lockedType || null}
         onSuccess={() => {
-          setShowCreateModal(false);
+          closeModal();
           fetchData({ pageIndex: 0 });
         }}
       />
