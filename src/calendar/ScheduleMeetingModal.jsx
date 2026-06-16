@@ -907,16 +907,28 @@ const ScheduleMeetingModal = ({
 
           <Form.Group className="mb-3">
             <Form.Label>Session Type *</Form.Label>
-            <Form.Control
-              as="select"
-              value={sessionType}
-              onChange={(e) => setSessionType(e.target.value)}
-              disabled={isPastSession || descriptionOnly}
+            <OverlayTrigger
+              placement="top"
+              overlay={session ? (
+                <Tooltip id="session-type-locked-tip">
+                  Session type cannot be changed after creation
+                </Tooltip>
+              ) : <span />}
             >
-              {sessionTypeOptions.map(({ value, label }) => (
-                <option key={value} value={value}>{label}</option>
-              ))}
-            </Form.Control>
+              <span style={{ display: 'block' }}>
+                <Form.Control
+                  as="select"
+                  value={sessionType}
+                  onChange={(e) => setSessionType(e.target.value)}
+                  disabled={!!session || isPastSession || descriptionOnly}
+                  style={session ? { pointerEvents: 'none', opacity: 0.65 } : undefined}
+                >
+                  {sessionTypeOptions.map(({ value, label }) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </Form.Control>
+              </span>
+            </OverlayTrigger>
           </Form.Group>
 
           <SearchableSelect
