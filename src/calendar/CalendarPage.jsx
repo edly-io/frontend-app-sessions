@@ -6,8 +6,9 @@ import {
   Container, Spinner, Alert, Toast, StandardModal, Button,
 } from '@openedx/paragon';
 import {
-  getCalendarSessions, deleteSession, cancelSession, getProgramDates,
+  getCalendarSessions, deleteSession, cancelSession, getProgramDates, getSession,
 } from './api';
+import useModalParams from '../shared/useModalParams';
 import { getHolidays } from '../holidays/api';
 import { getApprovedLeaves } from '../requests/api';
 import { extractApiError } from '../shared/utils';
@@ -92,13 +93,19 @@ const CalendarPage = () => {
     return d;
   });
 
-  // modalSession: undefined = closed | null = create | Session object = edit
-  const [modalSession, setModalSession] = useState(undefined);
-  const [sessionToDelete, setSessionToDelete] = useState(null);
+  const {
+    modal, modalId, openModal, closeModal,
+  } = useModalParams();
+  const [activeModalSession, setActiveModalSession] = useState(null);
   const [deleteError, setDeleteError] = useState('');
-  const [sessionToCancel, setSessionToCancel] = useState(null);
   const [cancelError, setCancelError] = useState('');
-  const [sessionToView, setSessionToView] = useState(null);
+
+  const isDetailOpen = modal === 'session';
+  const isScheduleOpen = modal === 'new-session' || modal === 'edit-session';
+  const isDeleteOpen = modal === 'delete-session';
+  const isCancelOpen = modal === 'cancel-session';
+  // eslint-disable-next-line no-nested-ternary
+  const scheduleSession = modal === 'new-session' ? null : modal === 'edit-session' ? activeModalSession : undefined;
   const [holidays, setHolidays] = useState([]);
   const [programDates, setProgramDates] = useState([]);
   const [approvedLeaves, setApprovedLeaves] = useState([]);
@@ -124,9 +131,9 @@ const CalendarPage = () => {
   // Fetch approved leaves for learners — re-fetch on every session refresh so
   // a rejection made by the admin clears the grey overlay without a page reload.
   useEffect(() => {
-    if (!isLearner || !programId) { return; }
+    if ((!isLearner && !isInstructor) || !programId) { return; }
     getApprovedLeaves({ program_key: programId }).then(setApprovedLeaves).catch(() => {});
-  }, [isLearner, programId, refreshKey]);
+  }, [isLearner, isInstructor, programId, refreshKey]);
 
   // Re-fetch whenever the visible window changes or a mutation triggers a refresh.
   // The backend requires start_date + end_date and enforces a 45-day max window.
@@ -192,11 +199,17 @@ const CalendarPage = () => {
 
   // Full-day leave banner map: date string (YYYY-MM-DD) → leave request.
   // Used by CalendarView to show a non-clickable "On Leave" day banner.
+  // Session-specific leaves are excluded — those sessions already get the
+  // grey/strikethrough treatment via studentRequestMap; the day banner should
+  // only appear for leaves that cover entire days.
   const leaveDateMap = useMemo(() => {
     const map = new Map();
     approvedLeaves.forEach((leave) => {
       if (leave.state && leave.state !== 'APPROVED') { return; }
       if (!leave.leave_start_date || !leave.leave_end_date) { return; }
+      const isFullDay = leave.leave_type === 'full_day' || leave.leave_type === 'full'
+        || (!leave.leave_type && (!leave.sessions || leave.sessions.length === 0));
+      if (!isFullDay) { return; }
       const cur = new Date(`${leave.leave_start_date}T12:00:00`);
       const last = new Date(`${leave.leave_end_date}T12:00:00`);
       while (cur <= last) {
@@ -207,30 +220,42 @@ const CalendarPage = () => {
     return map;
   }, [approvedLeaves]);
 
+  useEffect(() => {
+    const SESSION_MODALS = ['session', 'edit-session', 'delete-session', 'cancel-session'];
+    if (!modal || !SESSION_MODALS.includes(modal)) { setActiveModalSession(null); return; }
+    if (!modalId) { return; }
+    const found = sessions.find((s) => String(s.id) === String(modalId));
+    if (found) { setActiveModalSession(found); return; }
+    getSession(modalId)
+      .then(setActiveModalSession)
+      .catch(() => closeModal());
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modal, modalId, sessions]);
+
   const showSuccess = (message) => {
     setToastMessage(message);
     setShowToast(true);
   };
 
-  const handleScheduleNew = () => setModalSession(null);
-  const handleEditSession = (session) => setModalSession(session);
+  const handleScheduleNew = () => openModal('new-session');
+  const handleEditSession = (session) => openModal('edit-session', session.id);
   const handleDeleteSession = (session) => {
     setDeleteError('');
-    setSessionToDelete(session);
+    openModal('delete-session', session.id);
   };
 
   const handleSessionSuccess = () => {
-    const wasEdit = Boolean(modalSession);
-    setModalSession(undefined);
+    const wasEdit = modal === 'edit-session';
+    closeModal();
     setRefreshKey((prev) => prev + 1);
     showSuccess(wasEdit ? 'Session updated successfully!' : 'Session created successfully!');
   };
 
   const handleDeleteConfirm = async () => {
-    if (!sessionToDelete) { return; }
+    if (!activeModalSession) { return; }
     try {
-      await deleteSession(sessionToDelete.id);
-      setSessionToDelete(null);
+      await deleteSession(activeModalSession.id);
+      closeModal();
       setRefreshKey((prev) => prev + 1);
       showSuccess('Session deleted successfully!');
     } catch (err) {
@@ -239,20 +264,20 @@ const CalendarPage = () => {
   };
 
   const handleDeleteCancel = () => {
-    setSessionToDelete(null);
+    closeModal();
     setDeleteError('');
   };
 
   const handleCancelSession = (session) => {
     setCancelError('');
-    setSessionToCancel(session);
+    openModal('cancel-session', session.id);
   };
 
   const handleCancelConfirm = async () => {
-    if (!sessionToCancel) { return; }
+    if (!activeModalSession) { return; }
     try {
-      await cancelSession(sessionToCancel.id);
-      setSessionToCancel(null);
+      await cancelSession(activeModalSession.id);
+      closeModal();
       setRefreshKey((prev) => prev + 1);
       showSuccess('Session cancelled.');
     } catch (err) {
@@ -261,13 +286,11 @@ const CalendarPage = () => {
   };
 
   const handleCancelDismiss = () => {
-    setSessionToCancel(null);
+    closeModal();
     setCancelError('');
   };
 
-  const handleViewSession = (session) => {
-    setSessionToView(session);
-  };
+  const handleViewSession = (session) => openModal('session', session.id);
 
   // ── Calendar navigation handlers passed down to CalendarView ──
   const handleNavigate = useCallback((direction) => {
@@ -349,12 +372,12 @@ const CalendarPage = () => {
       </main>
 
       {/* Schedule modal: admins get full edit; instructors get description-only edit */}
-      {(canManageSessions || isInstructor) && modalSession !== undefined && (
+      {(canManageSessions || isInstructor) && isScheduleOpen && (
         <ScheduleMeetingModal
           isOpen
-          onClose={() => setModalSession(undefined)}
+          onClose={closeModal}
           programKey={programId || ''}
-          session={modalSession}
+          session={scheduleSession}
           onSuccess={handleSessionSuccess}
           holidays={holidays}
           descriptionOnly={isInstructor && !canManageSessions}
@@ -362,7 +385,7 @@ const CalendarPage = () => {
       )}
 
       {/* Delete confirmation — only for admins */}
-      {canManageSessions && sessionToDelete && (
+      {canManageSessions && isDeleteOpen && activeModalSession && (
         <StandardModal
           isOpen
           onClose={handleDeleteCancel}
@@ -378,7 +401,7 @@ const CalendarPage = () => {
         >
           {deleteError && <Alert variant="danger" className="mb-3">{deleteError}</Alert>}
           <p>
-            Are you sure you want to delete the session <strong>{sessionToDelete.title}</strong>?
+            Are you sure you want to delete the session <strong>{activeModalSession.title}</strong>?
             This action cannot be undone.
           </p>
         </StandardModal>
@@ -386,7 +409,7 @@ const CalendarPage = () => {
 
       {/* Cancel confirmation — only for admins. Soft-cancel preserves the row +
           Zoom; can be re-scheduled via PATCH status:scheduled if needed. */}
-      {canManageSessions && sessionToCancel && (
+      {canManageSessions && isCancelOpen && activeModalSession && (
         <StandardModal
           isOpen
           onClose={handleCancelDismiss}
@@ -402,7 +425,7 @@ const CalendarPage = () => {
         >
           {cancelError && <Alert variant="danger" className="mb-3">{cancelError}</Alert>}
           <p>
-            Cancel <strong>{sessionToCancel.title}</strong>? Enrolled learners will see
+            Cancel <strong>{activeModalSession.title}</strong>? Enrolled learners will see
             the session as Cancelled. The Zoom meeting (if any) is kept so you can
             reschedule.
           </p>
@@ -412,9 +435,9 @@ const CalendarPage = () => {
       {/* Session detail — open from popover/day-popover title click. Read-only,
           available to admins and learners alike. */}
       <SessionDetailModal
-        session={sessionToView}
-        isOpen={Boolean(sessionToView)}
-        onClose={() => setSessionToView(null)}
+        session={activeModalSession}
+        isOpen={isDetailOpen && Boolean(activeModalSession)}
+        onClose={closeModal}
       />
 
       {/* Toast — persists across view transitions */}

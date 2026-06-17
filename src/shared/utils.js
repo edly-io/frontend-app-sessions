@@ -53,12 +53,24 @@ export const getStatusVariant = (status) => {
  * Extract a user-friendly error message from an Axios error.
  * Centralises the error extraction pattern used across all catch blocks.
  */
-export const extractApiError = (err, fallback = 'An unexpected error occurred') => (
-  err.response?.data?.detail
-  || err.response?.data?.error
-  || err.message
-  || fallback
-);
+export const extractApiError = (err, fallback = 'An unexpected error occurred') => {
+  const { data } = err.response || {};
+  if (!data) { return err.message || fallback; }
+  if (typeof data === 'string') { return data; }
+  if (data.detail) { return data.detail; }
+  if (data.error) { return data.error; }
+  // DRF field-level validation errors: { field: ["msg", ...], non_field_errors: [...] }
+  if (typeof data === 'object') {
+    const messages = Object.entries(data).flatMap(([field, val]) => {
+      const msgs = Array.isArray(val) ? val : [val];
+      return field === 'non_field_errors'
+        ? msgs
+        : msgs.map((m) => `${field}: ${m}`);
+    });
+    if (messages.length) { return messages.join(' | '); }
+  }
+  return err.message || fallback;
+};
 
 /**
  * Group an array of sessions into a Map keyed by local date string (YYYY-MM-DD).

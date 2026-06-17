@@ -47,18 +47,48 @@ export const REQUEST_STATUS = {
   PENDING: 'PENDING',
   APPROVED: 'APPROVED',
   REJECTED: 'REJECTED',
+  CANCELLED: 'CANCELLED',
+  WITHDRAWAL_PENDING: 'WITHDRAWAL_PENDING',
+  WITHDRAWN: 'WITHDRAWN',
+  WITHDRAWAL_REJECTED: 'WITHDRAWAL_REJECTED',
 };
 
 export const REQUEST_STATUS_LABELS = {
   [REQUEST_STATUS.PENDING]: 'Pending',
   [REQUEST_STATUS.APPROVED]: 'Approved',
   [REQUEST_STATUS.REJECTED]: 'Rejected',
+  [REQUEST_STATUS.CANCELLED]: 'Cancelled',
+  [REQUEST_STATUS.WITHDRAWAL_PENDING]: 'Withdrawal Under Review',
+  [REQUEST_STATUS.WITHDRAWN]: 'Withdrawn',
+  [REQUEST_STATUS.WITHDRAWAL_REJECTED]: 'Withdrawal Denied',
 };
 
 export const REQUEST_STATUS_VARIANTS = {
   [REQUEST_STATUS.PENDING]: 'warning',
   [REQUEST_STATUS.APPROVED]: 'success',
   [REQUEST_STATUS.REJECTED]: 'danger',
+  [REQUEST_STATUS.CANCELLED]: 'secondary',
+  [REQUEST_STATUS.WITHDRAWAL_PENDING]: 'warning',
+  [REQUEST_STATUS.WITHDRAWN]: 'success',
+  [REQUEST_STATUS.WITHDRAWAL_REJECTED]: 'danger',
+};
+
+export const SUBSTITUTE_REQUEST_STATUS = {
+  OPEN: 'open',
+  ASSIGNED: 'assigned',
+  CLOSED: 'closed',
+};
+
+export const SUBSTITUTE_REQUEST_STATUS_LABELS = {
+  open: 'Open',
+  assigned: 'Assigned',
+  closed: 'Closed',
+};
+
+export const SUBSTITUTE_REQUEST_STATUS_VARIANTS = {
+  open: 'warning',
+  assigned: 'info',
+  closed: 'secondary',
 };
 
 // Role strings returned by attendance APIs.

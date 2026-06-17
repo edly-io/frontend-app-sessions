@@ -1,63 +1,97 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { IntlProvider } from 'react-intl';
-import RequestsPage from './RequestsPage';
+import RequestsPage, { RequestsTabPage } from './RequestsPage';
 
 const jestDomMatchers = require('@testing-library/jest-dom/matchers');
 
 expect.extend(jestDomMatchers);
 
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useParams: () => ({ programId: 'test-program' }),
+}));
+
 jest.mock('../app/useConfig', () => ({ useConfig: jest.fn() }));
-jest.mock('./AdminRequestsView', () => function () {
+jest.mock('./AdminRequestsView', () => function MockAdminView() {
   return <div>AdminView</div>;
 });
-jest.mock('./LearnerRequestsView', () => function () {
+jest.mock('./LearnerRequestsView', () => function MockLearnerView() {
   return <div>LearnerView</div>;
-});
-jest.mock('./InstructorRequestsView', () => function () {
-  return <div>InstructorView</div>;
 });
 
 const { useConfig } = require('../app/useConfig');
 
-const renderPage = () => render(
-  <MemoryRouter>
-    <IntlProvider locale="en" messages={{}}>
-      <RequestsPage />
-    </IntlProvider>
-  </MemoryRouter>,
+const renderLayout = () => render(
+  <IntlProvider locale="en" messages={{}}>
+    <MemoryRouter initialEntries={['/test-program/requests/leaves']}>
+      <Routes>
+        <Route path="/:programId/requests" element={<RequestsPage />}>
+          <Route path="leaves" element={<div>Leaves content</div>} />
+        </Route>
+      </Routes>
+    </MemoryRouter>
+  </IntlProvider>,
 );
 
-beforeEach(() => jest.clearAllMocks());
+const renderTabPage = (lockedType = 'leave') => render(
+  <IntlProvider locale="en" messages={{}}>
+    <MemoryRouter>
+      <RequestsTabPage lockedType={lockedType} />
+    </MemoryRouter>
+  </IntlProvider>,
+);
 
-it('renders AdminRequestsView for admin role', () => {
-  useConfig.mockReturnValue({ data: { user_role: 'admin' } });
-  renderPage();
-  expect(screen.getByText('AdminView')).toBeInTheDocument();
-});
-
-it('renders LearnerRequestsView for learner role', () => {
+beforeEach(() => {
+  jest.clearAllMocks();
   useConfig.mockReturnValue({ data: { user_role: 'learner' } });
-  renderPage();
-  expect(screen.getByText('LearnerView')).toBeInTheDocument();
 });
 
-it('renders InstructorRequestsView for instructor role', () => {
-  useConfig.mockReturnValue({ data: { user_role: 'instructor' } });
-  renderPage();
-  expect(screen.getByText('InstructorView')).toBeInTheDocument();
+// ─── RequestsPage layout ──────────────────────────────────────────────────────
+
+describe('RequestsPage layout', () => {
+  it('renders the Leaves tab link', () => {
+    renderLayout();
+    expect(screen.getByRole('link', { name: 'Leaves' })).toBeInTheDocument();
+  });
+
+  it('renders the Remote Sessions tab link', () => {
+    renderLayout();
+    expect(screen.getByRole('link', { name: 'Remote Sessions' })).toBeInTheDocument();
+  });
+
+  it('renders outlet content for the active sub-route', () => {
+    renderLayout();
+    expect(screen.getByText('Leaves content')).toBeInTheDocument();
+  });
 });
 
-it('defaults to LearnerRequestsView when config data is null', () => {
-  useConfig.mockReturnValue({ data: null });
-  renderPage();
-  expect(screen.getByText('LearnerView')).toBeInTheDocument();
-});
+// ─── RequestsTabPage role gating ─────────────────────────────────────────────
 
-it('defaults to LearnerRequestsView when config is loading (undefined)', () => {
-  useConfig.mockReturnValue({ data: undefined });
-  renderPage();
-  expect(screen.getByText('LearnerView')).toBeInTheDocument();
+describe('RequestsTabPage', () => {
+  it('renders AdminRequestsView for admin role', () => {
+    useConfig.mockReturnValue({ data: { user_role: 'admin' } });
+    renderTabPage('leave');
+    expect(screen.getByText('AdminView')).toBeInTheDocument();
+  });
+
+  it('renders LearnerRequestsView for learner role', () => {
+    useConfig.mockReturnValue({ data: { user_role: 'learner' } });
+    renderTabPage('leave');
+    expect(screen.getByText('LearnerView')).toBeInTheDocument();
+  });
+
+  it('renders LearnerRequestsView for instructor role', () => {
+    useConfig.mockReturnValue({ data: { user_role: 'instructor' } });
+    renderTabPage('leave');
+    expect(screen.getByText('LearnerView')).toBeInTheDocument();
+  });
+
+  it('defaults to LearnerRequestsView when config data is null', () => {
+    useConfig.mockReturnValue({ data: null });
+    renderTabPage('leave');
+    expect(screen.getByText('LearnerView')).toBeInTheDocument();
+  });
 });

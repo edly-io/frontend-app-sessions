@@ -33,6 +33,10 @@ const RequestStatusBadge = ({ request }) => {
     return <Badge variant={variant}>Leave approved</Badge>;
   }
 
+  if (state === REQUEST_STATUS.WITHDRAWN && effectiveType === REQUEST_TYPE.LEAVE) {
+    return <Badge variant={variant}>Leave withdrawn</Badge>;
+  }
+
   return (
     <Badge variant={variant} title={REQUEST_TYPE_LABELS[effectiveType]}>
       {`${label} · ${REQUEST_TYPE_LABELS[effectiveType] || effectiveType}`}

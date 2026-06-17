@@ -388,6 +388,7 @@ const DayPopover = ({
   date, sessions, children, isOpen, onOpenChange, onEdit, onDelete, onCancel, onSessionDetail,
   canManageSessions = false, isInstructor = false,
   isLearner = false, studentRequestMap,
+  gradedDates = [],
 }) => {
   const dateLabel = date.toLocaleDateString('en-US', {
     weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
@@ -395,6 +396,7 @@ const DayPopover = ({
 
   const scrollRef = useRef(null);
   const [atBottom, setAtBottom] = useState(false);
+  const [openGradedId, setOpenGradedId] = useState(null);
 
   const handleScroll = () => {
     const el = scrollRef.current;
@@ -457,7 +459,8 @@ const DayPopover = ({
       >
         {dateLabel}
         <span className="text-muted ml-1" style={{ fontWeight: 400 }}>
-          ({sessions.length} session{sessions.length !== 1 ? 's' : ''})
+          ({sessions.length} session{sessions.length !== 1 ? 's' : ''}
+          {gradedDates.length > 0 && `, ${gradedDates.length} due date${gradedDates.length !== 1 ? 's' : ''}`})
         </span>
       </Popover.Title>
       <Popover.Content style={{ padding: 0 }}>
@@ -619,6 +622,63 @@ const DayPopover = ({
               </div>
             );
           })}
+          {gradedDates.length > 0 && (
+            <div style={{ borderTop: sessions.length > 0 ? '1px solid #f0f0f0' : 'none', marginTop: sessions.length > 0 ? 4 : 0 }}>
+              <div style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: '#92400e',
+                margin: '8px 4px 4px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+              }}
+              >
+                Due Dates
+              </div>
+              {gradedDates.map((event) => (
+                // eslint-disable-next-line @typescript-eslint/no-use-before-define
+                <GradedDatePopover
+                  key={event.id}
+                  event={event}
+                  isOpen={openGradedId === event.id}
+                  onOpenChange={(next) => setOpenGradedId(next ? event.id : null)}
+                >
+                  <button
+                    type="button"
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      background: GRADED_DATE_BG,
+                      color: GRADED_DATE_TEXT,
+                      border: `1px solid ${GRADED_DATE_BORDER}`,
+                      borderRadius: 3,
+                      fontSize: 12,
+                      padding: '4px 8px',
+                      marginBottom: 4,
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                    title={`Due: ${event.title} (${event.courseName})`}
+                  >
+                    <div style={{
+                      fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis',
+                    }}
+                    >{event.title}
+                    </div>
+                    <div style={{
+                      fontSize: 10, opacity: 0.75, overflow: 'hidden', textOverflow: 'ellipsis',
+                    }}
+                    >{event.courseName}
+                    </div>
+                  </button>
+                </GradedDatePopover>
+              ))}
+            </div>
+          )}
         </div>
         {showScrollHint && (
           <div
@@ -757,7 +817,7 @@ const DayCell = ({
   const isWeekend = isWeekendDay(date);
   const visible = sessions.slice(0, MAX_CHIPS);
   const overflow = sessions.length - MAX_CHIPS;
-  const hasSessions = sessions.length > 0;
+  const hasSessions = sessions.length > 0 || gradedDates.length > 0;
   const isDayOpen = openDayKey === dateKey;
 
   const setDayOpen = (next) => {
@@ -840,7 +900,7 @@ const DayCell = ({
       ))}
 
       {/* Leave banner — shown when at least one session on this day has an approved leave */}
-      {isLearner && leaveDateMap?.get(dateKey) && (
+      {(isLearner || isInstructor) && leaveDateMap?.get(dateKey) && (
         <div
           style={{
             fontSize: 10,
@@ -1028,6 +1088,7 @@ const DayCell = ({
     <DayPopover
       date={date}
       sessions={sessions}
+      gradedDates={gradedDates}
       isOpen={isDayOpen}
       onOpenChange={setDayOpen}
       onEdit={onEditSession}
@@ -1904,6 +1965,16 @@ DayPopover.propTypes = {
   isInstructor: PropTypes.bool,
   isLearner: PropTypes.bool,
   studentRequestMap: PropTypes.instanceOf(Map),
+  gradedDates: PropTypes.arrayOf(PropTypes.shape({
+    id: PropTypes.string,
+    courseKey: PropTypes.string,
+    courseName: PropTypes.string,
+    title: PropTypes.string,
+    date: PropTypes.string,
+    link: PropTypes.string,
+    assignmentType: PropTypes.string,
+    complete: PropTypes.bool,
+  })),
 };
 DayPopover.defaultProps = {
   onEdit: () => {},
@@ -1914,6 +1985,7 @@ DayPopover.defaultProps = {
   isInstructor: false,
   isLearner: false,
   studentRequestMap: null,
+  gradedDates: [],
 };
 
 const gradedDateShape = PropTypes.shape({

@@ -58,6 +58,28 @@ it('type_slug takes precedence over type when both are present', () => {
   expect(screen.getByText('Remote approved')).toBeInTheDocument();
 });
 
+// ─── new states ──────────────────────────────────────────────────────────────
+
+it('renders "Leave withdrawn" for WITHDRAWN leave', () => {
+  wrap({ state: 'WITHDRAWN', type_slug: 'leave' });
+  expect(screen.getByText('Leave withdrawn')).toBeInTheDocument();
+});
+
+it('renders "Cancelled" badge for CANCELLED leave', () => {
+  wrap({ state: 'CANCELLED', type_slug: 'leave' });
+  expect(screen.getByText(/Cancelled/)).toBeInTheDocument();
+});
+
+it('renders "Withdrawal Under Review" badge for WITHDRAWAL_PENDING leave', () => {
+  wrap({ state: 'WITHDRAWAL_PENDING', type_slug: 'leave' });
+  expect(screen.getByText(/Withdrawal Under Review/)).toBeInTheDocument();
+});
+
+it('renders "Withdrawal Denied" badge for WITHDRAWAL_REJECTED leave', () => {
+  wrap({ state: 'WITHDRAWAL_REJECTED', type_slug: 'leave' });
+  expect(screen.getByText(/Withdrawal Denied/)).toBeInTheDocument();
+});
+
 // ─── fallback ─────────────────────────────────────────────────────────────────
 
 it('falls back gracefully for unknown type', () => {

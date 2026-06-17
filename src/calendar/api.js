@@ -3,6 +3,12 @@ import { getConfig } from '@edx/frontend-platform';
 
 const getBaseUrl = () => `${getConfig().LMS_BASE_URL}/fbr/api/attendance/v1`;
 
+export const getSession = async (sessionId) => {
+  const { data } = await getAuthenticatedHttpClient()
+    .get(`${getBaseUrl()}/sessions/${sessionId}/`);
+  return data;
+};
+
 export const createSession = async (sessionData) => {
   const client = getAuthenticatedHttpClient();
   const { data } = await client.post(`${getBaseUrl()}/sessions/`, sessionData);

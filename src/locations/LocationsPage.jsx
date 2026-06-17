@@ -14,6 +14,7 @@ import { USER_ROLE } from '../shared/constants';
 import { getLocations, deleteLocation } from './api';
 import { extractApiError } from '../shared/utils';
 import LocationModal from './LocationModal';
+import useModalParams from '../shared/useModalParams';
 
 const DescriptionCell = ({ value }) => (
   value ? <span>{value}</span> : <span className="text-muted">—</span>
@@ -80,8 +81,13 @@ const LocationsPage = () => {
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
-  const [editTarget, setEditTarget] = useState(null);
-  const [modalOpen, setModalOpen] = useState(false);
+  const {
+    modal, modalId, openModal, closeModal,
+  } = useModalParams();
+  const isLocationModalOpen = modal === 'new-location' || modal === 'edit-location';
+  const editTarget = modal === 'edit-location' && modalId
+    ? locations.find((l) => String(l.id) === String(modalId)) ?? null
+    : null;
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteError, setDeleteError] = useState('');
   const [deleting, setDeleting] = useState(false);
@@ -122,12 +128,11 @@ const LocationsPage = () => {
       id: 'actions',
       Cell: ActionsCell,
       isAdmin,
-      onEdit: (loc) => { setEditTarget(loc); setModalOpen(true); },
+      onEdit: (loc) => openModal('edit-location', loc.id),
       onDelete: setDeleteTarget,
     },
-  // isAdmin is stable for the lifetime of this component
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [isAdmin]);
+  ], [isAdmin, openModal]);
   /* eslint-enable react/no-unstable-nested-components, react/prop-types */
 
   if (!isAdmin) {
@@ -139,9 +144,10 @@ const LocationsPage = () => {
   }
 
   const handleSaved = (saved) => {
-    setModalOpen(false);
+    const wasEdit = modal === 'edit-location';
+    closeModal();
     fetchData({ pageIndex: currentPage });
-    setToast(editTarget ? `Updated ${saved.name}.` : `Created ${saved.name}.`);
+    setToast(wasEdit ? `Updated ${saved.name}.` : `Created ${saved.name}.`);
   };
 
   const confirmDelete = async () => {
@@ -171,7 +177,7 @@ const LocationsPage = () => {
             here, then pick one when scheduling a meeting.
           </p>
         </div>
-        <Button variant="primary" iconBefore={Add} onClick={() => { setEditTarget(null); setModalOpen(true); }}>
+        <Button variant="primary" iconBefore={Add} onClick={() => openModal('new-location')}>
           New location
         </Button>
       </div>
@@ -210,8 +216,8 @@ const LocationsPage = () => {
       )}
 
       <LocationModal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
+        isOpen={isLocationModalOpen}
+        onClose={closeModal}
         location={editTarget}
         onSuccess={handleSaved}
       />

@@ -1,6 +1,8 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { Outlet, useLocation } from 'react-router-dom';
+import {
+  Navigate, Outlet, useLocation, useParams,
+} from 'react-router-dom';
 import { FooterSlot } from '@edx/frontend-component-footer';
 import HeaderSlot from '../plugin-slots/HeaderSlot';
 import ProgramSelector from './ProgramSelector';
@@ -9,13 +11,22 @@ import { usePrograms } from './hooks';
 
 const sectionFromPath = (pathname) => {
   const parts = pathname.split('/').filter(Boolean);
-  return parts[2] || 'calendar';
+  return parts[1] || 'calendar';
 };
 
 const SessionsAdminLayout = ({ children }) => {
   const { pathname } = useLocation();
+  const { programId } = useParams();
   const section = sectionFromPath(pathname);
   const { programs, loading, error } = usePrograms();
+
+  // Redirect stale/invalid program IDs to the landing resolver so it
+  // picks the correct program from the API response.
+  const isStaleUrl = !loading && !error && programs.length > 0
+    && programId && !programs.find((p) => p.id === programId);
+  if (isStaleUrl) {
+    return <Navigate to="/" replace />;
+  }
 
   const renderContent = () => {
     if (loading || error || !programs.length) { return null; }

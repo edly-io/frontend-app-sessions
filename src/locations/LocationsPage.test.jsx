@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { IntlProvider } from 'react-intl';
+import { MemoryRouter } from 'react-router-dom';
 import LocationsPage from './LocationsPage';
 
 const jestDomMatchers = require('@testing-library/jest-dom/matchers');
@@ -18,9 +19,11 @@ const { useConfig } = require('../app/useConfig');
 const { getLocations } = require('./api');
 
 const wrap = () => render(
-  <IntlProvider locale="en" messages={{}}>
-    <LocationsPage />
-  </IntlProvider>,
+  <MemoryRouter>
+    <IntlProvider locale="en" messages={{}}>
+      <LocationsPage />
+    </IntlProvider>
+  </MemoryRouter>,
 );
 
 beforeEach(() => jest.clearAllMocks());

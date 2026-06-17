@@ -14,6 +14,7 @@ import { USER_ROLE } from '../shared/constants';
 import { getHolidays, deleteHoliday } from './api';
 import { extractApiError } from '../shared/utils';
 import HolidayModal from './HolidayModal';
+import useModalParams from '../shared/useModalParams';
 
 const fmt = (d) => new Date(`${d}T00:00:00`).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 
@@ -87,8 +88,13 @@ const HolidaysPage = () => {
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
-  const [editTarget, setEditTarget] = useState(null);
-  const [modalOpen, setModalOpen] = useState(false);
+  const {
+    modal, modalId, openModal, closeModal,
+  } = useModalParams();
+  const isHolidayModalOpen = modal === 'new-holiday' || modal === 'edit-holiday';
+  const editTarget = modal === 'edit-holiday' && modalId
+    ? holidays.find((h) => String(h.id) === String(modalId)) ?? null
+    : null;
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteError, setDeleteError] = useState('');
   const [deleting, setDeleting] = useState(false);
@@ -129,11 +135,11 @@ const HolidaysPage = () => {
       id: 'actions',
       Cell: ActionsCell,
       isAdmin,
-      onEdit: (h) => { setEditTarget(h); setModalOpen(true); },
+      onEdit: (h) => openModal('edit-holiday', h.id),
       onDelete: setDeleteTarget,
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [isAdmin]);
+  ], [isAdmin, openModal]);
   /* eslint-enable react/no-unstable-nested-components, react/prop-types */
 
   if (!isAdmin) {
@@ -145,9 +151,10 @@ const HolidaysPage = () => {
   }
 
   const handleSaved = (saved) => {
-    setModalOpen(false);
+    const wasEdit = modal === 'edit-holiday';
+    closeModal();
     fetchData({ pageIndex: currentPage });
-    setToast(editTarget ? `Updated ${saved.name}.` : `Created ${saved.name}.`);
+    setToast(wasEdit ? `Updated ${saved.name}.` : `Created ${saved.name}.`);
   };
 
   const confirmDelete = async () => {
@@ -177,7 +184,7 @@ const HolidaysPage = () => {
             appears when scheduling a session on a holiday or weekend.
           </p>
         </div>
-        <Button variant="primary" iconBefore={Add} onClick={() => { setEditTarget(null); setModalOpen(true); }}>
+        <Button variant="primary" iconBefore={Add} onClick={() => openModal('new-holiday')}>
           New holiday
         </Button>
       </div>
@@ -216,8 +223,8 @@ const HolidaysPage = () => {
       )}
 
       <HolidayModal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
+        isOpen={isHolidayModalOpen}
+        onClose={closeModal}
         holiday={editTarget}
         onSuccess={handleSaved}
       />

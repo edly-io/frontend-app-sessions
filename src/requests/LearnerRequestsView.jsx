@@ -4,25 +4,48 @@ import React, {
 import PropTypes from 'prop-types';
 import { useParams } from 'react-router-dom';
 import {
-  Alert, Badge, Button, Container, DataTable, Form, OverlayTrigger, Spinner, Tooltip,
+  Alert, Badge, Button, Container, DataTable, Form, Spinner,
 } from '@openedx/paragon';
 import { Add } from '@openedx/paragon/icons';
 
-import { getMyRequests, deleteRequest } from './api';
+import { getMyRequests, deleteRequest, withdrawRequest } from './api';
 import {
   REQUEST_STATUS,
   REQUEST_STATUS_LABELS,
   REQUEST_STATUS_VARIANTS,
+  REQUEST_TYPE,
   REQUEST_TYPE_LABELS,
   REQUEST_TYPE_VARIANTS,
 } from '../shared/constants';
 import { extractApiError, formatDateTime } from '../shared/utils';
 import CreateRequestModal from './CreateRequestModal';
 import RequestDetailCell from './RequestDetailCell';
+import LeaveUsageSummary from './LeaveUsageSummary';
+import useModalParams from '../shared/useModalParams';
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 15;
 
 const TRUNCATE_AT = 40;
+
+const SectionHeading = ({ children }) => (
+  <h3 style={{
+    fontSize: 19,
+    fontWeight: 700,
+    color: '#1e40af',
+    borderBottom: '2px solid #bfdbfe',
+    paddingBottom: 10,
+    marginBottom: 20,
+    marginTop: 0,
+    letterSpacing: '-0.01em',
+  }}
+  >
+    {children}
+  </h3>
+);
+
+SectionHeading.propTypes = {
+  children: PropTypes.node.isRequired,
+};
 
 const CollapsibleText = ({ text, muted }) => {
   const [expanded, setExpanded] = useState(false);
@@ -58,7 +81,7 @@ const CollapsibleText = ({ text, muted }) => {
 CollapsibleText.propTypes = { text: PropTypes.string, muted: PropTypes.bool };
 CollapsibleText.defaultProps = { text: '', muted: false };
 
-const LearnerRequestsView = () => {
+const LearnerRequestsView = ({ lockedType }) => {
   const { programId } = useParams();
   const [requests, setRequests] = useState([]);
   const [count, setCount] = useState(0);
@@ -66,12 +89,16 @@ const LearnerRequestsView = () => {
   const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState('');
   const [filterState, setFilterState] = useState('');
-  const [filterType, setFilterType] = useState('');
+  // eslint-disable-next-line react/destructuring-assignment
+  const [filterType, setFilterType] = useState(lockedType || '');
+  useEffect(() => { setFilterType(lockedType || ''); }, [lockedType]);
   const [filterQ, setFilterQ] = useState('');
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const { modal, openModal, closeModal } = useModalParams();
+  const isCreateOpen = modal === 'new-request';
+  const [confirmAction, setConfirmAction] = useState(null);
+  // Shape: { id: string, kind: 'delete' | 'withdraw', requestTypeLabel?: string }
 
   const fetchData = useCallback(async ({ pageIndex: nextIndex } = {}) => {
     const targetIndex = nextIndex ?? 0;
@@ -103,7 +130,7 @@ const LearnerRequestsView = () => {
 
   /* eslint-disable react/no-unstable-nested-components, react/prop-types */
   const columns = useMemo(() => [
-    {
+    ...(!lockedType ? [{
       Header: 'Type',
       accessor: 'request_type_label',
       Cell: ({ value }) => (
@@ -111,11 +138,11 @@ const LearnerRequestsView = () => {
           {REQUEST_TYPE_LABELS[value] || value}
         </Badge>
       ),
-    },
+    }] : []),
     {
       Header: 'Detail',
       id: 'detail',
-      Cell: ({ row }) => <RequestDetailCell req={row.original} />,
+      Cell: ({ row }) => <RequestDetailCell req={row.original} programKey={programId || ''} />,
     },
     {
       Header: 'Reason',
@@ -160,30 +187,29 @@ const LearnerRequestsView = () => {
       id: 'actions',
       Cell: ({ row }) => {
         const req = row.original;
-        if (req.state !== REQUEST_STATUS.PENDING) {
-          return (
-            <OverlayTrigger
-              placement="top"
-              overlay={<Tooltip id={`delete-disabled-${req.id}`}>Cannot delete — request has already been resolved</Tooltip>}
-            >
-              <span style={{ display: 'inline-block', cursor: 'not-allowed' }}>
-                <Button variant="outline-danger" size="sm" disabled style={{ pointerEvents: 'none' }}>
-                  Delete
-                </Button>
-              </span>
-            </OverlayTrigger>
-          );
-        }
-        if (confirmDeleteId === req.id) {
+        const isLeave = req.request_type_label === REQUEST_TYPE.LEAVE;
+
+        // Confirm step active for this row
+        if (confirmAction?.id === req.id) {
+          const btnVariant = confirmAction.kind === 'delete' ? 'danger' : 'warning';
           return (
             <span style={{ display: 'flex', gap: 4 }}>
               <Button
-                variant="danger"
+                variant={btnVariant}
                 size="sm"
                 onClick={async () => {
-                  await deleteRequest(req.id, req.request_type_label);
-                  setConfirmDeleteId(null);
-                  fetchData({ pageIndex: 0 });
+                  try {
+                    if (confirmAction.kind === 'withdraw') {
+                      await withdrawRequest(req.id);
+                    } else {
+                      await deleteRequest(req.id, confirmAction.requestTypeLabel);
+                    }
+                  } catch (err) {
+                    setError(extractApiError(err, 'Action failed'));
+                  } finally {
+                    setConfirmAction(null);
+                    fetchData({ pageIndex: 0 });
+                  }
                 }}
               >
                 Confirm
@@ -191,26 +217,67 @@ const LearnerRequestsView = () => {
               <Button
                 variant="tertiary"
                 size="sm"
-                onClick={() => setConfirmDeleteId(null)}
+                onClick={() => setConfirmAction(null)}
               >
                 Cancel
               </Button>
             </span>
           );
         }
-        return (
-          <Button
-            variant="outline-danger"
-            size="sm"
-            onClick={() => setConfirmDeleteId(req.id)}
-          >
-            Delete
-          </Button>
-        );
+
+        // PENDING → Delete (works for both leave and remote_session)
+        if (req.state === REQUEST_STATUS.PENDING) {
+          return (
+            <Button
+              variant="outline-danger"
+              size="sm"
+              onClick={() => setConfirmAction({
+                id: req.id,
+                kind: 'delete',
+                requestTypeLabel: req.request_type_label,
+              })}
+            >
+              Delete
+            </Button>
+          );
+        }
+
+        // WITHDRAWAL_REJECTED leave → helper text + Withdraw
+        if (req.state === REQUEST_STATUS.WITHDRAWAL_REJECTED && isLeave) {
+          return (
+            <div>
+              <small className="text-muted d-block mb-1">
+                Your previous withdrawal request was denied.
+              </small>
+              <Button
+                variant="outline-warning"
+                size="sm"
+                onClick={() => setConfirmAction({ id: req.id, kind: 'withdraw' })}
+              >
+                Withdraw
+              </Button>
+            </div>
+          );
+        }
+
+        // APPROVED leave → Withdraw
+        if (req.state === REQUEST_STATUS.APPROVED && isLeave) {
+          return (
+            <Button
+              variant="outline-warning"
+              size="sm"
+              onClick={() => setConfirmAction({ id: req.id, kind: 'withdraw' })}
+            >
+              Withdraw
+            </Button>
+          );
+        }
+
+        return null;
       },
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [confirmDeleteId]);
+  ], [confirmAction]);
   /* eslint-enable react/no-unstable-nested-components, react/prop-types */
 
   if (initialLoading) {
@@ -229,6 +296,17 @@ const LearnerRequestsView = () => {
           {error}
         </Alert>
       )}
+
+      {lockedType === REQUEST_TYPE.LEAVE && (
+        <div className="mb-5">
+          <SectionHeading>My Leave Usage</SectionHeading>
+          <LeaveUsageSummary programKey={programId || ''} />
+        </div>
+      )}
+
+      <div className="mb-4">
+        <SectionHeading>Requests</SectionHeading>
+      </div>
 
       <div className="d-flex align-items-center flex-wrap mb-3" style={{ gap: 8 }}>
         <Form.Control
@@ -250,17 +328,19 @@ const LearnerRequestsView = () => {
               <option key={value} value={value}>{label}</option>
             ))}
           </Form.Control>
-          <Form.Control
-            as="select"
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-            style={{ width: 'auto' }}
-          >
-            <option value="">All types</option>
-            {Object.entries(REQUEST_TYPE_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </Form.Control>
+          {!lockedType && (
+            <Form.Control
+              as="select"
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+              style={{ width: 'auto' }}
+            >
+              <option value="">All types</option>
+              {Object.entries(REQUEST_TYPE_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </Form.Control>
+          )}
           <div className="d-flex align-items-center" style={{ gap: 4 }}>
             <small className="text-muted text-nowrap">Submission date:</small>
             <Form.Control
@@ -293,7 +373,7 @@ const LearnerRequestsView = () => {
             variant="primary"
             size="sm"
             iconBefore={Add}
-            onClick={() => setShowCreateModal(true)}
+            onClick={() => openModal('new-request')}
           >
             New request
           </Button>
@@ -303,34 +383,45 @@ const LearnerRequestsView = () => {
       {count === 0 ? (
         <Alert variant="info">No requests yet. Use &quot;New request&quot; to get started.</Alert>
       ) : (
-        <DataTable
-          key={`${filterState}-${filterType}-${filterQ}-${filterStartDate}-${filterEndDate}`}
-          isPaginated
-          manualPagination
-          fetchData={fetchData}
-          pageCount={Math.max(1, Math.ceil(count / PAGE_SIZE))}
-          itemCount={count}
-          data={requests}
-          columns={columns}
-          initialState={{ pageIndex, pageSize: PAGE_SIZE }}
-        >
-          <DataTable.Table />
-          <DataTable.EmptyTable content="No requests" />
-          <DataTable.TableFooter />
-        </DataTable>
+        <div className="sticky-header-table">
+          <DataTable
+            key={`${filterState}-${filterType}-${filterQ}-${filterStartDate}-${filterEndDate}`}
+            isPaginated
+            manualPagination
+            fetchData={fetchData}
+            pageCount={Math.max(1, Math.ceil(count / PAGE_SIZE))}
+            itemCount={count}
+            data={requests}
+            columns={columns}
+            initialState={{ pageIndex, pageSize: PAGE_SIZE }}
+          >
+            <DataTable.Table />
+            <DataTable.EmptyTable content="No requests" />
+            <DataTable.TableFooter />
+          </DataTable>
+        </div>
       )}
 
       <CreateRequestModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
+        isOpen={isCreateOpen}
+        onClose={closeModal}
         programKey={programId || ''}
+        lockedType={lockedType || null}
         onSuccess={() => {
-          setShowCreateModal(false);
+          closeModal();
           fetchData({ pageIndex: 0 });
         }}
       />
     </Container>
   );
+};
+
+LearnerRequestsView.propTypes = {
+  lockedType: PropTypes.string,
+};
+
+LearnerRequestsView.defaultProps = {
+  lockedType: null,
 };
 
 export default LearnerRequestsView;

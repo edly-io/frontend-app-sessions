@@ -142,6 +142,22 @@ describe('extractApiError', () => {
   it('prefers detail over error', () => {
     expect(extractApiError({ response: { data: { detail: 'detail msg', error: 'err msg' } } })).toBe('detail msg');
   });
+
+  it('joins DRF field-level validation errors', () => {
+    const err = { response: { data: { name: ['This field is required.'], reason: ['Too short.'] } } };
+    const result = extractApiError(err);
+    expect(result).toContain('name: This field is required.');
+    expect(result).toContain('reason: Too short.');
+  });
+
+  it('extracts non_field_errors without prefixing the field name', () => {
+    const err = { response: { data: { non_field_errors: ['Duplicate entry.'] } } };
+    expect(extractApiError(err)).toBe('Duplicate entry.');
+  });
+
+  it('handles a plain string response body', () => {
+    expect(extractApiError({ response: { data: 'Internal server error' } })).toBe('Internal server error');
+  });
 });
 
 describe('bucketSessionsByDay', () => {
