@@ -5,14 +5,14 @@ import {
 } from '@openedx/paragon';
 
 import {
-  updateSession, fetchCourseRuns, fetchAllInstructors,
+  updateSession, fetchProgramCourses, fetchProgramInstructors,
 } from '../calendar/api';
 import { assignSubstitute } from './api';
 import { extractApiError } from '../shared/utils';
 import SearchableSelect from '../shared/SearchableSelect';
 
 const AssignSubstituteModal = ({
-  isOpen, onClose, substituteRequest, onSuccess,
+  isOpen, onClose, substituteRequest, programKey, onSuccess,
 }) => {
   const session = substituteRequest?.session ?? null;
 
@@ -45,21 +45,28 @@ const AssignSubstituteModal = ({
     setOriginalEmails([...emails].sort());
     setError('');
 
-    setCourseRunsLoading(true);
-    fetchCourseRuns()
-      .then((data) => setCourseRunOptions(
-        (data || []).map((c) => ({ value: c.id, label: c.title || c.id })),
-      ))
-      .catch(() => {})
-      .finally(() => setCourseRunsLoading(false));
+    if (programKey) {
+      setCourseRunsLoading(true);
+      fetchProgramCourses(programKey)
+        .then((data) => setCourseRunOptions(
+          (data || []).map((c) => ({ value: c.course_key, label: c.display_name || c.course_key })),
+        ))
+        .catch(() => {})
+        .finally(() => setCourseRunsLoading(false));
 
-    setInstructorsLoading(true);
-    fetchAllInstructors()
-      .then((data) => setInstructorOptions(
-        (data || []).map((i) => ({ value: i.email, label: i.name ? `${i.name} (${i.email})` : i.email })),
-      ))
-      .catch(() => {})
-      .finally(() => setInstructorsLoading(false));
+      setInstructorsLoading(true);
+      fetchProgramInstructors(programKey)
+        .then((data) => setInstructorOptions(
+          (data || []).map((i) => ({
+            value: i.email,
+            label: `${i.first_name} ${i.last_name}`.trim()
+              ? `${i.first_name} ${i.last_name}`.trim().concat(` (${i.email})`)
+              : i.email,
+          })),
+        ))
+        .catch(() => {})
+        .finally(() => setInstructorsLoading(false));
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
@@ -191,11 +198,13 @@ AssignSubstituteModal.propTypes = {
       instructor_emails: PropTypes.arrayOf(PropTypes.string),
     }),
   }),
+  programKey: PropTypes.string,
   onSuccess: PropTypes.func.isRequired,
 };
 
 AssignSubstituteModal.defaultProps = {
   substituteRequest: null,
+  programKey: '',
 };
 
 export default AssignSubstituteModal;

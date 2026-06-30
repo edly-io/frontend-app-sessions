@@ -4,12 +4,14 @@
 import React, {
   useState, useEffect, useCallback, useMemo,
 } from 'react';
+import { useParams } from 'react-router-dom';
 import {
   Alert, Button, Container, DataTable, Form, Spinner, StandardModal, Toast,
 } from '@openedx/paragon';
 import { Add, DeleteOutline, EditOutline } from '@openedx/paragon/icons';
 import PropTypes from 'prop-types';
 import { useConfig } from '../app/useConfig';
+import { getProgram } from '../app/api';
 import { USER_ROLE } from '../shared/constants';
 import { getLocations, deleteLocation } from './api';
 import { extractApiError } from '../shared/utils';
@@ -70,8 +72,15 @@ ActionsCell.propTypes = {
 const PAGE_SIZE = 20;
 
 const LocationsPage = () => {
+  const { programId } = useParams();
   const { data: config } = useConfig();
   const isAdmin = config?.user_role === USER_ROLE.ADMIN;
+
+  const [programInfo, setProgramInfo] = useState(null);
+  useEffect(() => {
+    if (!programId) { return; }
+    getProgram(programId).then(setProgramInfo).catch(() => {});
+  }, [programId]);
 
   const [locations, setLocations] = useState([]);
   const [count, setCount] = useState(0);
@@ -106,6 +115,7 @@ const LocationsPage = () => {
         search: debouncedSearch,
         page: nextIndex + 1,
         pageSize: PAGE_SIZE,
+        programKey: programId,
       });
       setLocations(results);
       setCount(total);
@@ -119,8 +129,15 @@ const LocationsPage = () => {
   useEffect(() => { fetchData({ pageIndex: 0 }); }, [fetchData]);
 
   /* eslint-disable react/no-unstable-nested-components, react/prop-types */
+  const CityCell = () => (
+    programInfo?.city?.name
+      ? <span>{programInfo.city.name}</span>
+      : <span className="text-muted">—</span>
+  );
+
   const columns = useMemo(() => [
     { Header: 'Name', accessor: 'name' },
+    { Header: 'City', id: 'city', Cell: CityCell },
     { Header: 'Description', accessor: 'description', Cell: DescriptionCell },
     { Header: 'Biometric serial', accessor: 'biometric_machine_serial_number', Cell: SerialCell },
     {
@@ -132,7 +149,7 @@ const LocationsPage = () => {
       onDelete: setDeleteTarget,
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [isAdmin, openModal]);
+  ], [isAdmin, openModal, programInfo]);
   /* eslint-enable react/no-unstable-nested-components, react/prop-types */
 
   if (!isAdmin) {
@@ -220,6 +237,8 @@ const LocationsPage = () => {
         onClose={closeModal}
         location={editTarget}
         onSuccess={handleSaved}
+        cityId={programInfo?.city?.id ?? null}
+        cityName={programInfo?.city?.name ?? ''}
       />
 
       {deleteTarget && (

@@ -286,6 +286,7 @@ const SubstituteRequestsView = () => {
         isOpen={isAssignOpen && !!assignModalData}
         onClose={() => { closeModal(); setAssignModalData(null); }}
         substituteRequest={assignModalData}
+        programKey={programId || ''}
         onSuccess={() => {
           closeModal();
           setAssignModalData(null);

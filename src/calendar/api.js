@@ -2,6 +2,7 @@ import { getAuthenticatedHttpClient } from '@edx/frontend-platform/auth';
 import { getConfig } from '@edx/frontend-platform';
 
 const getBaseUrl = () => `${getConfig().LMS_BASE_URL}/fbr/api/attendance/v1`;
+const getProgramsBaseUrl = () => `${getConfig().STUDIO_BASE_URL}/fbr/api/programs`;
 
 export const getSession = async (sessionId) => {
   const { data } = await getAuthenticatedHttpClient()
@@ -40,43 +41,31 @@ export const deleteSession = async (sessionId) => {
 
 /**
  * Fetch all course runs accessible to the requesting instructor.
- * Searched by `title` in the frontend autocomplete.
+ * Searched by title in the frontend autocomplete.
  *
- * GET /fbr/api/attendance/v1/course-runs/
- * Returns: [{ id: "course-v1:Org+Course+Run", title: "..." }, ...]
+ * GET /fbr/api/programs/<program_key>/courses/
+ * Returns: [{ course_key, display_name, ... }, ...]
  */
-export const fetchCourseRuns = async () => {
+export const fetchProgramCourses = async (programKey) => {
   const client = getAuthenticatedHttpClient();
-  const { data } = await client.get(`${getBaseUrl()}/course-runs/`);
-  return data;
+  const { data } = await client.get(`${getProgramsBaseUrl()}/${encodeURIComponent(programKey)}/courses/`);
+  return Array.isArray(data) ? data : (data.results ?? []);
 };
 
 /**
- * Fetch all instructors / staff members (flat list, not course-scoped).
- * Called after the user selects a course run in ScheduleMeetingModal to
- * populate the instructor autocomplete.
+ * Fetch all instructors for a given program from the CMS programs API.
+ * Scoped to the program's city automatically by the backend.
+ * Uses ?no_page to bypass pagination and get a plain array in one request.
  *
- * GET /fbr/api/attendance/v1/instructors/
- * Returns: [{ user_id, email, name }, ...]
+ * GET /fbr/api/programs/users/?role=instructor&program_key=...&no_page
+ * Returns: [{ id, username, email, first_name, last_name }, ...]
  */
-export const fetchInstructors = async () => {
+export const fetchProgramInstructors = async (programKey) => {
   const client = getAuthenticatedHttpClient();
-  const { data } = await client.get(`${getBaseUrl()}/instructors/`);
-  return data;
-};
-
-/**
- * Fetch all instructors / staff members across all courses.
- * Used in correction mode (past-session edit) where the course itself may be
- * changing — scoping the instructor list to the old course would be misleading.
- *
- * GET /fbr/api/attendance/v1/instructors/
- * Returns: [{ user_id, email, name }, ...]
- */
-export const fetchAllInstructors = async () => {
-  const client = getAuthenticatedHttpClient();
-  const { data } = await client.get(`${getBaseUrl()}/instructors/`);
-  return data;
+  const { data } = await client.get(
+    `${getProgramsBaseUrl()}/users/?role=instructor&no_page&program_key=${encodeURIComponent(programKey)}`,
+  );
+  return Array.isArray(data) ? data : (data.results ?? []);
 };
 
 /**

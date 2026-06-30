@@ -1,6 +1,7 @@
 import React, {
   useCallback, useEffect, useMemo, useRef, useState,
 } from 'react';
+import { useParams } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import {
   Alert, Badge, Container, DataTable, Spinner,
@@ -8,7 +9,7 @@ import {
 
 import { getAttendanceRecordsPage, getCourseEnrolledLearners } from '../api';
 import SearchableSelect from '../../shared/SearchableSelect';
-import { fetchCourseRuns } from '../../calendar/api';
+import { fetchProgramCourses } from '../../calendar/api';
 import { ATTENDANCE_STATUS } from '../../shared/constants';
 import { extractApiError, formatDateTime, getStatusVariant } from '../../shared/utils';
 
@@ -86,6 +87,7 @@ const COLUMNS = [
 // ─── Component ───────────────────────────────────────────────────────────────
 
 const PerLearnerHistoryReport = () => {
+  const { programId } = useParams();
   const [courses, setCourses] = useState([]);
   const [coursesLoading, setCoursesLoading] = useState(true);
   const [coursesError, setCoursesError] = useState('');
@@ -105,15 +107,15 @@ const PerLearnerHistoryReport = () => {
   const [recordsLoading, setRecordsLoading] = useState(false);
   const [recordsError, setRecordsError] = useState('');
 
-  // Load all course runs for the course picker.
+  // Load program courses for the course picker.
   useEffect(() => {
+    if (!programId) { return () => {}; }
     let cancelled = false;
     (async () => {
       try {
-        const data = await fetchCourseRuns();
+        const data = await fetchProgramCourses(programId);
         if (cancelled) { return; }
-        const results = Array.isArray(data) ? data : data.results ?? [];
-        setCourses(results);
+        setCourses((data || []).map((c) => ({ id: c.course_key, title: c.display_name })));
       } catch (err) {
         if (!cancelled) { setCoursesError(extractApiError(err, 'Failed to load courses')); }
       } finally {
@@ -121,7 +123,7 @@ const PerLearnerHistoryReport = () => {
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [programId]);
 
   // Load learners for the selected course.
   const loadLearners = useCallback(async (courseKey) => {

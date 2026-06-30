@@ -8,6 +8,7 @@ import {
 import {
   getCalendarSessions, deleteSession, cancelSession, getProgramDates, getSession,
 } from './api';
+import { getProgram } from '../app/api';
 import useModalParams from '../shared/useModalParams';
 import { getHolidays } from '../holidays/api';
 import { getApprovedLeaves } from '../requests/api';
@@ -109,6 +110,7 @@ const CalendarPage = () => {
   const [holidays, setHolidays] = useState([]);
   const [programDates, setProgramDates] = useState([]);
   const [approvedLeaves, setApprovedLeaves] = useState([]);
+  const [programInfo, setProgramInfo] = useState(null);
   const [toastMessage, setToastMessage] = useState('');
   const [showToast, setShowToast] = useState(false);
 
@@ -126,6 +128,12 @@ const CalendarPage = () => {
   useEffect(() => {
     if (!programId) { return; }
     getProgramDates(programId).then(setProgramDates).catch(() => {});
+  }, [programId]);
+
+  // Fetch program details (name + city) once per program for use in modal helper notes.
+  useEffect(() => {
+    if (!programId) { return; }
+    getProgram(programId).then(setProgramInfo).catch(() => {});
   }, [programId]);
 
   // Fetch approved leaves for learners — re-fetch on every session refresh so
@@ -377,6 +385,7 @@ const CalendarPage = () => {
           isOpen
           onClose={closeModal}
           programKey={programId || ''}
+          programInfo={programInfo}
           session={scheduleSession}
           onSuccess={handleSessionSuccess}
           holidays={holidays}

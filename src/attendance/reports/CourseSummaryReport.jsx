@@ -1,6 +1,7 @@
 import React, {
   useCallback, useEffect, useMemo, useState,
 } from 'react';
+import { useParams } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import {
   Alert, Container, DataTable, Form, Spinner,
@@ -8,7 +9,7 @@ import {
 
 import { getAttendanceSummary } from '../api';
 import SearchableSelect from '../../shared/SearchableSelect';
-import { fetchCourseRuns } from '../../calendar/api';
+import { fetchProgramCourses } from '../../calendar/api';
 import { extractApiError } from '../../shared/utils';
 
 // ─── Default date range helpers ───────────────────────────────────────────────
@@ -69,6 +70,7 @@ const COLUMNS = [
 // ─── Component ───────────────────────────────────────────────────────────────
 
 const CourseSummaryReport = () => {
+  const { programId } = useParams();
   const defaults = getDefaultDates();
 
   const [courses, setCourses] = useState([]);
@@ -86,13 +88,13 @@ const CourseSummaryReport = () => {
 
   // Load course list for the picker.
   useEffect(() => {
+    if (!programId) { return () => {}; }
     let cancelled = false;
     (async () => {
       try {
-        const data = await fetchCourseRuns();
+        const data = await fetchProgramCourses(programId);
         if (cancelled) { return; }
-        const results = Array.isArray(data) ? data : data.results ?? [];
-        setCourses(results);
+        setCourses((data || []).map((c) => ({ id: c.course_key, title: c.display_name })));
       } catch (err) {
         if (!cancelled) { setCoursesError(extractApiError(err, 'Failed to load courses')); }
       } finally {
@@ -100,7 +102,7 @@ const CourseSummaryReport = () => {
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [programId]);
 
   const loadSummary = useCallback(async (courseId, start, end) => {
     if (!courseId) { return; }
