@@ -6,7 +6,7 @@ import {
   StandardModal, Button, Form, Spinner, Alert, OverlayTrigger, Tooltip,
 } from '@openedx/paragon';
 import {
-  correctSession, createSession, updateSession, fetchAllInstructors, fetchCourseRuns, fetchInstructors,
+  correctSession, createSession, updateSession, fetchProgramInstructors, fetchProgramCourses,
   getSessionsConfig,
 } from './api';
 import { getLocations } from '../locations/api';
@@ -119,7 +119,7 @@ const buildSummary = ({
 };
 
 const ScheduleMeetingModal = ({
-  isOpen, onClose, programKey, onSuccess, session, holidays, descriptionOnly = false,
+  isOpen, onClose, programKey, programInfo, onSuccess, session, holidays, descriptionOnly = false,
 }) => {
   const timezoneName = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
@@ -225,29 +225,29 @@ const ScheduleMeetingModal = ({
     return '';
   }, [startDateInput, holidays, isPastSession]);
 
-  // Fetch the full course run list once each time the modal opens.
+  // Fetch the program's course list once each time the modal opens.
   // Skipped in description-only (instructor) mode — course field is disabled and
-  // pre-filled directly from the session object (the /course-runs/ endpoint is admin-only).
+  // pre-filled directly from the session object (endpoint is admin-only).
   useEffect(() => {
-    if (!isOpen || descriptionOnly) { return; }
+    if (!isOpen || descriptionOnly || !programKey) { return; }
     setCourseRunsLoading(true);
-    fetchCourseRuns()
-      .then((data) => setCourseRunOptions(data.map((r) => ({ value: r.id, label: r.title }))))
-      .catch(() => {}) // silently fail — modal remains usable
+    fetchProgramCourses(programKey)
+      .then((data) => setCourseRunOptions(data.map((r) => ({ value: r.course_key, label: r.display_name }))))
+      .catch(() => {})
       .finally(() => setCourseRunsLoading(false));
-  }, [isOpen, descriptionOnly]);
+  }, [isOpen, descriptionOnly, programKey]);
 
   // Fetch the locations catalogue when the modal opens.
   useEffect(() => {
     if (!isOpen) { return; }
     setLocationsLoading(true);
-    getLocations({ pageSize: 100 })
+    getLocations({ pageSize: 100, programKey })
       .then(({ results }) => setLocationOptions(
         (results || []).map((loc) => ({ value: loc.id, label: loc.name })),
       ))
       .catch(() => {}) // silently fail — admin can still save without a location
       .finally(() => setLocationsLoading(false));
-  }, [isOpen]);
+  }, [isOpen, programKey]);
 
   // Fetch session type options from the attendance config endpoint.
   useEffect(() => {
@@ -292,17 +292,21 @@ const ScheduleMeetingModal = ({
   // course itself may be changing, so scoping to the old course is misleading).
   // In normal mode we scope the fetch to the selected course run.
   // Skipped in description-only mode — instructor field is disabled and pre-filled
-  // from the session object (/instructors/ endpoint is admin-only).
+  // from the session object (the programs/users endpoint is admin-only).
   const selectedCourseRunId = selectedCourseRun?.value ?? null;
   useEffect(() => {
-    if (descriptionOnly) { return; }
+    if (descriptionOnly || !programKey) { return; }
     if (isPastSession) {
-      // Correction mode: load all instructors once; don't clear on course change.
+      // Correction mode: load instructors once; don't clear on course change.
       if (!isOpen) { return; }
       setInstructorsLoading(true);
-      fetchAllInstructors()
+      fetchProgramInstructors(programKey)
         .then((data) => setInstructorOptions(
-          data.map((i) => ({ value: i.user_id, label: i.name, email: i.email })),
+          data.map((i) => ({
+            value: i.id,
+            label: `${i.first_name} ${i.last_name}`.trim() || i.username,
+            email: i.email,
+          })),
         ))
         .catch(() => {})
         .finally(() => setInstructorsLoading(false));
@@ -317,13 +321,17 @@ const ScheduleMeetingModal = ({
     }
     setInstructorsLoading(true);
     if (!isSessionType) { setSelectedInstructors([]); }
-    fetchInstructors()
+    fetchProgramInstructors(programKey)
       .then((data) => setInstructorOptions(
-        data.map((i) => ({ value: i.user_id, label: i.name, email: i.email })),
+        data.map((i) => ({
+          value: i.id,
+          label: `${i.first_name} ${i.last_name}`.trim() || i.username,
+          email: i.email,
+        })),
       ))
       .catch(() => {})
       .finally(() => setInstructorsLoading(false));
-  }, [descriptionOnly, isPastSession, isOpen, selectedCourseRunId, isSessionType]);
+  }, [descriptionOnly, isPastSession, isOpen, selectedCourseRunId, isSessionType, programKey]);
 
   // Pre-fill instructors once options are loaded (edit mode only).
   // Backend returns `instructor_emails` (ordered); match each to the loaded
@@ -942,6 +950,11 @@ const ScheduleMeetingModal = ({
             required={isSessionType && !descriptionOnly}
             disabled={descriptionOnly}
           />
+          {!descriptionOnly && programInfo?.name && (
+            <small className="text-muted d-block" style={{ marginTop: -8, marginBottom: 12 }}>
+              Only courses added to the <strong>{programInfo.name}</strong> program are shown.
+            </small>
+          )}
 
           <SearchableSelect
             id="session-instructor"
@@ -964,6 +977,11 @@ const ScheduleMeetingModal = ({
             >
               {instructorLeaveError}
             </div>
+          )}
+          {!descriptionOnly && programInfo?.city?.name && (
+            <small className="text-muted d-block" style={{ marginTop: instructorLeaveError ? 0 : -8, marginBottom: 12 }}>
+              Only instructors from <strong>{programInfo.city.name}</strong> are shown.
+            </small>
           )}
 
           <SearchableSelect
@@ -1288,6 +1306,10 @@ ScheduleMeetingModal.propTypes = {
   isOpen: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
   programKey: PropTypes.string,
+  programInfo: PropTypes.shape({
+    name: PropTypes.string,
+    city: PropTypes.shape({ name: PropTypes.string }),
+  }),
   onSuccess: PropTypes.func.isRequired,
   // eslint-disable-next-line react/forbid-prop-types
   session: PropTypes.object,
@@ -1300,6 +1322,7 @@ ScheduleMeetingModal.propTypes = {
 };
 ScheduleMeetingModal.defaultProps = {
   programKey: '',
+  programInfo: null,
   session: null,
   holidays: [],
   descriptionOnly: false,

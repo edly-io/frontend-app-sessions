@@ -97,6 +97,15 @@ const HolidayModal = ({
     >
       {error && <Alert variant="danger" className="mb-3">{error}</Alert>}
 
+      <div
+        className="mb-3 p-2"
+        style={{
+          background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 4, fontSize: 13,
+        }}
+      >
+        Public holidays apply to <strong>all programs</strong> — they are not specific to this program.
+      </div>
+
       <Form.Group className="mb-3">
         <Form.Label>Name *</Form.Label>
         <Form.Control

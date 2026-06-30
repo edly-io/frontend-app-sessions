@@ -41,7 +41,7 @@ const SessionsAdminLayout = ({ children }) => {
           <ProgramSelector section={section} programs={programs} loading={loading} error={error} />
         </div>
         <SectionNav />
-        <div className="pt-3">
+        <div key={programId} className="pt-3">
           {renderContent()}
         </div>
       </main>

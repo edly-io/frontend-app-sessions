@@ -12,7 +12,7 @@ import { extractApiError } from '../shared/utils';
 const emptyForm = { name: '', description: '', biometric_machine_serial_number: '' };
 
 const LocationModal = ({
-  isOpen, onClose, location, onSuccess,
+  isOpen, onClose, location, onSuccess, cityId, cityName,
 }) => {
   const isEdit = Boolean(location);
   const [form, setForm] = useState(emptyForm);
@@ -45,6 +45,7 @@ const LocationModal = ({
         name: form.name.trim(),
         description: form.description,
         biometric_machine_serial_number: form.biometric_machine_serial_number.trim(),
+        ...(!isEdit && cityId ? { city: cityId } : {}),
       };
       const result = isEdit
         ? await updateLocation(location.id, payload)
@@ -72,6 +73,13 @@ const LocationModal = ({
       )}
     >
       {error && <Alert variant="danger" className="mb-3">{error}</Alert>}
+
+      {cityName && (
+        <div className="mb-3 p-2" style={{ background: '#f3f4f6', borderRadius: 4, fontSize: 13 }}>
+          <span className="text-muted">City: </span>
+          <strong>{cityName}</strong>
+        </div>
+      )}
 
       <Form.Group className="mb-3">
         <Form.Label>Name *</Form.Label>
@@ -134,9 +142,13 @@ LocationModal.propTypes = {
     description: PropTypes.string,
     biometric_machine_serial_number: PropTypes.string,
   }),
+  cityId: PropTypes.number,
+  cityName: PropTypes.string,
 };
 LocationModal.defaultProps = {
   location: null,
+  cityId: null,
+  cityName: '',
 };
 
 export default LocationModal;
