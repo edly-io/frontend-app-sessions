@@ -2,43 +2,29 @@ import React, {
   useEffect, useMemo, useState,
 } from 'react';
 import PropTypes from 'prop-types';
-import { Link, useLocation, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import {
-  Alert, Badge, Button, Container, DataTable, Form, Spinner, Toast,
+  Alert, Badge, Button, Container, DataTable, Form, Spinner, StandardModal, Toast,
 } from '@openedx/paragon';
 import { ArrowBack, Save } from '@openedx/paragon/icons';
 
 import {
-  getEnrolledLearners,
-  getSession,
+  getAttendanceRoster,
   markAttendance,
-  getAttendanceRecords,
 } from './api';
+import { useConfig } from '../app/useConfig';
+import { ATTENDANCE_STATUS, USER_ROLE } from '../shared/constants';
 import { extractApiError, formatDateTime, getStatusVariant } from '../shared/utils';
 
-// Must match the backend AttendanceSettings.marking_window_days default.
-// This is used only for UX hints — the backend enforces the real value.
-const MARKING_WINDOW_DAYS = 7;
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-const MARKING_WINDOW_MS = MARKING_WINDOW_DAYS * MS_PER_DAY;
-
-const STATUS_OPTIONS = [
-  { value: 'present', label: 'Present' },
-  { value: 'absent', label: 'Absent' },
-  { value: 'late', label: 'Late' },
-];
-
-const DEFAULT_STATUS = 'present';
 const PAGE_SIZE = 25;
 
-// Milliseconds remaining in the marking window. Negative when the window has
-// already closed. Returns null when the session has no end time yet.
-const msUntilWindowClose = (endTimeStr) => {
-  if (!endTimeStr) { return null; }
-  const endMs = new Date(endTimeStr).getTime();
-  if (Number.isNaN(endMs)) { return null; }
-  return (endMs + MARKING_WINDOW_MS) - Date.now();
-};
+// Editable statuses — leave and pending are always read-only.
+const EDIT_OPTIONS = [
+  { value: 'present', label: 'Present' },
+  { value: 'absent', label: 'Absent' },
+];
+
+// ─── Cell renderers ──────────────────────────────────────────────────────────
 
 const NameCell = ({ value }) => value || '—';
 NameCell.propTypes = { value: PropTypes.string };
@@ -48,16 +34,14 @@ const EmailCell = ({ value }) => <span className="text-muted">{value || '—'}</
 EmailCell.propTypes = { value: PropTypes.string };
 EmailCell.defaultProps = { value: '' };
 
-// Mode-aware status cell. When read-only it renders a status badge; when
-// editable it renders radio buttons. Extracted to module scope so React does
-// not treat it as a new component on every render.
+// Renders radio buttons (editable) or a status badge (read-only / leave / pending).
 const StatusCell = ({ row }) => {
   const {
-    isReadOnly, currentStatus, onStatusChange, user_id: userId,
+    canEdit, currentStatus, onStatusChange, user_id: userId,
   } = row.original;
 
-  if (isReadOnly) {
-    const label = STATUS_OPTIONS.find((o) => o.value === currentStatus)?.label ?? currentStatus ?? '—';
+  if (!canEdit) {
+    const label = ATTENDANCE_STATUS[currentStatus] || currentStatus || '—';
     return currentStatus
       ? <Badge variant={getStatusVariant(currentStatus)}>{label}</Badge>
       : <span className="text-muted">—</span>;
@@ -65,7 +49,7 @@ const StatusCell = ({ row }) => {
 
   return (
     <div className="d-flex" style={{ gap: 12 }}>
-      {STATUS_OPTIONS.map((opt) => (
+      {EDIT_OPTIONS.map((opt) => (
         <Form.Check
           key={opt.value}
           type="radio"
@@ -73,7 +57,7 @@ const StatusCell = ({ row }) => {
           id={`status-${userId}-${opt.value}`}
           label={opt.label}
           checked={currentStatus === opt.value}
-          onChange={() => onStatusChange(opt.value)}
+          onChange={() => onStatusChange(userId, opt.value)}
         />
       ))}
     </div>
@@ -84,82 +68,89 @@ StatusCell.propTypes = {
     original: PropTypes.shape({
       user_id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
       currentStatus: PropTypes.string,
-      isReadOnly: PropTypes.bool.isRequired,
+      canEdit: PropTypes.bool.isRequired,
       onStatusChange: PropTypes.func.isRequired,
     }).isRequired,
   }).isRequired,
 };
 
-const COLUMNS = [
-  { Header: 'Name', accessor: 'full_name', Cell: NameCell },
-  { Header: 'Email', accessor: 'email', Cell: EmailCell },
-  { Header: 'Status', id: 'status', Cell: StatusCell },
-];
+const NoteCell = ({ row }) => {
+  const {
+    record_id: recordId, onNoteClick, user_id: userId, currentStatus, notes,
+  } = row.original;
+  if (!recordId) { return null; }
+  const hasNote = notes != null && notes !== '';
+  return (
+    <Button
+      variant="tertiary"
+      size="sm"
+      aria-label={hasNote ? 'View or edit note' : 'Add note'}
+      onClick={() => onNoteClick(recordId, userId, currentStatus, notes ?? '')}
+    >
+      {hasNote ? '💬' : '+'}
+    </Button>
+  );
+};
+NoteCell.propTypes = {
+  row: PropTypes.shape({
+    original: PropTypes.shape({
+      record_id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+      user_id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+      currentStatus: PropTypes.string,
+      notes: PropTypes.string,
+      onNoteClick: PropTypes.func.isRequired,
+    }).isRequired,
+  }).isRequired,
+};
+
+// ─── Main component ──────────────────────────────────────────────────────────
 
 const AttendanceRosterPage = () => {
   const { programId, sessionId } = useParams();
-  const location = useLocation();
-  // Nav state gives an instant first render; the API fetch below is the source of truth.
-  const navSession = location.state?.session || null;
+  const { data: config } = useConfig();
+  const isAdmin = config?.user_role === USER_ROLE.ADMIN;
 
-  const [sessionData, setSessionData] = useState(navSession);
-  // Initialise optimistically from nav state; overwritten once the API responds.
-  const [isLocked, setIsLocked] = useState(navSession?.attendance_marked ?? false);
-  // Set true if a save is rejected with `marking_window_closed`, so the page
-  // can re-render read-only without a manual refresh.
-  const [windowClosedByServer, setWindowClosedByServer] = useState(false);
-
-  const msRemaining = msUntilWindowClose(sessionData?.scheduled_end_time);
-  const isExpired = windowClosedByServer || (msRemaining !== null && msRemaining <= 0);
-  const daysRemaining = (msRemaining !== null && msRemaining > 0)
-    ? Math.ceil(msRemaining / MS_PER_DAY)
-    : 0;
-
-  const [learners, setLearners] = useState([]);
-  const [statusByUserId, setStatusByUserId] = useState(() => new Map());
-  const [hasRecords, setHasRecords] = useState(false);
+  const [roster, setRoster] = useState([]);
+  const [sessionMeta, setSessionMeta] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // { [userId]: { status, reason?, originalStatus, recordId } }
+  const [overrides, setOverrides] = useState({});
+
   const [saving, setSaving] = useState(false);
   const [showToast, setShowToast] = useState(false);
+
+  // Reason modal: opened when changing an already-recorded status.
+  const [reasonModal, setReasonModal] = useState(null); // { userId, pendingStatus }
+  const [reasonText, setReasonText] = useState('');
+
+  // Note modal.
+  const [noteModal, setNoteModal] = useState(null); // { recordId, userId, currentStatus, initialNotes } | null
+  const [noteText, setNoteText] = useState('');
+  const [noteSaving, setNoteSaving] = useState(false);
+  const [noteError, setNoteError] = useState('');
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const [rosterData, recordsData, freshSession] = await Promise.all([
-          getEnrolledLearners(sessionId),
-          getAttendanceRecords({ session_id: sessionId, page_size: 500 }),
-          getSession(sessionId),
-        ]);
+        const data = await getAttendanceRoster(sessionId);
         if (cancelled) { return; }
-        const roster = rosterData.results ?? [];
-        const existing = recordsData.results ?? [];
-        const lockedAtLoad = freshSession.attendance_marked ?? false;
-        const remaining = msUntilWindowClose(freshSession.scheduled_end_time);
-        const expiredAtLoad = remaining !== null && remaining <= 0;
-        const readOnlyAtLoad = lockedAtLoad || expiredAtLoad;
-
-        const rosterIds = new Set(roster.map((r) => r.user_id));
-        const seeded = new Map();
-        existing.forEach((rec) => {
-          if (!rosterIds.has(rec.user_id)) { return; }
-          seeded.set(rec.user_id, STATUS_OPTIONS.some((s) => s.value === rec.status)
-            ? rec.status
-            : DEFAULT_STATUS);
+        const rows = Array.isArray(data) ? data : data.results ?? [];
+        const meta = data.session ?? null;
+        setRoster(rows);
+        setSessionMeta(meta);
+        // Seed overrides from existing roster statuses.
+        const seed = {};
+        rows.forEach((row) => {
+          seed[row.user_id] = {
+            status: row.status || 'pending',
+            originalStatus: row.status || 'pending',
+            recordId: row.record_id ?? null,
+          };
         });
-        // Only seed default-Present rows for editable mode. In read-only mode
-        // unseeded rows render "—" rather than a fabricated "Present" badge.
-        if (!readOnlyAtLoad) {
-          roster.forEach((row) => {
-            if (!seeded.has(row.user_id)) { seeded.set(row.user_id, DEFAULT_STATUS); }
-          });
-        }
-        setLearners(roster);
-        setStatusByUserId(seeded);
-        setHasRecords(existing.length > 0);
-        setSessionData(freshSession);
-        setIsLocked(lockedAtLoad);
+        setOverrides(seed);
       } catch (err) {
         if (!cancelled) { setError(extractApiError(err, 'Failed to load roster')); }
       } finally {
@@ -169,61 +160,140 @@ const AttendanceRosterPage = () => {
     return () => { cancelled = true; };
   }, [sessionId]);
 
-  const setStatusFor = (userId, value) => {
-    setStatusByUserId((prev) => {
-      const next = new Map(prev);
-      next.set(userId, value);
-      return next;
-    });
+  const windowOpen = sessionMeta?.marking_window_open ?? false;
+
+  const handleStatusChange = (userId, newStatus) => {
+    const current = overrides[userId];
+    if (!current) { return; }
+    // If the row already has a real record, require a reason for the change.
+    if (current.recordId !== null) {
+      setReasonText('');
+      setReasonModal({ userId, pendingStatus: newStatus });
+    } else {
+      setOverrides((prev) => ({
+        ...prev,
+        [userId]: { ...prev[userId], status: newStatus },
+      }));
+    }
+  };
+
+  const confirmReasonModal = () => {
+    if (!reasonModal) { return; }
+    const { userId, pendingStatus } = reasonModal;
+    setOverrides((prev) => ({
+      ...prev,
+      [userId]: { ...prev[userId], status: pendingStatus, reason: reasonText.trim() },
+    }));
+    setReasonModal(null);
+    setReasonText('');
   };
 
   const handleSave = async () => {
     setSaving(true);
     setError('');
     try {
-      const records = Array.from(statusByUserId.entries()).map(([userId, recStatus]) => ({
-        user_id: userId,
-        status: recStatus,
-      }));
-      await markAttendance(sessionId, records);
-      setIsLocked(true);
-      setHasRecords(true);
+      // Send only rows whose status differs from the original.
+      const changed = Object.entries(overrides)
+        .filter(([, v]) => v.status !== v.originalStatus)
+        .map(([userId, v]) => {
+          const record = { user_id: Number(userId), status: v.status };
+          if (v.reason) { record.reason = v.reason; }
+          return record;
+        });
+      if (changed.length > 0) {
+        await markAttendance(sessionId, changed);
+      }
+      // Update originals to reflect saved state.
+      setOverrides((prev) => {
+        const next = { ...prev };
+        Object.keys(next).forEach((uid) => {
+          next[uid] = { ...next[uid], originalStatus: next[uid].status, reason: undefined };
+        });
+        return next;
+      });
       setShowToast(true);
     } catch (err) {
-      // Race: window closed between page load and Save. Flip to read-only so
-      // the user does not stare at the same Save button after rejection.
-      if (err.response?.data?.error === 'marking_window_closed') {
-        setWindowClosedByServer(true);
-      }
       setError(extractApiError(err, 'Failed to save attendance'));
     } finally {
       setSaving(false);
     }
   };
 
+  const openNoteModal = (recordId, userId, currentStatus, existingNotes) => {
+    setNoteModal({
+      recordId, userId, currentStatus, initialNotes: existingNotes,
+    });
+    setNoteText(existingNotes);
+    setNoteError('');
+  };
+
+  const handleNoteSave = async () => {
+    setNoteSaving(true);
+    setNoteError('');
+    try {
+      await markAttendance(sessionId, [{
+        user_id: Number(noteModal.userId),
+        status: noteModal.currentStatus,
+        notes: noteText,
+      }]);
+      setRoster((prev) => prev.map((r) => (
+        String(r.user_id) === String(noteModal.userId)
+          ? { ...r, notes: noteText }
+          : r
+      )));
+      setNoteModal(null);
+      setNoteText('');
+      setShowToast(true);
+    } catch (err) {
+      setNoteError(extractApiError(err, 'Failed to save note'));
+    } finally {
+      setNoteSaving(false);
+    }
+  };
+
   const counts = useMemo(() => {
-    const out = { present: 0, absent: 0, late: 0 };
-    statusByUserId.forEach((value) => {
-      if (out[value] !== undefined) { out[value] += 1; }
+    const out = {
+      present: 0, absent: 0, leave: 0, pending: 0,
+    };
+    Object.values(overrides).forEach(({ status }) => {
+      if (out[status] !== undefined) { out[status] += 1; }
     });
     return out;
-  }, [statusByUserId]);
-
-  const currentlyReadOnly = isLocked || isExpired;
+  }, [overrides]);
 
   const tableData = useMemo(() => (
-    learners.map((l) => {
-      const stored = statusByUserId.get(l.user_id);
+    roster.map((row) => {
+      const override = overrides[row.user_id] ?? {};
+      const currentStatus = override.status ?? row.status ?? 'pending';
+      // leave rows and pending rows (no record_id + window closed) are not editable;
+      // only admin can edit when window is open and status is not leave.
+      const canEdit = isAdmin && windowOpen && currentStatus !== 'leave';
       return {
-        ...l,
-        // Read-only with no real record: undefined so StatusCell shows "—"
-        // instead of a fabricated "Present" badge.
-        currentStatus: stored ?? (currentlyReadOnly ? undefined : DEFAULT_STATUS),
-        isReadOnly: currentlyReadOnly,
-        onStatusChange: (value) => setStatusFor(l.user_id, value),
+        ...row,
+        currentStatus,
+        canEdit,
+        onStatusChange: handleStatusChange,
+        onNoteClick: openNoteModal,
       };
     })
-  ), [learners, statusByUserId, currentlyReadOnly]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ), [roster, overrides, isAdmin, windowOpen]);
+
+  const hasUnsavedChanges = useMemo(() => (
+    Object.values(overrides).some((v) => v.status !== v.originalStatus)
+  ), [overrides]);
+
+  const columns = useMemo(() => {
+    const cols = [
+      { Header: 'Name', accessor: 'full_name', Cell: NameCell },
+      { Header: 'Email', accessor: 'email', Cell: EmailCell },
+      { Header: 'Status', id: 'status', Cell: StatusCell },
+    ];
+    if (isAdmin) {
+      cols.push({ Header: 'Note', id: 'note', Cell: NoteCell });
+    }
+    return cols;
+  }, [isAdmin]);
 
   if (loading) {
     return (
@@ -238,7 +308,7 @@ const AttendanceRosterPage = () => {
     <Container className="py-3">
       <Button
         as={Link}
-        to={`/${programId}/attendance/sessions`}
+        to={`/${programId}/attendance/by-course`}
         variant="tertiary"
         size="sm"
         iconBefore={ArrowBack}
@@ -251,7 +321,7 @@ const AttendanceRosterPage = () => {
       <div className="border rounded p-3 mb-4 bg-light">
         <div className="d-flex flex-column flex-sm-row align-items-sm-start justify-content-between">
           <div>
-            {sessionData?.course_name && (
+            {sessionMeta?.course_name && (
               <div className="mb-1">
                 <span
                   className="text-uppercase font-weight-bold text-muted mr-1"
@@ -260,11 +330,11 @@ const AttendanceRosterPage = () => {
                   Course
                 </span>
                 <span className="text-muted" style={{ fontSize: '0.875rem' }}>
-                  {sessionData.course_name}
+                  {sessionMeta.course_name}
                 </span>
               </div>
             )}
-            {sessionData?.title && (
+            {sessionMeta?.title && (
               <h4 className="mb-0">
                 <span
                   className="text-uppercase font-weight-bold text-muted mr-2"
@@ -272,44 +342,35 @@ const AttendanceRosterPage = () => {
                 >
                   Session
                 </span>
-                {sessionData.title}
+                {sessionMeta.title}
               </h4>
             )}
-            {sessionData?.scheduled_start_time && (
+            {sessionMeta?.scheduled_start_time && (
               <div className="text-muted mt-1" style={{ fontSize: '0.875rem' }}>
-                {formatDateTime(sessionData.scheduled_start_time)}
+                {formatDateTime(sessionMeta.scheduled_start_time)}
               </div>
             )}
           </div>
           <div className="d-flex mt-2 mt-sm-0" style={{ gap: 6, flexShrink: 0 }}>
             <Badge variant="success">{counts.present} present</Badge>
             <Badge variant="danger">{counts.absent} absent</Badge>
-            <Badge variant="warning">{counts.late} late</Badge>
+            <Badge variant="warning">{counts.leave} on leave</Badge>
+            <Badge variant="secondary">{counts.pending} pending</Badge>
           </div>
         </div>
       </div>
 
-      {/* State-specific banners */}
-      {isLocked && (
-        <Alert variant="success" className="mb-3">
-          Attendance has been recorded for this session and is now <strong>locked</strong>.
-        </Alert>
-      )}
-      {!isLocked && isExpired && (
+      {/* Marking window banner */}
+      {isAdmin && !windowOpen && (
         <Alert variant="warning" className="mb-3">
-          The {MARKING_WINDOW_DAYS}-day attendance marking window for this session has passed.
-          {hasRecords
-            ? ' Attendance can no longer be edited.'
-            : ' No attendance was recorded for this session.'}
+          The attendance marking window for this session is <strong>closed</strong>.
+          Records are read-only.
         </Alert>
       )}
-      {!currentlyReadOnly && sessionData?.scheduled_end_time && (
+      {isAdmin && windowOpen && (
         <Alert variant="info" className="mb-3">
-          You have{' '}
-          <strong>
-            {daysRemaining} day{daysRemaining !== 1 ? 's' : ''}
-          </strong>{' '}
-          remaining to record attendance for this session.
+          Marking window is <strong>open</strong>. Select Present or Absent for each learner,
+          then save.
         </Alert>
       )}
 
@@ -319,37 +380,29 @@ const AttendanceRosterPage = () => {
         </Alert>
       )}
 
-      {learners.length === 0 ? (
-        <Alert variant="info">No learners are enrolled in this course.</Alert>
+      {roster.length === 0 ? (
+        <Alert variant="info">No learners on the roster for this session.</Alert>
       ) : (
         <>
           <DataTable
-            isPaginated={learners.length > PAGE_SIZE}
+            isPaginated={roster.length > PAGE_SIZE}
             data={tableData}
-            columns={COLUMNS}
+            columns={columns}
             itemCount={tableData.length}
             initialState={{ pageSize: PAGE_SIZE }}
           >
             <DataTable.Table />
             <DataTable.EmptyTable content="No learners" />
-            {learners.length > PAGE_SIZE && <DataTable.TableFooter />}
+            {roster.length > PAGE_SIZE && <DataTable.TableFooter />}
           </DataTable>
 
-          {!currentlyReadOnly && (
+          {isAdmin && windowOpen && (
             <div className="mt-3">
-              <div
-                className="small mb-3 rounded px-3 py-2"
-                style={{ backgroundColor: '#fff8e1', border: '1px solid #f5c518', color: '#7a5c00' }}
-              >
-                <span style={{ fontWeight: 600 }}>⚠ Warning:</span>{' '}
-                Once you save, attendance records for this session will be{' '}
-                <strong>locked</strong> and cannot be changed.
-              </div>
               <Button
                 variant="primary"
                 iconBefore={Save}
                 onClick={handleSave}
-                disabled={saving}
+                disabled={saving || !hasUnsavedChanges}
               >
                 {saving ? 'Saving…' : 'Save attendance'}
               </Button>
@@ -357,6 +410,79 @@ const AttendanceRosterPage = () => {
           )}
         </>
       )}
+
+      {/* Reason modal — required when changing an already-recorded status */}
+      <StandardModal
+        title="Reason for change"
+        isOpen={!!reasonModal}
+        onClose={() => { setReasonModal(null); setReasonText(''); }}
+        hasCloseButton
+        footerNode={(
+          <div className="d-flex justify-content-end" style={{ gap: 8 }}>
+            <Button variant="tertiary" onClick={() => { setReasonModal(null); setReasonText(''); }}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={confirmReasonModal}
+              disabled={!reasonText.trim()}
+            >
+              Confirm
+            </Button>
+          </div>
+        )}
+      >
+        <p className="mb-2">
+          This learner already has an attendance record. Please provide a reason for
+          changing their status.
+        </p>
+        <Form.Control
+          as="textarea"
+          rows={3}
+          value={reasonText}
+          onChange={(e) => setReasonText(e.target.value)}
+          placeholder="Enter reason…"
+        />
+      </StandardModal>
+
+      {/* Note modal */}
+      <StandardModal
+        title="Attendance note"
+        isOpen={!!noteModal}
+        onClose={() => { setNoteModal(null); setNoteText(''); setNoteError(''); }}
+        hasCloseButton
+        footerNode={(
+          <div className="d-flex justify-content-end" style={{ gap: 8 }}>
+            <Button
+              variant="tertiary"
+              onClick={() => { setNoteModal(null); setNoteText(''); setNoteError(''); }}
+            >
+              Close
+            </Button>
+            {isAdmin && (
+              <Button
+                variant="primary"
+                onClick={handleNoteSave}
+                disabled={noteText === noteModal?.initialNotes || noteSaving}
+              >
+                {noteSaving ? 'Saving…' : 'Save note'}
+              </Button>
+            )}
+          </div>
+        )}
+      >
+        {noteError && (
+          <Alert variant="danger" className="mb-2">{noteError}</Alert>
+        )}
+        <Form.Control
+          as="textarea"
+          rows={4}
+          value={noteText}
+          onChange={(e) => isAdmin && setNoteText(e.target.value)}
+          readOnly={!isAdmin}
+          placeholder={isAdmin ? 'Enter a note…' : 'No note recorded.'}
+        />
+      </StandardModal>
 
       <div
         style={{
@@ -370,7 +496,7 @@ const AttendanceRosterPage = () => {
           delay={3500}
           autohide
         >
-          Attendance saved and locked.
+          Attendance saved.
         </Toast>
       </div>
     </Container>

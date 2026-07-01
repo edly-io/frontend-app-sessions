@@ -7,7 +7,6 @@ import {
   Alert, Container, DataTable, Form, Spinner,
 } from '@openedx/paragon';
 
-import { getAttendanceSummary } from '../api';
 import SearchableSelect from '../../shared/SearchableSelect';
 import { fetchProgramCourses } from '../../calendar/api';
 import { extractApiError } from '../../shared/utils';
@@ -83,7 +82,7 @@ const CourseSummaryReport = () => {
 
   const [rows, setRows] = useState([]);
   const [sessionCount, setSessionCount] = useState(null);
-  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryLoading] = useState(false);
   const [summaryError, setSummaryError] = useState('');
 
   // Load course list for the picker.
@@ -104,25 +103,9 @@ const CourseSummaryReport = () => {
     return () => { cancelled = true; };
   }, [programId]);
 
-  const loadSummary = useCallback(async (courseId, start, end) => {
+  const loadSummary = useCallback(async (courseId) => {
     if (!courseId) { return; }
-    setSummaryLoading(true);
-    setSummaryError('');
-    try {
-      const startIso = start ? new Date(start).toISOString() : undefined;
-      const endIso = end ? new Date(`${end}T23:59:59`).toISOString() : undefined;
-      const data = await getAttendanceSummary({
-        courseId,
-        startDate: startIso,
-        endDate: endIso,
-      });
-      setRows(data.rows ?? []);
-      setSessionCount(data.session_count ?? 0);
-    } catch (err) {
-      setSummaryError(extractApiError(err, 'Failed to load attendance summary'));
-    } finally {
-      setSummaryLoading(false);
-    }
+    setSummaryError('This report is no longer available.');
   }, []);
 
   const handleCourseChange = (option) => {
@@ -131,7 +114,7 @@ const CourseSummaryReport = () => {
     setRows([]);
     setSessionCount(null);
     if (courseId) {
-      loadSummary(courseId, startDate, endDate);
+      loadSummary(courseId);
     }
   };
 
@@ -146,15 +129,13 @@ const CourseSummaryReport = () => {
 
   const handleDateChange = (field) => (e) => {
     const val = e.target.value;
-    const nextStart = field === 'start' ? val : startDate;
-    const nextEnd = field === 'end' ? val : endDate;
     if (field === 'start') {
       setStartDate(val);
     } else {
       setEndDate(val);
     }
     if (selectedCourseId) {
-      loadSummary(selectedCourseId, nextStart, nextEnd);
+      loadSummary(selectedCourseId);
     }
   };
 

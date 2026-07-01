@@ -69,6 +69,20 @@ export const fetchProgramInstructors = async (programKey) => {
 };
 
 /**
+ * Fetch all learners enrolled in a program.
+ *
+ * GET /fbr/api/programs/<program_key>/learners/?no_page
+ * Returns: [{ id, username, email, first_name, last_name }, ...]
+ */
+export const fetchProgramLearners = async (programKey) => {
+  const client = getAuthenticatedHttpClient();
+  const { data } = await client.get(
+    `${getProgramsBaseUrl()}/${encodeURIComponent(programKey)}/learners/?no_page`,
+  );
+  return Array.isArray(data) ? data : (data.results ?? []);
+};
+
+/**
  * Correct the course assignment and/or instructors on a past session.
  * Admin-only. Routes to Path 1 (non-course-scoped PATCH) — no Zoom sync and
  * no immutability guard apply. Only `course_id` and `instructor_emails` are

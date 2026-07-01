@@ -30,11 +30,16 @@ CourseCell.propTypes = { value: PropTypes.string };
 CourseCell.defaultProps = { value: '' };
 
 const StatusCell = ({ value }) => (
-  <Badge variant={getStatusVariant(value)}>
-    {ATTENDANCE_STATUS[value] || value}
-  </Badge>
+  value
+    ? (
+      <Badge variant={getStatusVariant(value)}>
+        {ATTENDANCE_STATUS[value] || value}
+      </Badge>
+    )
+    : <span className="text-muted">—</span>
 );
-StatusCell.propTypes = { value: PropTypes.string.isRequired };
+StatusCell.propTypes = { value: PropTypes.string };
+StatusCell.defaultProps = { value: '' };
 
 const NotesCell = ({ row }) => (
   row.original.is_overridden && row.original.override_reason

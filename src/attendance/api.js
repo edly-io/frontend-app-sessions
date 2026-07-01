@@ -11,20 +11,6 @@ export const getAttendanceRecords = async (filters = {}) => {
 };
 
 /**
- * Active enrollments for the session's course. Used by the admin roster page
- * to seed the marking UI.
- *
- * GET /fbr/api/attendance/v1/sessions/{session_id}/enrolled-learners/
- */
-export const getEnrolledLearners = async (sessionId) => {
-  const client = getAuthenticatedHttpClient();
-  const { data } = await client.get(
-    `${getBaseUrl()}/sessions/${sessionId}/enrolled-learners/`,
-  );
-  return data;
-};
-
-/**
  * Bulk-upsert manual attendance for a session. Admin-only on the backend.
  *
  * POST /fbr/api/attendance/v1/sessions/{session_id}/mark-attendance/
@@ -85,6 +71,30 @@ export const getPastSessionsForAttendance = async ({ daysBack = 30, startDate, e
 };
 
 /**
+ * Paginated session list for a program.
+ *
+ * GET /fbr/api/attendance/v1/sessions/?program_key=<key>&status=<status>
+ *
+ * @param {Object} opts
+ * @param {string}  opts.programKey  — required
+ * @param {string}  [opts.status]    — e.g. 'completed'
+ * @param {number}  [opts.page]
+ * @param {number}  [opts.pageSize]
+ */
+export const getSessionsPage = async ({
+  programKey, status, page, pageSize,
+} = {}) => {
+  const client = getAuthenticatedHttpClient();
+  const params = new URLSearchParams();
+  if (programKey) { params.set('program_key', programKey); }
+  if (status) { params.set('status', status); }
+  if (page) { params.set('page', String(page)); }
+  if (pageSize) { params.set('page_size', String(pageSize)); }
+  const { data } = await client.get(`${getBaseUrl()}/sessions/?${params}`);
+  return data;
+};
+
+/**
  * Fetch a single session by ID.
  *
  * GET /fbr/api/attendance/v1/sessions/{session_id}/
@@ -127,38 +137,44 @@ export const getAttendanceRecordsPage = async ({
 };
 
 /**
- * Active enrolments for a course. Used by the Per-Learner report's learner
- * picker.
+ * Derived attendance roster for a session. Single call replaces the old
+ * 3-call merge (enrolled-learners + records + session detail).
  *
- * GET /fbr/api/attendance/v1/courses/{courseKey}/enrolled-learners/
+ * GET /fbr/api/attendance/v1/sessions/{sessionId}/attendance-roster/
+ * Returns { results: [...rows], session: { marking_window_open, ... } }
  */
-export const getCourseEnrolledLearners = async (courseKey) => {
+export const getAttendanceRoster = async (sessionId) => {
   const client = getAuthenticatedHttpClient();
   const { data } = await client.get(
-    `${getBaseUrl()}/courses/${encodeURIComponent(courseKey)}/enrolled-learners/`,
+    `${getBaseUrl()}/sessions/${encodeURIComponent(sessionId)}/attendance-roster/`,
   );
   return data;
 };
 
 /**
- * Per-learner attendance aggregation. Used by the Course Summary report.
+ * Single attendance record detail. Lazy-loaded on note modal open to avoid
+ * N+1 on roster page load.
  *
- * GET /fbr/api/attendance/v1/attendance-summary/
- *
- * @param {Object} opts
- * @param {string}  opts.courseId   — required
- * @param {string}  [opts.startDate] — ISO datetime
- * @param {string}  [opts.endDate]   — ISO datetime
+ * GET /fbr/api/attendance/v1/records/{recordId}/
  */
-export const getAttendanceSummary = async ({ courseId, startDate, endDate } = {}) => {
+export const getAttendanceRecord = async (recordId) => {
   const client = getAuthenticatedHttpClient();
-  const params = new URLSearchParams();
-  if (courseId) { params.set('course_id', courseId); }
-  if (startDate) { params.set('start_date', startDate); }
-  if (endDate) { params.set('end_date', endDate); }
-  const qs = params.toString();
+  const { data } = await client.get(`${getBaseUrl()}/records/${recordId}/`);
+  return data;
+};
+
+/**
+ * All sessions for a specific course within a program.
+ *
+ * GET /fbr/api/attendance/v1/courses/{courseKey}/sessions/?program_key=<key>
+ * Returns { results: [...] } with fields: id, title, session_type,
+ * scheduled_start_time, scheduled_end_time, status, marking_window_open.
+ */
+export const getCourseSessionsList = async (courseKey, programKey) => {
+  const client = getAuthenticatedHttpClient();
+  const params = new URLSearchParams({ program_key: programKey });
   const { data } = await client.get(
-    `${getBaseUrl()}/attendance-summary/${qs ? `?${qs}` : ''}`,
+    `${getBaseUrl()}/courses/${encodeURIComponent(courseKey)}/sessions/?${params}`,
   );
   return data;
 };
