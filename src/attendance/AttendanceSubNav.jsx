@@ -1,23 +1,13 @@
 import React from 'react';
-import PropTypes from 'prop-types';
 import { NavLink, useParams } from 'react-router-dom';
 
 const ADMIN_ITEMS = [
-  { slug: 'sessions', label: 'Sessions' },
-  { slug: 'summary', label: 'Course Summary' },
-  { slug: 'by-learner', label: 'Per-Learner' },
+  { slug: 'by-course', label: 'By Course' },
+  { slug: 'by-learner', label: 'By Learner' },
 ];
 
-const LEARNER_ITEMS = [
-  { slug: 'me', label: 'My Attendance' },
-];
-
-const AttendanceSubNav = ({ isAdmin }) => {
+const AttendanceSubNav = () => {
   const { programId } = useParams();
-  const items = isAdmin ? ADMIN_ITEMS : LEARNER_ITEMS;
-
-  // Hide the rail entirely when there's only one destination.
-  if (items.length <= 1) { return null; }
 
   return (
     <nav
@@ -25,7 +15,7 @@ const AttendanceSubNav = ({ isAdmin }) => {
       className="d-flex flex-wrap mb-3"
       style={{ gap: 4 }}
     >
-      {items.map(({ slug, label }) => (
+      {ADMIN_ITEMS.map(({ slug, label }) => (
         <NavLink
           key={slug}
           to={`/${programId}/attendance/${slug}`}
@@ -42,10 +32,6 @@ const AttendanceSubNav = ({ isAdmin }) => {
       ))}
     </nav>
   );
-};
-
-AttendanceSubNav.propTypes = {
-  isAdmin: PropTypes.bool.isRequired,
 };
 
 export default AttendanceSubNav;

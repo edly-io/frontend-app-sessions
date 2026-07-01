@@ -38,9 +38,8 @@ export const getStatusVariant = (status) => {
   const variantMap = {
     present: 'success',
     absent: 'danger',
-    late: 'warning',
-    left_early: 'warning',
-    partial: 'info',
+    leave: 'warning',
+    pending: 'secondary',
     scheduled: 'secondary',
     in_progress: 'primary',
     completed: 'success',

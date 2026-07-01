@@ -9,14 +9,14 @@ const jestDomMatchers = require('@testing-library/jest-dom/matchers');
 
 expect.extend(jestDomMatchers);
 
-const wrap = (isAdmin) => render(
-  <MemoryRouter initialEntries={['/test-prog/attendance/sessions']}>
+const wrap = () => render(
+  <MemoryRouter initialEntries={['/test-prog/attendance/by-course']}>
     <Routes>
       <Route
         path="/:programId/attendance/:sub"
         element={(
           <IntlProvider locale="en" messages={{}}>
-            <AttendanceSubNav isAdmin={isAdmin} />
+            <AttendanceSubNav />
           </IntlProvider>
         )}
       />
@@ -25,22 +25,14 @@ const wrap = (isAdmin) => render(
 );
 
 describe('admin sub-nav', () => {
-  it('renders Sessions, Course Summary, and Per-Learner links', () => {
-    wrap(true);
-    expect(screen.getByText('Sessions')).toBeInTheDocument();
-    expect(screen.getByText('Course Summary')).toBeInTheDocument();
-    expect(screen.getByText('Per-Learner')).toBeInTheDocument();
+  it('renders By Course and By Learner links', () => {
+    wrap();
+    expect(screen.getByText('By Course')).toBeInTheDocument();
+    expect(screen.getByText('By Learner')).toBeInTheDocument();
   });
 
   it('renders a nav element with accessible label', () => {
-    wrap(true);
+    wrap();
     expect(screen.getByRole('navigation', { name: /attendance sub-sections/i })).toBeInTheDocument();
-  });
-});
-
-describe('learner sub-nav', () => {
-  it('renders nothing because there is only one item', () => {
-    const { container } = wrap(false);
-    expect(container).toBeEmptyDOMElement();
   });
 });

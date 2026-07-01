@@ -1,21 +1,19 @@
 import React, {
   useCallback, useEffect, useMemo, useRef, useState,
 } from 'react';
-import { useParams } from 'react-router-dom';
 import PropTypes from 'prop-types';
+import { useParams } from 'react-router-dom';
 import {
   Alert, Badge, Container, DataTable, Spinner,
 } from '@openedx/paragon';
 
-import { getAttendanceRecordsPage } from '../api';
-import SearchableSelect from '../../shared/SearchableSelect';
-import { fetchProgramCourses, fetchProgramLearners } from '../../calendar/api';
-import { ATTENDANCE_STATUS } from '../../shared/constants';
-import { extractApiError, formatDateTime, getStatusVariant } from '../../shared/utils';
+import { getAttendanceRecordsPage } from './api';
+import SearchableSelect from '../shared/SearchableSelect';
+import { fetchProgramCourses, fetchProgramLearners } from '../calendar/api';
+import { ATTENDANCE_STATUS } from '../shared/constants';
+import { extractApiError, formatDateTime, getStatusVariant } from '../shared/utils';
 
 const PAGE_SIZE = 50;
-
-// ─── Cell renderers ──────────────────────────────────────────────────────────
 
 const SessionCell = ({ row }) => (
   <div>
@@ -42,6 +40,14 @@ const StatusCell = ({ value }) => (
 StatusCell.propTypes = { value: PropTypes.string };
 StatusCell.defaultProps = { value: '' };
 
+const SourceCell = ({ value }) => (
+  value
+    ? <Badge variant="light">{value}</Badge>
+    : <span className="text-muted">—</span>
+);
+SourceCell.propTypes = { value: PropTypes.string };
+SourceCell.defaultProps = { value: '' };
+
 const OverrideCell = ({ row }) => (
   row.original.is_overridden && row.original.override_reason
     ? <small className="text-muted">{row.original.override_reason}</small>
@@ -65,28 +71,15 @@ MarkedByCell.propTypes = {
   }).isRequired,
 };
 
-const MarkedAtCell = ({ row }) => (
-  <small className="text-muted">
-    {row.original.overridden_at ? formatDateTime(row.original.overridden_at) : '—'}
-  </small>
-);
-MarkedAtCell.propTypes = {
-  row: PropTypes.shape({
-    original: PropTypes.shape({ overridden_at: PropTypes.string }),
-  }).isRequired,
-};
-
 const COLUMNS = [
   { Header: 'Session', accessor: 'session_title', Cell: SessionCell },
   { Header: 'Status', accessor: 'status', Cell: StatusCell },
+  { Header: 'Source', accessor: 'source', Cell: SourceCell },
   { Header: 'Override reason', accessor: 'override_reason', Cell: OverrideCell },
   { Header: 'Marked by', id: 'marked_by', Cell: MarkedByCell },
-  { Header: 'Marked at', id: 'marked_at', Cell: MarkedAtCell },
 ];
 
-// ─── Component ───────────────────────────────────────────────────────────────
-
-const PerLearnerHistoryReport = () => {
+const PerLearnerView = () => {
   const { programId } = useParams();
   const [courses, setCourses] = useState([]);
   const [coursesLoading, setCoursesLoading] = useState(true);
@@ -133,7 +126,6 @@ const PerLearnerHistoryReport = () => {
 
   const handleCourseChange = (option) => {
     const courseKey = option?.value || '';
-    // Clear user ref when course changes so handleFetchData won't fire for a stale user.
     selectedCourseIdRef.current = courseKey;
     selectedUserIdRef.current = '';
     setSelectedCourseId(courseKey);
@@ -142,9 +134,7 @@ const PerLearnerHistoryReport = () => {
     setCount(0);
   };
 
-  // Stable fetchData — empty deps so Paragon's DataTable useEffect never re-fires
-  // due to a reference change. Reads user/course IDs from refs so we don't close over
-  // state values (which would produce a new function on every selection change).
+  // Stable fetchData — reads user/course IDs from refs so reference never changes.
   const handleFetchData = useCallback(async ({ pageIndex: nextPageIndex = 0 } = {}) => {
     const uid = selectedUserIdRef.current;
     const cid = selectedCourseIdRef.current;
@@ -172,8 +162,6 @@ const PerLearnerHistoryReport = () => {
 
   const handleLearnerChange = (option) => {
     const uid = option?.value || '';
-    // Update ref synchronously before state so handleFetchData sees the new value
-    // when Paragon's useEffect fires on DataTable mount.
     selectedUserIdRef.current = uid;
     setSelectedUserId(uid);
     setPageIndex(0);
@@ -204,11 +192,9 @@ const PerLearnerHistoryReport = () => {
 
   return (
     <Container className="py-3">
-      <h3 className="mb-1">Per-Learner Attendance History</h3>
+      <h3 className="mb-1">Attendance by Learner</h3>
       <p className="text-muted mb-3">
-        Pick a course and a learner to see every session they were marked for, in
-        chronological order. Use this view to investigate a single learner&apos;s
-        attendance pattern across the term.
+        Pick a course and a learner to see their session-by-session attendance history.
       </p>
 
       {coursesError && (
@@ -268,12 +254,6 @@ const PerLearnerHistoryReport = () => {
         </div>
       )}
 
-      {/* DataTable must stay mounted while records are loading — see PerSessionReport
-          for the full explanation of why !recordsLoading and count>0 cannot gate
-          the DataTable. Rendering it unconditionally (when a learner is selected)
-          means Paragon fires fetchData on mount — that is the initial fetch trigger.
-          key={selectedUserId} forces a clean remount on learner change.
-          DataTable.EmptyTable handles the "no records" state when data=[] */}
       {selectedUserId && (
         <DataTable
           key={selectedUserId}
@@ -295,4 +275,4 @@ const PerLearnerHistoryReport = () => {
   );
 };
 
-export default PerLearnerHistoryReport;
+export default PerLearnerView;

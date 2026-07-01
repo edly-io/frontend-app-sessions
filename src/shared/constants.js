@@ -1,9 +1,8 @@
 export const ATTENDANCE_STATUS = {
   present: 'Present',
   absent: 'Absent',
-  late: 'Late',
-  left_early: 'Left Early',
-  partial: 'Partial Attendance',
+  leave: 'On Leave',
+  pending: 'Pending',
 };
 
 // Labels for Session.status field (distinct from AttendanceRecord.status)

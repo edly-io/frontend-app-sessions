@@ -93,16 +93,12 @@ describe('getStatusVariant', () => {
     expect(getStatusVariant('absent')).toBe('danger');
   });
 
-  it('returns warning for late', () => {
-    expect(getStatusVariant('late')).toBe('warning');
+  it('returns warning for leave', () => {
+    expect(getStatusVariant('leave')).toBe('warning');
   });
 
-  it('returns warning for left_early', () => {
-    expect(getStatusVariant('left_early')).toBe('warning');
-  });
-
-  it('returns info for partial', () => {
-    expect(getStatusVariant('partial')).toBe('info');
+  it('returns secondary for pending', () => {
+    expect(getStatusVariant('pending')).toBe('secondary');
   });
 
   it('returns success for completed', () => {
