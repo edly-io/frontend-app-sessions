@@ -4,7 +4,8 @@ import React, {
 import PropTypes from 'prop-types';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import {
-  Alert, Badge, Button, Container, DataTable, Form, Spinner, StandardModal, Toast,
+  Alert, Badge, Button, Container, DataTable, Form, OverlayTrigger, Spinner,
+  StandardModal, Toast, Tooltip,
 } from '@openedx/paragon';
 import { ArrowBack, Edit } from '@openedx/paragon/icons';
 
@@ -119,8 +120,17 @@ const NoteCell = ({ row }) => {
   const {
     record_id: recordId, onNoteClick, user_id: userId, currentStatus, notes,
   } = row.original;
-  if (!recordId) { return null; }
   const hasNote = notes != null && notes !== '';
+  if (!recordId) {
+    return (
+      <OverlayTrigger
+        trigger={['hover', 'focus']}
+        overlay={<Tooltip id={`note-tip-${userId}`}>Mark attendance before adding a note</Tooltip>}
+      >
+        <span><Button variant="outline-primary" size="sm" disabled>Add note</Button></span>
+      </OverlayTrigger>
+    );
+  }
   if (!hasNote) {
     return (
       <Button
