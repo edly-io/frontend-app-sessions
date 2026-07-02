@@ -6,7 +6,7 @@ import { Link, useParams } from 'react-router-dom';
 import {
   Alert, Badge, Button, Container, DataTable, Form, Spinner, StandardModal, Toast,
 } from '@openedx/paragon';
-import { ArrowBack, Save } from '@openedx/paragon/icons';
+import { ArrowBack } from '@openedx/paragon/icons';
 
 import {
   getAttendanceRoster,
@@ -43,7 +43,7 @@ LearnerCell.propTypes = {
 
 const StatusCell = ({ row }) => {
   const {
-    canEdit, currentStatus, onStatusChange, user_id: userId,
+    canEdit, currentStatus, onStatusChange, user_id: userId, isSaving,
   } = row.original;
 
   if (!canEdit) {
@@ -62,7 +62,8 @@ const StatusCell = ({ row }) => {
             key={opt.value}
             size="sm"
             variant={isSelected ? opt.variant : 'outline-secondary'}
-            onClick={() => !isSelected && onStatusChange(userId, opt.value)}
+            onClick={() => !isSelected && !isSaving && onStatusChange(userId, opt.value)}
+            disabled={isSaving}
             style={{ minWidth: 76, borderRadius: 20 }}
           >
             {opt.label}
@@ -78,6 +79,7 @@ StatusCell.propTypes = {
       user_id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
       currentStatus: PropTypes.string,
       canEdit: PropTypes.bool.isRequired,
+      isSaving: PropTypes.bool,
       onStatusChange: PropTypes.func.isRequired,
     }).isRequired,
   }).isRequired,
@@ -102,12 +104,11 @@ const NoteCell = ({ row }) => {
   const hasNote = notes != null && notes !== '';
   return (
     <Button
-      variant="tertiary"
+      variant={hasNote ? 'tertiary' : 'outline-primary'}
       size="sm"
-      aria-label={hasNote ? 'View or edit note' : 'Add note'}
       onClick={() => onNoteClick(recordId, userId, currentStatus, notes ?? '')}
     >
-      {hasNote ? '💬' : '+'}
+      {hasNote ? '💬 View note' : 'Add note'}
     </Button>
   );
 };
@@ -137,7 +138,7 @@ const AttendanceRosterPage = () => {
 
   // { [userId]: { status, originalStatus, recordId, reason? } }
   const [overrides, setOverrides] = useState({});
-  const [saving, setSaving] = useState(false);
+  const [savingUserId, setSavingUserId] = useState(null);
   const [showToast, setShowToast] = useState(false);
 
   const [reasonModal, setReasonModal] = useState(null); // { userId, pendingStatus }
@@ -148,7 +149,6 @@ const AttendanceRosterPage = () => {
   const [noteSaving, setNoteSaving] = useState(false);
   const [noteError, setNoteError] = useState('');
 
-  // Extracted so handleSave can reload without duplicating logic.
   const loadRoster = useCallback(async () => {
     const data = await getAttendanceRoster(sessionId);
     const rows = Array.isArray(data) ? data : data.results ?? [];
@@ -176,6 +176,30 @@ const AttendanceRosterPage = () => {
 
   const windowOpen = sessionMeta?.marking_window_open ?? false;
 
+  const saveStatusChange = useCallback(async (userId, newStatus, reason) => {
+    setSavingUserId(String(userId));
+    setError('');
+    setOverrides((prev) => ({
+      ...prev,
+      [userId]: { ...prev[userId], status: newStatus, ...(reason ? { reason } : {}) },
+    }));
+    try {
+      const record = { user_id: Number(userId), status: newStatus };
+      if (reason) { record.reason = reason; }
+      await markAttendance(sessionId, [record]);
+      await loadRoster();
+      setShowToast(true);
+    } catch (err) {
+      setError(extractApiError(err, 'Failed to save attendance'));
+      setOverrides((prev) => ({
+        ...prev,
+        [userId]: { ...prev[userId], status: prev[userId].originalStatus },
+      }));
+    } finally {
+      setSavingUserId(null);
+    }
+  }, [sessionId, loadRoster]);
+
   const handleStatusChange = (userId, newStatus) => {
     const current = overrides[userId];
     if (!current) { return; }
@@ -183,47 +207,17 @@ const AttendanceRosterPage = () => {
       setReasonText('');
       setReasonModal({ userId, pendingStatus: newStatus });
     } else {
-      setOverrides((prev) => ({
-        ...prev,
-        [userId]: { ...prev[userId], status: newStatus },
-      }));
+      saveStatusChange(userId, newStatus, null);
     }
   };
 
   const confirmReasonModal = () => {
     if (!reasonModal) { return; }
     const { userId, pendingStatus } = reasonModal;
-    setOverrides((prev) => ({
-      ...prev,
-      [userId]: { ...prev[userId], status: pendingStatus, reason: reasonText.trim() },
-    }));
+    const reason = reasonText.trim();
     setReasonModal(null);
     setReasonText('');
-  };
-
-  const handleSave = async () => {
-    setSaving(true);
-    setError('');
-    try {
-      const changed = Object.entries(overrides)
-        .filter(([, v]) => v.status !== v.originalStatus)
-        .map(([userId, v]) => {
-          const record = { user_id: Number(userId), status: v.status };
-          if (v.reason) { record.reason = v.reason; }
-          return record;
-        });
-      if (changed.length > 0) {
-        await markAttendance(sessionId, changed);
-      }
-      // Reload so record_ids are populated — required for the note button and
-      // reason modal to appear on subsequent edits.
-      await loadRoster();
-      setShowToast(true);
-    } catch (err) {
-      setError(extractApiError(err, 'Failed to save attendance'));
-    } finally {
-      setSaving(false);
-    }
+    saveStatusChange(userId, pendingStatus, reason);
   };
 
   const openNoteModal = (recordId, userId, currentStatus, existingNotes) => {
@@ -277,17 +271,14 @@ const AttendanceRosterPage = () => {
         ...row,
         currentStatus,
         canEdit,
+        isSaving: savingUserId === String(row.user_id),
         pendingReason: override.reason ?? null,
         onStatusChange: handleStatusChange,
         onNoteClick: openNoteModal,
       };
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ), [roster, overrides, isAdmin, windowOpen]);
-
-  const hasUnsavedChanges = useMemo(() => (
-    Object.values(overrides).some((v) => v.status !== v.originalStatus)
-  ), [overrides]);
+  ), [roster, overrides, isAdmin, windowOpen, savingUserId]);
 
   const columns = useMemo(() => {
     const cols = [
@@ -375,7 +366,7 @@ const AttendanceRosterPage = () => {
       {isAdmin && windowOpen && (
         <Alert variant="info" className="mb-3">
           Marking window is <strong>open</strong>. Select Present or Absent for each
-          learner, then save.
+          learner — changes are saved immediately.
         </Alert>
       )}
 
@@ -388,32 +379,17 @@ const AttendanceRosterPage = () => {
       {roster.length === 0 ? (
         <Alert variant="info">No learners on the roster for this session.</Alert>
       ) : (
-        <>
-          <DataTable
-            isPaginated={roster.length > PAGE_SIZE}
-            data={tableData}
-            columns={columns}
-            itemCount={tableData.length}
-            initialState={{ pageSize: PAGE_SIZE }}
-          >
-            <DataTable.Table />
-            <DataTable.EmptyTable content="No learners" />
-            {roster.length > PAGE_SIZE && <DataTable.TableFooter />}
-          </DataTable>
-
-          {isAdmin && windowOpen && (
-            <div className="mt-3">
-              <Button
-                variant="primary"
-                iconBefore={Save}
-                onClick={handleSave}
-                disabled={saving || !hasUnsavedChanges}
-              >
-                {saving ? 'Saving…' : 'Save attendance'}
-              </Button>
-            </div>
-          )}
-        </>
+        <DataTable
+          isPaginated={roster.length > PAGE_SIZE}
+          data={tableData}
+          columns={columns}
+          itemCount={tableData.length}
+          initialState={{ pageSize: PAGE_SIZE }}
+        >
+          <DataTable.Table />
+          <DataTable.EmptyTable content="No learners" />
+          {roster.length > PAGE_SIZE && <DataTable.TableFooter />}
+        </DataTable>
       )}
 
       {/* Reason modal — required when changing a previously recorded status */}
