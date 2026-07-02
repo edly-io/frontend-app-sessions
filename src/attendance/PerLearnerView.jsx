@@ -88,14 +88,6 @@ StatusCell.propTypes = {
   }).isRequired,
 };
 
-const SourceCell = ({ value }) => (
-  value
-    ? <Badge variant="light">{value}</Badge>
-    : <span className="text-muted">—</span>
-);
-SourceCell.propTypes = { value: PropTypes.string };
-SourceCell.defaultProps = { value: '' };
-
 const OverrideCell = ({ row }) => (
   row.original.is_overridden && row.original.override_reason
     ? <small className="text-muted">{row.original.override_reason}</small>
@@ -107,15 +99,6 @@ OverrideCell.propTypes = {
       is_overridden: PropTypes.bool,
       override_reason: PropTypes.string,
     }),
-  }).isRequired,
-};
-
-const MarkedByCell = ({ row }) => (
-  <small className="text-muted">{row.original.overridden_by_email || '—'}</small>
-);
-MarkedByCell.propTypes = {
-  row: PropTypes.shape({
-    original: PropTypes.shape({ overridden_by_email: PropTypes.string }),
   }).isRequired,
 };
 
@@ -154,9 +137,7 @@ NoteCell.propTypes = {
 const BASE_COLUMNS = [
   { Header: 'Session', accessor: 'session_title', Cell: SessionCell },
   { Header: 'Status', id: 'status', Cell: StatusCell },
-  { Header: 'Source', accessor: 'source', Cell: SourceCell },
-  { Header: 'Override reason', accessor: 'override_reason', Cell: OverrideCell },
-  { Header: 'Marked by', id: 'marked_by', Cell: MarkedByCell },
+  { Header: 'Change reason', accessor: 'override_reason', Cell: OverrideCell },
 ];
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -241,7 +222,7 @@ const PerLearnerView = () => {
     try {
       const data = await getTraineeAttendance(uid, {
         programKey: programId,
-        courseId: cid,
+        courseId: cid !== '__none__' ? cid : undefined,
         page: nextPageIndex + 1,
         pageSize: PAGE_SIZE,
       });
@@ -280,7 +261,7 @@ const PerLearnerView = () => {
       // Silent reload to pick up record_id and fresh data
       const data = await getTraineeAttendance(selectedUserIdRef.current, {
         programKey: programId,
-        courseId: selectedCourseIdRef.current,
+        courseId: selectedCourseIdRef.current !== '__none__' ? selectedCourseIdRef.current : undefined,
         page: pageIndex + 1,
         pageSize: PAGE_SIZE,
       });
@@ -357,10 +338,10 @@ const PerLearnerView = () => {
     return cols;
   }, [isAdmin]);
 
-  const courseOptions = useMemo(() => courses.map((c) => ({
-    value: c.id,
-    label: c.title || `Course ${c.id}`,
-  })), [courses]);
+  const courseOptions = useMemo(() => [
+    { value: '__none__', label: 'Sessions without course' },
+    ...courses.map((c) => ({ value: c.id, label: c.title || `Course ${c.id}` })),
+  ], [courses]);
 
   const selectedCourseOption = useMemo(() => (
     courseOptions.find((o) => o.value === selectedCourseId) || null
