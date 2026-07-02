@@ -127,15 +127,26 @@ const NoteCell = ({ row }) => {
   } = row.original;
   if (!recordId) { return null; }
   const hasNote = notes != null && notes !== '';
+  if (!hasNote) {
+    return (
+      <Button
+        variant="outline-primary"
+        size="sm"
+        onClick={() => onNoteClick(sessionId, userId, status, '')}
+      >
+        Add note
+      </Button>
+    );
+  }
   return (
     <div className="d-flex align-items-center" style={{ gap: 6 }}>
-      {hasNote && <small className="text-muted">{notes}</small>}
+      <small className="text-muted">{notes}</small>
       <Button
         variant="tertiary"
         size="sm"
         iconBefore={Edit}
-        aria-label={hasNote ? 'Edit note' : 'Add note'}
-        onClick={() => onNoteClick(sessionId, userId, status, notes ?? '')}
+        aria-label="Edit note"
+        onClick={() => onNoteClick(sessionId, userId, status, notes)}
       />
     </div>
   );
@@ -157,8 +168,8 @@ const BASE_COLUMNS = [
   { Header: 'Session', accessor: 'session_title', Cell: SessionCell },
   { Header: 'Status', id: 'status', Cell: StatusCell },
   { Header: 'Change reason', accessor: 'override_reason', Cell: OverrideCell },
+  { Header: 'Changed by', id: 'marked_by', Cell: MarkedByCell },
   { Header: 'Source', id: 'source', Cell: SourceCell },
-  { Header: 'Marked by', id: 'marked_by', Cell: MarkedByCell },
 ];
 
 // ─── Component ───────────────────────────────────────────────────────────────

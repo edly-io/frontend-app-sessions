@@ -121,15 +121,26 @@ const NoteCell = ({ row }) => {
   } = row.original;
   if (!recordId) { return null; }
   const hasNote = notes != null && notes !== '';
+  if (!hasNote) {
+    return (
+      <Button
+        variant="outline-primary"
+        size="sm"
+        onClick={() => onNoteClick(recordId, userId, currentStatus, '')}
+      >
+        Add note
+      </Button>
+    );
+  }
   return (
     <div className="d-flex align-items-center" style={{ gap: 6 }}>
-      {hasNote && <small className="text-muted">{notes}</small>}
+      <small className="text-muted">{notes}</small>
       <Button
         variant="tertiary"
         size="sm"
         iconBefore={Edit}
-        aria-label={hasNote ? 'Edit note' : 'Add note'}
-        onClick={() => onNoteClick(recordId, userId, currentStatus, notes ?? '')}
+        aria-label="Edit note"
+        onClick={() => onNoteClick(recordId, userId, currentStatus, notes)}
       />
     </div>
   );
@@ -294,7 +305,7 @@ const AttendanceRosterPage = () => {
         currentStatus,
         canEdit,
         isSaving: savingUserId === String(row.user_id),
-        pendingReason: override.reason ?? null,
+        pendingReason: override.reason ?? row.override_reason ?? null,
         onStatusChange: handleStatusChange,
         onNoteClick: openNoteModal,
       };
@@ -307,8 +318,8 @@ const AttendanceRosterPage = () => {
       { Header: 'Learner', accessor: 'full_name', Cell: LearnerCell },
       { Header: 'Status', id: 'status', Cell: StatusCell },
       { Header: 'Change reason', id: 'reason', Cell: ReasonCell },
+      { Header: 'Changed by', id: 'marked_by', Cell: MarkedByCell },
       { Header: 'Source', id: 'source', Cell: SourceCell },
-      { Header: 'Marked by', id: 'marked_by', Cell: MarkedByCell },
     ];
     if (isAdmin) {
       cols.push({ Header: 'Note', id: 'note', Cell: NoteCell });
