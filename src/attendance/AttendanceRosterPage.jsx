@@ -6,7 +6,7 @@ import { Link, useParams } from 'react-router-dom';
 import {
   Alert, Badge, Button, Container, DataTable, Form, Spinner, StandardModal, Toast,
 } from '@openedx/paragon';
-import { ArrowBack } from '@openedx/paragon/icons';
+import { ArrowBack, Edit } from '@openedx/paragon/icons';
 
 import {
   getAttendanceRoster,
@@ -87,7 +87,7 @@ StatusCell.propTypes = {
 
 const ReasonCell = ({ row }) => {
   const { pendingReason } = row.original;
-  if (!pendingReason) { return null; }
+  if (!pendingReason) { return <span className="text-muted">—</span>; }
   return <small className="text-muted font-italic">{pendingReason}</small>;
 };
 ReasonCell.propTypes = {
@@ -103,13 +103,16 @@ const NoteCell = ({ row }) => {
   if (!recordId) { return null; }
   const hasNote = notes != null && notes !== '';
   return (
-    <Button
-      variant={hasNote ? 'tertiary' : 'outline-primary'}
-      size="sm"
-      onClick={() => onNoteClick(recordId, userId, currentStatus, notes ?? '')}
-    >
-      {hasNote ? '💬 View note' : 'Add note'}
-    </Button>
+    <div className="d-flex align-items-center" style={{ gap: 6 }}>
+      {hasNote && <small className="text-muted">{notes}</small>}
+      <Button
+        variant="tertiary"
+        size="sm"
+        iconBefore={Edit}
+        aria-label={hasNote ? 'Edit note' : 'Add note'}
+        onClick={() => onNoteClick(recordId, userId, currentStatus, notes ?? '')}
+      />
+    </div>
   );
 };
 NoteCell.propTypes = {

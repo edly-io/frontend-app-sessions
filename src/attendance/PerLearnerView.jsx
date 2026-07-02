@@ -7,6 +7,8 @@ import {
   Alert, Badge, Button, Container, DataTable, Form, Spinner, StandardModal, Toast,
 } from '@openedx/paragon';
 
+import { Edit } from '@openedx/paragon/icons';
+
 import { getTraineeAttendance, markAttendance } from './api';
 import SearchableSelect from '../shared/SearchableSelect';
 import { fetchProgramCourses, fetchProgramLearners } from '../calendar/api';
@@ -97,7 +99,7 @@ SourceCell.defaultProps = { value: '' };
 const OverrideCell = ({ row }) => (
   row.original.is_overridden && row.original.override_reason
     ? <small className="text-muted">{row.original.override_reason}</small>
-    : null
+    : <span className="text-muted">—</span>
 );
 OverrideCell.propTypes = {
   row: PropTypes.shape({
@@ -124,13 +126,16 @@ const NoteCell = ({ row }) => {
   if (!recordId) { return null; }
   const hasNote = notes != null && notes !== '';
   return (
-    <Button
-      variant={hasNote ? 'tertiary' : 'outline-primary'}
-      size="sm"
-      onClick={() => onNoteClick(sessionId, userId, status, notes ?? '')}
-    >
-      {hasNote ? '💬 View note' : 'Add note'}
-    </Button>
+    <div className="d-flex align-items-center" style={{ gap: 6 }}>
+      {hasNote && <small className="text-muted">{notes}</small>}
+      <Button
+        variant="tertiary"
+        size="sm"
+        iconBefore={Edit}
+        aria-label={hasNote ? 'Edit note' : 'Add note'}
+        onClick={() => onNoteClick(sessionId, userId, status, notes ?? '')}
+      />
+    </div>
   );
 };
 NoteCell.propTypes = {
