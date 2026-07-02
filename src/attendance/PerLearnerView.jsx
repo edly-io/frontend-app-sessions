@@ -88,6 +88,25 @@ StatusCell.propTypes = {
   }).isRequired,
 };
 
+const SourceCell = ({ row }) => {
+  const { source } = row.original;
+  return source
+    ? <Badge variant="light">{source}</Badge>
+    : <span className="text-muted">—</span>;
+};
+SourceCell.propTypes = {
+  row: PropTypes.shape({ original: PropTypes.shape({ source: PropTypes.string }) }).isRequired,
+};
+
+const MarkedByCell = ({ row }) => (
+  <small className="text-muted">{row.original.overridden_by_email || '—'}</small>
+);
+MarkedByCell.propTypes = {
+  row: PropTypes.shape({
+    original: PropTypes.shape({ overridden_by_email: PropTypes.string }),
+  }).isRequired,
+};
+
 const OverrideCell = ({ row }) => (
   row.original.is_overridden && row.original.override_reason
     ? <small className="text-muted">{row.original.override_reason}</small>
@@ -138,6 +157,8 @@ const BASE_COLUMNS = [
   { Header: 'Session', accessor: 'session_title', Cell: SessionCell },
   { Header: 'Status', id: 'status', Cell: StatusCell },
   { Header: 'Change reason', accessor: 'override_reason', Cell: OverrideCell },
+  { Header: 'Source', id: 'source', Cell: SourceCell },
+  { Header: 'Marked by', id: 'marked_by', Cell: MarkedByCell },
 ];
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -281,7 +302,7 @@ const PerLearnerView = () => {
   const handleStatusChange = useCallback((sessionId, userId, newStatus) => {
     const row = records.find((r) => String(r.session_id) === String(sessionId));
     if (!row) { return; }
-    if (row.record_id != null) {
+    if ((row.record_id ?? row.id) != null) {
       setReasonText('');
       setReasonModal({ sessionId, userId, pendingStatus: newStatus });
     } else {
@@ -361,6 +382,7 @@ const PerLearnerView = () => {
 
   const tableData = useMemo(() => records.map((row) => ({
     ...row,
+    record_id: row.record_id ?? row.id ?? null, // trainee endpoint uses 'id', roster uses 'record_id'
     canEdit: isAdmin && row.status !== 'leave',
     isSaving: savingSessionId === String(row.session_id),
     onStatusChange: handleStatusChange,

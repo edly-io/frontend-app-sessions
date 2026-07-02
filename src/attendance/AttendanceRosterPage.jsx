@@ -96,6 +96,25 @@ ReasonCell.propTypes = {
   }).isRequired,
 };
 
+const SourceCell = ({ row }) => {
+  const { source } = row.original;
+  return source
+    ? <Badge variant="light">{source}</Badge>
+    : <span className="text-muted">—</span>;
+};
+SourceCell.propTypes = {
+  row: PropTypes.shape({ original: PropTypes.shape({ source: PropTypes.string }) }).isRequired,
+};
+
+const MarkedByCell = ({ row }) => (
+  <small className="text-muted">{row.original.overridden_by_email || '—'}</small>
+);
+MarkedByCell.propTypes = {
+  row: PropTypes.shape({
+    original: PropTypes.shape({ overridden_by_email: PropTypes.string }),
+  }).isRequired,
+};
+
 const NoteCell = ({ row }) => {
   const {
     record_id: recordId, onNoteClick, user_id: userId, currentStatus, notes,
@@ -288,6 +307,8 @@ const AttendanceRosterPage = () => {
       { Header: 'Learner', accessor: 'full_name', Cell: LearnerCell },
       { Header: 'Status', id: 'status', Cell: StatusCell },
       { Header: 'Change reason', id: 'reason', Cell: ReasonCell },
+      { Header: 'Source', id: 'source', Cell: SourceCell },
+      { Header: 'Marked by', id: 'marked_by', Cell: MarkedByCell },
     ];
     if (isAdmin) {
       cols.push({ Header: 'Note', id: 'note', Cell: NoteCell });
