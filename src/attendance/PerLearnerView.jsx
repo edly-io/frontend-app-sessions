@@ -380,7 +380,7 @@ const PerLearnerView = () => {
 
   const tableData = useMemo(() => records.map((row) => ({
     ...row,
-    canEdit: isAdmin && row.marking_window_open && row.status !== 'leave',
+    canEdit: isAdmin && row.status !== 'leave',
     isSaving: savingSessionId === String(row.session_id),
     onStatusChange: handleStatusChange,
     onNoteClick: openNoteModal,
