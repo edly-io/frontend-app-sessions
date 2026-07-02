@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, useParams } from 'react-router-dom';
+import { NavLink, useLocation, useParams } from 'react-router-dom';
 
 const ADMIN_ITEMS = [
   { slug: 'by-course', label: 'By Course' },
@@ -9,6 +9,8 @@ const ADMIN_ITEMS = [
 
 const AttendanceSubNav = () => {
   const { programId } = useParams();
+  const { pathname } = useLocation();
+  const isSessionRoute = pathname.includes('/attendance/sessions/');
 
   return (
     <nav
@@ -20,12 +22,15 @@ const AttendanceSubNav = () => {
         <NavLink
           key={slug}
           to={`/${programId}/attendance/${slug}`}
-          className={({ isActive }) => [
-            'px-3 py-1',
-            'rounded-pill',
-            'text-decoration-none',
-            isActive ? 'bg-primary text-white' : 'text-muted',
-          ].join(' ')}
+          className={({ isActive }) => {
+            const active = isActive || (slug === 'by-course' && isSessionRoute);
+            return [
+              'px-3 py-1',
+              'rounded-pill',
+              'text-decoration-none',
+              active ? 'bg-primary text-white' : 'text-muted',
+            ].join(' ');
+          }}
           style={{ fontSize: 14 }}
         >
           {label}

@@ -2,7 +2,7 @@ import React, {
   useCallback, useEffect, useMemo, useState,
 } from 'react';
 import PropTypes from 'prop-types';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import {
   Alert, Badge, Button, Container, DataTable, Form, Spinner, StandardModal, Toast,
 } from '@openedx/paragon';
@@ -161,6 +161,8 @@ NoteCell.propTypes = {
 
 const AttendanceRosterPage = () => {
   const { programId, sessionId } = useParams();
+  const [searchParams] = useSearchParams();
+  const courseId = searchParams.get('course_id') || '';
   const { data: config } = useConfig();
   const isAdmin = config?.user_role === USER_ROLE.ADMIN;
 
@@ -340,7 +342,7 @@ const AttendanceRosterPage = () => {
     <Container className="py-3">
       <Button
         as={Link}
-        to={`/${programId}/attendance/by-course`}
+        to={`/${programId}/attendance/by-course${courseId ? `?course_id=${encodeURIComponent(courseId)}` : ''}`}
         variant="tertiary"
         size="sm"
         iconBefore={ArrowBack}

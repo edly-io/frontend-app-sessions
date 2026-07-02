@@ -2,7 +2,7 @@ import React, {
   useEffect, useMemo, useState,
 } from 'react';
 import PropTypes from 'prop-types';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   Alert, Badge, Button, Container, DataTable, Spinner,
 } from '@openedx/paragon';
@@ -73,12 +73,13 @@ ActionsCell.propTypes = {
 const PerCourseView = () => {
   const { programId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [courses, setCourses] = useState([]);
   const [coursesLoading, setCoursesLoading] = useState(true);
   const [coursesError, setCoursesError] = useState('');
 
-  const [selectedCourseKey, setSelectedCourseKey] = useState('');
+  const [selectedCourseKey, setSelectedCourseKey] = useState(searchParams.get('course_id') || '');
   const [allSessions, setAllSessions] = useState([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [sessionsError, setSessionsError] = useState('');
@@ -144,7 +145,7 @@ const PerCourseView = () => {
     const raw = selectedCourseKey === NO_COURSE_VALUE
       ? allSessions.filter((s) => !s.course_id)
       : allSessions;
-    const onViewAttendance = (id) => navigate(`/${programId}/attendance/sessions/${id}`);
+    const onViewAttendance = (id) => navigate(`/${programId}/attendance/sessions/${id}?course_id=${encodeURIComponent(selectedCourseKey)}`);
     return raw.map((s) => ({ ...s, onViewAttendance }));
   }, [allSessions, selectedCourseKey, navigate, programId]);
 
