@@ -153,6 +153,7 @@ const PerLearnerHistoryReport = () => {
     setRecordsError('');
     try {
       const data = await getTraineeAttendance(uid, {
+        programKey: programId,
         courseId: cid,
         page: nextPageIndex + 1,
         pageSize: PAGE_SIZE,

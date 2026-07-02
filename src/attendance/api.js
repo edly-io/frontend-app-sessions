@@ -123,9 +123,12 @@ export const getAttendanceRoster = async (sessionId) => {
  * Returns paginated { count, next, previous, results: [...] }.
  * Omit courseId to get the trainee's programme-only (no-course) sessions.
  */
-export const getTraineeAttendance = async (userId, { courseId, page, pageSize } = {}) => {
+export const getTraineeAttendance = async (userId, {
+  programKey, courseId, page, pageSize,
+} = {}) => {
   const client = getAuthenticatedHttpClient();
   const params = new URLSearchParams();
+  if (programKey) { params.set('program_key', programKey); }
   if (courseId) { params.set('course_id', courseId); }
   if (page) { params.set('page', String(page)); }
   if (pageSize) { params.set('page_size', String(pageSize)); }
