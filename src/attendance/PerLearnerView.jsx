@@ -117,7 +117,36 @@ MarkedByCell.propTypes = {
   }).isRequired,
 };
 
-const COLUMNS = [
+const NoteCell = ({ row }) => {
+  const {
+    record_id: recordId, session_id: sessionId, onNoteClick, user_id: userId, status, notes,
+  } = row.original;
+  if (!recordId) { return null; }
+  const hasNote = notes != null && notes !== '';
+  return (
+    <Button
+      variant={hasNote ? 'tertiary' : 'outline-primary'}
+      size="sm"
+      onClick={() => onNoteClick(sessionId, userId, status, notes ?? '')}
+    >
+      {hasNote ? '💬 View note' : 'Add note'}
+    </Button>
+  );
+};
+NoteCell.propTypes = {
+  row: PropTypes.shape({
+    original: PropTypes.shape({
+      record_id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+      session_id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+      user_id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+      status: PropTypes.string,
+      notes: PropTypes.string,
+      onNoteClick: PropTypes.func,
+    }),
+  }).isRequired,
+};
+
+const BASE_COLUMNS = [
   { Header: 'Session', accessor: 'session_title', Cell: SessionCell },
   { Header: 'Status', id: 'status', Cell: StatusCell },
   { Header: 'Source', accessor: 'source', Cell: SourceCell },
@@ -157,6 +186,11 @@ const PerLearnerView = () => {
 
   const [reasonModal, setReasonModal] = useState(null); // { sessionId, userId, pendingStatus }
   const [reasonText, setReasonText] = useState('');
+
+  const [noteModal, setNoteModal] = useState(null); // { recordId, userId, status, initialNotes }
+  const [noteText, setNoteText] = useState('');
+  const [noteSaving, setNoteSaving] = useState(false);
+  const [noteError, setNoteError] = useState('');
 
   useEffect(() => {
     if (!programId) { return () => {}; }
@@ -278,6 +312,46 @@ const PerLearnerView = () => {
     saveStatusChange(sessionId, userId, pendingStatus, reason);
   };
 
+  const openNoteModal = (sessionId, userId, status, existingNotes) => {
+    setNoteModal({
+      sessionId, userId, status, initialNotes: existingNotes,
+    });
+    setNoteText(existingNotes);
+    setNoteError('');
+  };
+
+  const handleNoteSave = async () => {
+    setNoteSaving(true);
+    setNoteError('');
+    try {
+      await markAttendance(noteModal.sessionId, [{
+        user_id: Number(noteModal.userId),
+        status: noteModal.status,
+        notes: noteText,
+      }]);
+      setRecords((prev) => prev.map((r) => (
+        String(r.session_id) === String(noteModal.sessionId)
+          ? { ...r, notes: noteText }
+          : r
+      )));
+      setNoteModal(null);
+      setNoteText('');
+      setShowToast(true);
+    } catch (err) {
+      setNoteError(extractApiError(err, 'Failed to save note'));
+    } finally {
+      setNoteSaving(false);
+    }
+  };
+
+  const columns = useMemo(() => {
+    const cols = [...BASE_COLUMNS];
+    if (isAdmin) {
+      cols.push({ Header: 'Note', id: 'note', Cell: NoteCell });
+    }
+    return cols;
+  }, [isAdmin]);
+
   const courseOptions = useMemo(() => courses.map((c) => ({
     value: c.id,
     label: c.title || `Course ${c.id}`,
@@ -304,6 +378,8 @@ const PerLearnerView = () => {
     canEdit: isAdmin && row.marking_window_open && row.status !== 'leave',
     isSaving: savingSessionId === String(row.session_id),
     onStatusChange: handleStatusChange,
+    onNoteClick: openNoteModal,
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   })), [records, isAdmin, savingSessionId, handleStatusChange]);
 
   return (
@@ -384,7 +460,7 @@ const PerLearnerView = () => {
           pageCount={Math.max(1, Math.ceil(count / PAGE_SIZE))}
           itemCount={count}
           data={tableData}
-          columns={COLUMNS}
+          columns={columns}
           initialState={{ pageIndex, pageSize: PAGE_SIZE }}
         >
           <DataTable.Table />
@@ -424,6 +500,45 @@ const PerLearnerView = () => {
           value={reasonText}
           onChange={(e) => setReasonText(e.target.value)}
           placeholder="Enter reason…"
+        />
+      </StandardModal>
+
+      {/* Note modal */}
+      <StandardModal
+        title="Attendance note"
+        isOpen={!!noteModal}
+        onClose={() => { setNoteModal(null); setNoteText(''); setNoteError(''); }}
+        hasCloseButton
+        footerNode={(
+          <div className="d-flex justify-content-end" style={{ gap: 8 }}>
+            <Button
+              variant="tertiary"
+              onClick={() => { setNoteModal(null); setNoteText(''); setNoteError(''); }}
+            >
+              Close
+            </Button>
+            {isAdmin && (
+              <Button
+                variant="primary"
+                onClick={handleNoteSave}
+                disabled={noteText === noteModal?.initialNotes || noteSaving}
+              >
+                {noteSaving ? 'Saving…' : 'Save note'}
+              </Button>
+            )}
+          </div>
+        )}
+      >
+        {noteError && (
+          <Alert variant="danger" className="mb-2">{noteError}</Alert>
+        )}
+        <Form.Control
+          as="textarea"
+          rows={4}
+          value={noteText}
+          onChange={(e) => isAdmin && setNoteText(e.target.value)}
+          readOnly={!isAdmin}
+          placeholder={isAdmin ? 'Enter a note…' : 'No note recorded.'}
         />
       </StandardModal>
 
