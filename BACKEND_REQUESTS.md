@@ -10,25 +10,7 @@ Backend lives at:
 
 ## Open Requests
 
-### Consistent per-row fields across roster and trainee attendance endpoints
-
-**Problem.** The two main attendance endpoints return inconsistent fields, making it impossible to show the same columns in both the By Course (roster) and By Learner tabs.
-
-| Field | `GET /sessions/{id}/attendance-roster/` | `GET /trainees/{id}/attendance/` |
-|---|---|---|
-| `source` | ✓ | ✓ |
-| `overridden_by_email` | ✗ missing | ✓ |
-| `override_reason` | ✗ missing | ✓ |
-| `record_id` | ✓ | ✗ uses `id` instead |
-| `notes` | ✓ | ✗ missing |
-| `marking_window_open` | session-level only | ✗ missing |
-
-**Requested fixes.**
-
-1. **Roster** (`_row_from_record` / `_derived_row` in `roster_service.py`): add `overridden_by_email` and `override_reason` per row.
-2. **Trainee endpoint** (`AttendanceRecordListSerializer`): add `notes`, `marking_window_open` (from the session FK), and expose `record_id` as an alias for `id` (or rename to `record_id` to match the roster) — frontend uses `record_id` to determine whether a change-reason modal is needed and whether the note button should appear.
-
-**Frontend impact.** Until resolved: roster hides "Marked by" and shows only pending change reason (not historical); By Learner tab cannot gate edit buttons on window state (errors on closed-window attempts) and note button is hidden (no `notes` field). Frontend workaround: falls back to `row.id` for the record identity check.
+*(none)*
 
 
 
@@ -36,6 +18,9 @@ Backend lives at:
 ---
 
 ## Resolved / Acknowledged
+
+### ✓ Consistent per-row fields — `AttendanceRecordListSerializer` already complete; added `session_id`
+**Resolved.** All required fields (`record_id`, `notes`, `marking_window_open`, `override_reason`, `overridden_by_email`) were already present in `AttendanceRecordListSerializer`. Added `session_id` to the fields list so the frontend can pass the correct session to `mark-attendance`. Frontend workarounds removed; `canEdit` now gates on `marking_window_open` per row.
 
 ### ✓ Per-learner attendance history — `GET /v1/trainees/{id}/attendance/?course_id=`
 

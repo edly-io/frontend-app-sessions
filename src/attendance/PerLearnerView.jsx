@@ -273,7 +273,7 @@ const PerLearnerView = () => {
     setSavingSessionId(String(sessionId));
     setSaveError('');
     setRecords((prev) => prev.map((r) => (
-      String(r.session_id) === String(sessionId) ? { ...r, status: newStatus } : r
+      String(r.session_id ?? r.session) === String(sessionId) ? { ...r, status: newStatus } : r
     )));
     try {
       const record = { user_id: Number(userId), status: newStatus };
@@ -300,9 +300,9 @@ const PerLearnerView = () => {
   }, [programId, pageIndex]);
 
   const handleStatusChange = useCallback((sessionId, userId, newStatus) => {
-    const row = records.find((r) => String(r.session_id) === String(sessionId));
+    const row = records.find((r) => String(r.session_id ?? r.session) === String(sessionId));
     if (!row) { return; }
-    if ((row.record_id ?? row.id) != null) {
+    if (row.record_id != null) {
       setReasonText('');
       setReasonModal({ sessionId, userId, pendingStatus: newStatus });
     } else {
@@ -337,7 +337,7 @@ const PerLearnerView = () => {
         notes: noteText,
       }]);
       setRecords((prev) => prev.map((r) => (
-        String(r.session_id) === String(noteModal.sessionId)
+        String(r.session_id ?? r.session) === String(noteModal.sessionId)
           ? { ...r, notes: noteText }
           : r
       )));
@@ -382,9 +382,9 @@ const PerLearnerView = () => {
 
   const tableData = useMemo(() => records.map((row) => ({
     ...row,
-    record_id: row.record_id ?? row.id ?? null, // trainee endpoint uses 'id', roster uses 'record_id'
-    canEdit: isAdmin && row.status !== 'leave',
-    isSaving: savingSessionId === String(row.session_id),
+    session_id: row.session_id ?? row.session, // API returns 'session' as the FK PK
+    canEdit: isAdmin && row.marking_window_open && row.status !== 'leave',
+    isSaving: savingSessionId === String(row.session_id ?? row.session),
     onStatusChange: handleStatusChange,
     onNoteClick: openNoteModal,
   // eslint-disable-next-line react-hooks/exhaustive-deps
