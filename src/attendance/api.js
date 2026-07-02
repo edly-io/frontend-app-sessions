@@ -146,10 +146,11 @@ export const getTraineeAttendance = async (userId, {
  * Returns { results: [{ user_id, email, full_name, present, absent, leave,
  *                       pending, total, attendance_rate }] }
  */
-export const getCourseSummary = async (courseId) => {
+export const getCourseSummary = async (courseId, programKey) => {
   const client = getAuthenticatedHttpClient();
+  const params = programKey ? `?program_key=${encodeURIComponent(programKey)}` : '';
   const { data } = await client.get(
-    `${getBaseUrl()}/courses/${encodeURIComponent(courseId)}/attendance-summary/`,
+    `${getBaseUrl()}/courses/${encodeURIComponent(courseId)}/attendance-summary/${params}`,
   );
   return data;
 };

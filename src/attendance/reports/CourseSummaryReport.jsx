@@ -93,14 +93,14 @@ const CourseSummaryReport = () => {
     setSummaryError('');
     setRows([]);
     try {
-      const data = await getCourseSummary(courseId);
+      const data = await getCourseSummary(courseId, programId);
       setRows(Array.isArray(data) ? data : data.results ?? []);
     } catch (err) {
       setSummaryError(extractApiError(err, 'Failed to load summary'));
     } finally {
       setSummaryLoading(false);
     }
-  }, []);
+  }, [programId]);
 
   const handleCourseChange = (option) => {
     const courseId = option?.value || '';
