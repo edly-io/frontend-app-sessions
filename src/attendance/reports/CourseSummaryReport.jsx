@@ -4,22 +4,13 @@ import React, {
 import { useParams } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import {
-  Alert, Container, DataTable, Form, Spinner,
+  Alert, Container, DataTable, Spinner,
 } from '@openedx/paragon';
 
 import SearchableSelect from '../../shared/SearchableSelect';
 import { fetchProgramCourses } from '../../calendar/api';
+import { getCourseSummary } from '../api';
 import { extractApiError } from '../../shared/utils';
-
-// ─── Default date range helpers ───────────────────────────────────────────────
-
-const toDateInput = (date) => date.toISOString().slice(0, 10);
-
-const getDefaultDates = () => {
-  const end = new Date();
-  const start = new Date(end.getTime() - 90 * 24 * 60 * 60 * 1000);
-  return { start: toDateInput(start), end: toDateInput(end) };
-};
 
 // ─── Cell renderers ──────────────────────────────────────────────────────────
 
@@ -41,7 +32,7 @@ LearnerCell.propTypes = {
 };
 
 const RateCell = ({ value }) => {
-  const pct = Math.round((value ?? 0) * 100);
+  const pct = Math.round((value ?? 0));
   let variant = 'success';
   if (pct < 75) {
     variant = 'danger';
@@ -60,32 +51,25 @@ const COLUMNS = [
   { Header: 'Sessions', accessor: 'total' },
   { Header: 'Present', accessor: 'present' },
   { Header: 'Absent', accessor: 'absent' },
-  { Header: 'Late', accessor: 'late' },
-  { Header: 'Left Early', accessor: 'left_early' },
-  { Header: 'Partial', accessor: 'partial' },
-  { Header: 'Attendance %', accessor: 'rate', Cell: RateCell },
+  { Header: 'Leave', accessor: 'leave' },
+  { Header: 'Pending', accessor: 'pending' },
+  { Header: 'Attendance %', accessor: 'attendance_rate', Cell: RateCell },
 ];
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
 const CourseSummaryReport = () => {
   const { programId } = useParams();
-  const defaults = getDefaultDates();
 
   const [courses, setCourses] = useState([]);
   const [coursesLoading, setCoursesLoading] = useState(true);
   const [coursesError, setCoursesError] = useState('');
 
   const [selectedCourseId, setSelectedCourseId] = useState('');
-  const [startDate, setStartDate] = useState(defaults.start);
-  const [endDate, setEndDate] = useState(defaults.end);
-
   const [rows, setRows] = useState([]);
-  const [sessionCount, setSessionCount] = useState(null);
-  const [summaryLoading] = useState(false);
+  const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryError, setSummaryError] = useState('');
 
-  // Load course list for the picker.
   useEffect(() => {
     if (!programId) { return () => {}; }
     let cancelled = false;
@@ -105,14 +89,23 @@ const CourseSummaryReport = () => {
 
   const loadSummary = useCallback(async (courseId) => {
     if (!courseId) { return; }
-    setSummaryError('This report is no longer available.');
+    setSummaryLoading(true);
+    setSummaryError('');
+    setRows([]);
+    try {
+      const data = await getCourseSummary(courseId);
+      setRows(Array.isArray(data) ? data : data.results ?? []);
+    } catch (err) {
+      setSummaryError(extractApiError(err, 'Failed to load summary'));
+    } finally {
+      setSummaryLoading(false);
+    }
   }, []);
 
   const handleCourseChange = (option) => {
     const courseId = option?.value || '';
     setSelectedCourseId(courseId);
     setRows([]);
-    setSessionCount(null);
     if (courseId) {
       loadSummary(courseId);
     }
@@ -127,25 +120,12 @@ const CourseSummaryReport = () => {
     courseOptions.find((o) => o.value === selectedCourseId) || null
   ), [courseOptions, selectedCourseId]);
 
-  const handleDateChange = (field) => (e) => {
-    const val = e.target.value;
-    if (field === 'start') {
-      setStartDate(val);
-    } else {
-      setEndDate(val);
-    }
-    if (selectedCourseId) {
-      loadSummary(selectedCourseId);
-    }
-  };
-
   return (
     <Container className="py-3">
       <h3 className="mb-1">Course Attendance Summary</h3>
       <p className="text-muted mb-3">
-        Aggregated attendance per learner for a course over a date range —
-        present / absent / late counts and overall attendance percentage. Sort
-        by percentage to surface the lowest attenders first.
+        Aggregated attendance per learner for a course — present / absent / leave /
+        pending counts and attendance percentage across all completed sessions.
       </p>
 
       {coursesError && (
@@ -159,37 +139,16 @@ const CourseSummaryReport = () => {
         </Alert>
       )}
 
-      {/* Filters row */}
-      <div className="d-flex flex-wrap mb-4" style={{ gap: 16 }}>
-        <div style={{ minWidth: 280, maxWidth: 360, flex: '1 1 280px' }}>
-          <SearchableSelect
-            id="summary-course"
-            label="Course"
-            options={courseOptions}
-            value={selectedCourseOption}
-            onChange={handleCourseChange}
-            loading={coursesLoading}
-            placeholder="Search courses…"
-          />
-        </div>
-
-        <Form.Group controlId="summary-start" style={{ minWidth: 160 }}>
-          <Form.Label>From</Form.Label>
-          <Form.Control
-            type="date"
-            value={startDate}
-            onChange={handleDateChange('start')}
-          />
-        </Form.Group>
-
-        <Form.Group controlId="summary-end" style={{ minWidth: 160 }}>
-          <Form.Label>To</Form.Label>
-          <Form.Control
-            type="date"
-            value={endDate}
-            onChange={handleDateChange('end')}
-          />
-        </Form.Group>
+      <div className="mb-4" style={{ minWidth: 280, maxWidth: 400 }}>
+        <SearchableSelect
+          id="summary-course"
+          label="Course"
+          options={courseOptions}
+          value={selectedCourseOption}
+          onChange={handleCourseChange}
+          loading={coursesLoading}
+          placeholder="Search courses…"
+        />
       </div>
 
       {!selectedCourseId && !coursesLoading && (
@@ -204,27 +163,20 @@ const CourseSummaryReport = () => {
       )}
 
       {selectedCourseId && !summaryLoading && rows.length === 0 && (
-        <Alert variant="info">No attendance records for this course in the selected date range.</Alert>
+        <Alert variant="info">No attendance data for this course yet.</Alert>
       )}
 
       {selectedCourseId && !summaryLoading && rows.length > 0 && (
-        <>
-          {sessionCount !== null && (
-            <p className="text-muted mb-2">
-              <strong>{sessionCount}</strong> session{sessionCount !== 1 ? 's' : ''} in range
-            </p>
-          )}
-          <DataTable
-            isSortable
-            data={rows}
-            columns={COLUMNS}
-            itemCount={rows.length}
-            initialState={{ sortBy: [{ id: 'rate', desc: false }] }}
-          >
-            <DataTable.Table />
-            <DataTable.EmptyTable content="No learners" />
-          </DataTable>
-        </>
+        <DataTable
+          isSortable
+          data={rows}
+          columns={COLUMNS}
+          itemCount={rows.length}
+          initialState={{ sortBy: [{ id: 'attendance_rate', desc: false }] }}
+        >
+          <DataTable.Table />
+          <DataTable.EmptyTable content="No learners" />
+        </DataTable>
       )}
     </Container>
   );

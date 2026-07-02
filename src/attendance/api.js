@@ -3,13 +3,6 @@ import { getConfig } from '@edx/frontend-platform';
 
 const getBaseUrl = () => `${getConfig().LMS_BASE_URL}/fbr/api/attendance/v1`;
 
-export const getAttendanceRecords = async (filters = {}) => {
-  const client = getAuthenticatedHttpClient();
-  const params = new URLSearchParams(filters);
-  const { data } = await client.get(`${getBaseUrl()}/records/?${params}`);
-  return data;
-};
-
 /**
  * Bulk-upsert manual attendance for a session. Admin-only on the backend.
  *
@@ -108,35 +101,6 @@ export const getSession = async (sessionId) => {
 };
 
 /**
- * Paginated attendance records. Wraps GET /fbr/api/attendance/v1/records/
- * which requires either session_id or course_id. Used by the Per-Session and
- * Per-Learner reports.
- *
- * @param {Object} opts
- * @param {string}  [opts.sessionId]
- * @param {string}  [opts.userId]
- * @param {string}  [opts.courseId]
- * @param {number}  [opts.page]
- * @param {number}  [opts.pageSize]
- */
-export const getAttendanceRecordsPage = async ({
-  sessionId, userId, courseId, page, pageSize,
-} = {}) => {
-  const client = getAuthenticatedHttpClient();
-  const params = new URLSearchParams();
-  if (sessionId) { params.set('session_id', sessionId); }
-  if (userId) { params.set('user_id', String(userId)); }
-  if (courseId) { params.set('course_id', String(courseId)); }
-  if (page) { params.set('page', String(page)); }
-  if (pageSize) { params.set('page_size', String(pageSize)); }
-  const qs = params.toString();
-  const { data } = await client.get(
-    `${getBaseUrl()}/records/${qs ? `?${qs}` : ''}`,
-  );
-  return data;
-};
-
-/**
  * Derived attendance roster for a session. Single call replaces the old
  * 3-call merge (enrolled-learners + records + session detail).
  *
@@ -152,14 +116,38 @@ export const getAttendanceRoster = async (sessionId) => {
 };
 
 /**
- * Single attendance record detail. Lazy-loaded on note modal open to avoid
- * N+1 on roster page load.
+ * Per-learner attendance history within a course (derived — includes pending/leave).
+ * Replaces the deprecated GET /v1/records/?user_id&course_id.
  *
- * GET /fbr/api/attendance/v1/records/{recordId}/
+ * GET /fbr/api/attendance/v1/trainees/{userId}/attendance/?course_id=<key>
+ * Returns paginated { count, next, previous, results: [...] }.
+ * Omit courseId to get the trainee's programme-only (no-course) sessions.
  */
-export const getAttendanceRecord = async (recordId) => {
+export const getTraineeAttendance = async (userId, { courseId, page, pageSize } = {}) => {
   const client = getAuthenticatedHttpClient();
-  const { data } = await client.get(`${getBaseUrl()}/records/${recordId}/`);
+  const params = new URLSearchParams();
+  if (courseId) { params.set('course_id', courseId); }
+  if (page) { params.set('page', String(page)); }
+  if (pageSize) { params.set('page_size', String(pageSize)); }
+  const qs = params.toString();
+  const { data } = await client.get(
+    `${getBaseUrl()}/trainees/${userId}/attendance/${qs ? `?${qs}` : ''}`,
+  );
+  return data;
+};
+
+/**
+ * Per-learner rollup for a course — one row per enrolled learner.
+ *
+ * GET /fbr/api/attendance/v1/courses/{courseId}/attendance-summary/
+ * Returns { results: [{ user_id, email, full_name, present, absent, leave,
+ *                       pending, total, attendance_rate }] }
+ */
+export const getCourseSummary = async (courseId) => {
+  const client = getAuthenticatedHttpClient();
+  const { data } = await client.get(
+    `${getBaseUrl()}/courses/${encodeURIComponent(courseId)}/attendance-summary/`,
+  );
   return data;
 };
 

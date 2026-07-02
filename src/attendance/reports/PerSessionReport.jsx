@@ -6,7 +6,7 @@ import {
   Alert, Badge, Container, DataTable, Spinner,
 } from '@openedx/paragon';
 
-import { getAttendanceRecordsPage, getPastSessionsForAttendance } from '../api';
+import { getAttendanceRoster, getPastSessionsForAttendance } from '../api';
 import SearchableSelect from '../../shared/SearchableSelect';
 import { ATTENDANCE_STATUS } from '../../shared/constants';
 import { extractApiError, formatDateTime, getStatusVariant } from '../../shared/utils';
@@ -122,13 +122,9 @@ const PerSessionReport = () => {
     setRecordsLoading(true);
     setRecordsError('');
     try {
-      const data = await getAttendanceRecordsPage({
-        sessionId: sid,
-        page: nextPageIndex + 1,
-        pageSize: PAGE_SIZE,
-      });
+      const data = await getAttendanceRoster(sid);
       const results = Array.isArray(data) ? data : data.results ?? [];
-      const total = Array.isArray(data) ? data.length : data.count ?? results.length;
+      const total = results.length;
       setRecords(results);
       setCount(total);
       setPageIndex(nextPageIndex);

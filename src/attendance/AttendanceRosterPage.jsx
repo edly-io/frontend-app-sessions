@@ -1,5 +1,5 @@
 import React, {
-  useEffect, useMemo, useState,
+  useCallback, useEffect, useMemo, useState,
 } from 'react';
 import PropTypes from 'prop-types';
 import { Link, useParams } from 'react-router-dom';
@@ -18,23 +18,29 @@ import { extractApiError, formatDateTime, getStatusVariant } from '../shared/uti
 
 const PAGE_SIZE = 25;
 
-// Editable statuses — leave and pending are always read-only.
 const EDIT_OPTIONS = [
-  { value: 'present', label: 'Present' },
-  { value: 'absent', label: 'Absent' },
+  { value: 'present', label: 'Present', variant: 'success' },
+  { value: 'absent', label: 'Absent', variant: 'danger' },
 ];
 
 // ─── Cell renderers ──────────────────────────────────────────────────────────
 
-const NameCell = ({ value }) => value || '—';
-NameCell.propTypes = { value: PropTypes.string };
-NameCell.defaultProps = { value: '' };
+const LearnerCell = ({ row }) => (
+  <div>
+    <div className="font-weight-semibold">{row.original.full_name || row.original.username || '—'}</div>
+    <small className="text-muted">{row.original.email}</small>
+  </div>
+);
+LearnerCell.propTypes = {
+  row: PropTypes.shape({
+    original: PropTypes.shape({
+      full_name: PropTypes.string,
+      username: PropTypes.string,
+      email: PropTypes.string,
+    }),
+  }).isRequired,
+};
 
-const EmailCell = ({ value }) => <span className="text-muted">{value || '—'}</span>;
-EmailCell.propTypes = { value: PropTypes.string };
-EmailCell.defaultProps = { value: '' };
-
-// Renders radio buttons (editable) or a status badge (read-only / leave / pending).
 const StatusCell = ({ row }) => {
   const {
     canEdit, currentStatus, onStatusChange, user_id: userId,
@@ -48,18 +54,21 @@ const StatusCell = ({ row }) => {
   }
 
   return (
-    <div className="d-flex" style={{ gap: 12 }}>
-      {EDIT_OPTIONS.map((opt) => (
-        <Form.Check
-          key={opt.value}
-          type="radio"
-          name={`status-${userId}`}
-          id={`status-${userId}-${opt.value}`}
-          label={opt.label}
-          checked={currentStatus === opt.value}
-          onChange={() => onStatusChange(userId, opt.value)}
-        />
-      ))}
+    <div className="d-flex" style={{ gap: 4 }}>
+      {EDIT_OPTIONS.map((opt) => {
+        const isSelected = currentStatus === opt.value;
+        return (
+          <Button
+            key={opt.value}
+            size="sm"
+            variant={isSelected ? opt.variant : 'outline-secondary'}
+            onClick={() => !isSelected && onStatusChange(userId, opt.value)}
+            style={{ minWidth: 76, borderRadius: 20 }}
+          >
+            {opt.label}
+          </Button>
+        );
+      })}
     </div>
   );
 };
@@ -71,6 +80,17 @@ StatusCell.propTypes = {
       canEdit: PropTypes.bool.isRequired,
       onStatusChange: PropTypes.func.isRequired,
     }).isRequired,
+  }).isRequired,
+};
+
+const ReasonCell = ({ row }) => {
+  const { pendingReason } = row.original;
+  if (!pendingReason) { return null; }
+  return <small className="text-muted font-italic">{pendingReason}</small>;
+};
+ReasonCell.propTypes = {
+  row: PropTypes.shape({
+    original: PropTypes.shape({ pendingReason: PropTypes.string }),
   }).isRequired,
 };
 
@@ -115,57 +135,50 @@ const AttendanceRosterPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // { [userId]: { status, reason?, originalStatus, recordId } }
+  // { [userId]: { status, originalStatus, recordId, reason? } }
   const [overrides, setOverrides] = useState({});
-
   const [saving, setSaving] = useState(false);
   const [showToast, setShowToast] = useState(false);
 
-  // Reason modal: opened when changing an already-recorded status.
   const [reasonModal, setReasonModal] = useState(null); // { userId, pendingStatus }
   const [reasonText, setReasonText] = useState('');
 
-  // Note modal.
-  const [noteModal, setNoteModal] = useState(null); // { recordId, userId, currentStatus, initialNotes } | null
+  const [noteModal, setNoteModal] = useState(null); // { recordId, userId, currentStatus, initialNotes }
   const [noteText, setNoteText] = useState('');
   const [noteSaving, setNoteSaving] = useState(false);
   const [noteError, setNoteError] = useState('');
 
+  // Extracted so handleSave can reload without duplicating logic.
+  const loadRoster = useCallback(async () => {
+    const data = await getAttendanceRoster(sessionId);
+    const rows = Array.isArray(data) ? data : data.results ?? [];
+    const meta = data.session ?? null;
+    setRoster(rows);
+    setSessionMeta(meta);
+    const seed = {};
+    rows.forEach((row) => {
+      seed[row.user_id] = {
+        status: row.status || 'pending',
+        originalStatus: row.status || 'pending',
+        recordId: row.record_id ?? null,
+      };
+    });
+    setOverrides(seed);
+  }, [sessionId]);
+
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      try {
-        const data = await getAttendanceRoster(sessionId);
-        if (cancelled) { return; }
-        const rows = Array.isArray(data) ? data : data.results ?? [];
-        const meta = data.session ?? null;
-        setRoster(rows);
-        setSessionMeta(meta);
-        // Seed overrides from existing roster statuses.
-        const seed = {};
-        rows.forEach((row) => {
-          seed[row.user_id] = {
-            status: row.status || 'pending',
-            originalStatus: row.status || 'pending',
-            recordId: row.record_id ?? null,
-          };
-        });
-        setOverrides(seed);
-      } catch (err) {
-        if (!cancelled) { setError(extractApiError(err, 'Failed to load roster')); }
-      } finally {
-        if (!cancelled) { setLoading(false); }
-      }
-    })();
+    loadRoster()
+      .catch((err) => { setError(extractApiError(err, 'Failed to load roster')); })
+      .finally(() => { if (!cancelled) { setLoading(false); } });
     return () => { cancelled = true; };
-  }, [sessionId]);
+  }, [loadRoster]);
 
   const windowOpen = sessionMeta?.marking_window_open ?? false;
 
   const handleStatusChange = (userId, newStatus) => {
     const current = overrides[userId];
     if (!current) { return; }
-    // If the row already has a real record, require a reason for the change.
     if (current.recordId !== null) {
       setReasonText('');
       setReasonModal({ userId, pendingStatus: newStatus });
@@ -192,7 +205,6 @@ const AttendanceRosterPage = () => {
     setSaving(true);
     setError('');
     try {
-      // Send only rows whose status differs from the original.
       const changed = Object.entries(overrides)
         .filter(([, v]) => v.status !== v.originalStatus)
         .map(([userId, v]) => {
@@ -203,14 +215,9 @@ const AttendanceRosterPage = () => {
       if (changed.length > 0) {
         await markAttendance(sessionId, changed);
       }
-      // Update originals to reflect saved state.
-      setOverrides((prev) => {
-        const next = { ...prev };
-        Object.keys(next).forEach((uid) => {
-          next[uid] = { ...next[uid], originalStatus: next[uid].status, reason: undefined };
-        });
-        return next;
-      });
+      // Reload so record_ids are populated — required for the note button and
+      // reason modal to appear on subsequent edits.
+      await loadRoster();
       setShowToast(true);
     } catch (err) {
       setError(extractApiError(err, 'Failed to save attendance'));
@@ -265,13 +272,12 @@ const AttendanceRosterPage = () => {
     roster.map((row) => {
       const override = overrides[row.user_id] ?? {};
       const currentStatus = override.status ?? row.status ?? 'pending';
-      // leave rows and pending rows (no record_id + window closed) are not editable;
-      // only admin can edit when window is open and status is not leave.
       const canEdit = isAdmin && windowOpen && currentStatus !== 'leave';
       return {
         ...row,
         currentStatus,
         canEdit,
+        pendingReason: override.reason ?? null,
         onStatusChange: handleStatusChange,
         onNoteClick: openNoteModal,
       };
@@ -285,9 +291,9 @@ const AttendanceRosterPage = () => {
 
   const columns = useMemo(() => {
     const cols = [
-      { Header: 'Name', accessor: 'full_name', Cell: NameCell },
-      { Header: 'Email', accessor: 'email', Cell: EmailCell },
+      { Header: 'Learner', accessor: 'full_name', Cell: LearnerCell },
       { Header: 'Status', id: 'status', Cell: StatusCell },
+      { Header: 'Change reason', id: 'reason', Cell: ReasonCell },
     ];
     if (isAdmin) {
       cols.push({ Header: 'Note', id: 'note', Cell: NoteCell });
@@ -360,7 +366,6 @@ const AttendanceRosterPage = () => {
         </div>
       </div>
 
-      {/* Marking window banner */}
       {isAdmin && !windowOpen && (
         <Alert variant="warning" className="mb-3">
           The attendance marking window for this session is <strong>closed</strong>.
@@ -369,8 +374,8 @@ const AttendanceRosterPage = () => {
       )}
       {isAdmin && windowOpen && (
         <Alert variant="info" className="mb-3">
-          Marking window is <strong>open</strong>. Select Present or Absent for each learner,
-          then save.
+          Marking window is <strong>open</strong>. Select Present or Absent for each
+          learner, then save.
         </Alert>
       )}
 
@@ -411,7 +416,7 @@ const AttendanceRosterPage = () => {
         </>
       )}
 
-      {/* Reason modal — required when changing an already-recorded status */}
+      {/* Reason modal — required when changing a previously recorded status */}
       <StandardModal
         title="Reason for change"
         isOpen={!!reasonModal}

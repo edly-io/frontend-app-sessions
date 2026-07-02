@@ -15,6 +15,7 @@ import AttendanceRosterPage from '../attendance/AttendanceRosterPage';
 import MyAttendanceView from '../attendance/MyAttendanceView';
 import PerCourseView from '../attendance/PerCourseView';
 import PerLearnerView from '../attendance/PerLearnerView';
+import CourseSummaryReport from '../attendance/reports/CourseSummaryReport';
 import LocationsPage from '../locations/LocationsPage';
 import HolidaysPage from '../holidays/HolidaysPage';
 
@@ -80,6 +81,7 @@ export const sessionsAdminRoutes = (
       <Route index element={<AttendanceIndexRedirect />} />
       <Route path="by-course" element={<PerCourseView />} />
       <Route path="by-learner" element={<PerLearnerView />} />
+      <Route path="summary" element={<CourseSummaryReport />} />
       <Route path="sessions/:sessionId" element={<AttendanceRosterPage />} />
       <Route path="me" element={<MyAttendanceView />} />
     </Route>

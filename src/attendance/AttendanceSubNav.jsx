@@ -4,6 +4,7 @@ import { NavLink, useParams } from 'react-router-dom';
 const ADMIN_ITEMS = [
   { slug: 'by-course', label: 'By Course' },
   { slug: 'by-learner', label: 'By Learner' },
+  { slug: 'summary', label: 'Summary' },
 ];
 
 const AttendanceSubNav = () => {

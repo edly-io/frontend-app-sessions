@@ -7,7 +7,7 @@ import {
   Alert, Badge, Container, DataTable, Spinner,
 } from '@openedx/paragon';
 
-import { getAttendanceRecordsPage } from './api';
+import { getTraineeAttendance } from './api';
 import SearchableSelect from '../shared/SearchableSelect';
 import { fetchProgramCourses, fetchProgramLearners } from '../calendar/api';
 import { ATTENDANCE_STATUS } from '../shared/constants';
@@ -142,8 +142,7 @@ const PerLearnerView = () => {
     setRecordsLoading(true);
     setRecordsError('');
     try {
-      const data = await getAttendanceRecordsPage({
-        userId: uid,
+      const data = await getTraineeAttendance(uid, {
         courseId: cid,
         page: nextPageIndex + 1,
         pageSize: PAGE_SIZE,
