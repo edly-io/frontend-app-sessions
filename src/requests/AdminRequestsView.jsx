@@ -18,7 +18,6 @@ import {
   REQUEST_TYPE,
   REQUEST_TYPE_LABELS,
   REQUEST_TYPE_VARIANTS,
-  USER_ROLE,
 } from '../shared/constants';
 import { extractApiError, formatDateTime } from '../shared/utils';
 import RequestDetailCell from './RequestDetailCell';
@@ -85,24 +84,6 @@ const CollapsibleText = ({ text, muted }) => {
 };
 CollapsibleText.propTypes = { text: PropTypes.string, muted: PropTypes.bool };
 CollapsibleText.defaultProps = { text: '', muted: false };
-
-const SUBMITTER_ROLE_BADGES = {
-  [USER_ROLE.INSTRUCTOR]: { label: 'Instructor', variant: 'info' },
-  [USER_ROLE.LEARNER]: { label: 'Learner', variant: 'secondary' },
-  [USER_ROLE.ADMIN]: { label: 'Admin', variant: 'primary' },
-};
-
-const SubmitterRoleBadge = ({ role }) => {
-  const def = SUBMITTER_ROLE_BADGES[role];
-  if (!def) { return null; }
-  return <Badge variant={def.variant}>{def.label}</Badge>;
-};
-SubmitterRoleBadge.propTypes = {
-  role: PropTypes.string,
-};
-SubmitterRoleBadge.defaultProps = {
-  role: '',
-};
 
 const AdminRequestsView = ({ readOnly, showNewRequest, lockedType }) => {
   const { programId } = useParams();
@@ -265,13 +246,8 @@ const AdminRequestsView = ({ readOnly, showNewRequest, lockedType }) => {
           return (
             <div>
               <div>{displayName}</div>
-              {req.submitter_role && (
-                <div className="mt-1">
-                  <SubmitterRoleBadge role={req.submitter_role} />
-                </div>
-              )}
               {req.submitter_name && req.submitter_email && (
-                <small className="text-muted d-block mt-1">{req.submitter_email}</small>
+                <small className="text-muted">{req.submitter_email}</small>
               )}
               {lockedType === REQUEST_TYPE.LEAVE && req.would_exceed_threshold === true && (
                 <small style={{ color: '#dc2626', display: 'block', fontSize: 11 }}>

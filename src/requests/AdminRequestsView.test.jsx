@@ -52,7 +52,6 @@ const makeRequest = (overrides = {}) => ({
   attachment: null,
   submitter_name: 'Alice',
   submitter_email: 'alice@example.com',
-  submitter_role: 'learner',
   ...overrides,
 });
 
@@ -187,22 +186,6 @@ describe('would_exceed_threshold false', () => {
     wrap({ lockedType: 'leave' });
     await screen.findByRole('table');
     expect(screen.queryByText(/approval would exceed threshold/i)).not.toBeInTheDocument();
-  });
-});
-
-describe('submitter role badge', () => {
-  it('shows learner badge for learner-submitted requests', async () => {
-    wrap();
-    expect(await screen.findByText('Learner')).toBeInTheDocument();
-  });
-
-  it('shows instructor badge for instructor-submitted requests', async () => {
-    getRequests.mockResolvedValue({
-      count: 1,
-      results: [makeRequest({ submitter_role: 'instructor' })],
-    });
-    wrap();
-    expect(await screen.findByText('Instructor')).toBeInTheDocument();
   });
 });
 
