@@ -323,6 +323,30 @@ describe('instructor scheduled-session warning confirmation', () => {
   });
 });
 
+describe('generic submission errors', () => {
+  it('scrolls to top when a non-warning error is shown', async () => {
+    createRequest.mockRejectedValue({
+      response: {
+        status: 400,
+        data: {
+          non_field_errors: ['You have already submitted a leave request for one or more selected dates.'],
+        },
+      },
+    });
+    renderModal();
+    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: 'leave' } });
+    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2026-07-01' } });
+    fireEvent.change(screen.getByLabelText('End date'), { target: { value: '2026-07-01' } });
+    fireEvent.change(
+      screen.getByPlaceholderText(/explain why you are making this request/i),
+      { target: { value: 'Duplicate leave' } },
+    );
+    fireEvent.click(screen.getByRole('button', { name: /^submit$/i }));
+    expect(await screen.findByText(/already submitted a leave request/i)).toBeInTheDocument();
+    expect(scrollIntoViewMock).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
+  });
+});
+
 // ─── Remote session (default) ──────────────────────────────────────────────
 
 describe('remote session (default type)', () => {

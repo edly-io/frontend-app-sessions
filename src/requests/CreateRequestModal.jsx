@@ -259,9 +259,9 @@ const CreateRequestModal = ({
     : 'Leave threshold would be exceeded';
 
   useEffect(() => {
-    if (!submissionWarning) { return; }
+    if (!submissionWarning && !error) { return; }
     modalTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, [submissionWarning]);
+  }, [submissionWarning, error]);
 
   // ── Session list (remote_session + session-specific leave) ──
 
