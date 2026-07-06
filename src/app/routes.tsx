@@ -11,10 +11,10 @@ import SubstituteRequestsView from '../requests/SubstituteRequestsView';
 import { REQUEST_TYPE } from '../shared/constants';
 import AttendancePage from '../attendance/AttendancePage';
 import AttendanceIndexRedirect from '../attendance/AttendanceIndexRedirect';
-import AdminSessionsList from '../attendance/AdminSessionsList';
 import AttendanceRosterPage from '../attendance/AttendanceRosterPage';
 import MyAttendanceView from '../attendance/MyAttendanceView';
-import PerLearnerHistoryReport from '../attendance/reports/PerLearnerHistoryReport';
+import PerCourseView from '../attendance/PerCourseView';
+import PerLearnerView from '../attendance/PerLearnerView';
 import CourseSummaryReport from '../attendance/reports/CourseSummaryReport';
 import LocationsPage from '../locations/LocationsPage';
 import HolidaysPage from '../holidays/HolidaysPage';
@@ -75,16 +75,15 @@ export const sessionsAdminRoutes = (
     <Route path={SESSIONS_LOCATIONS_PATH} element={wrapInShell(LocationsPage)} />
     <Route path={SESSIONS_HOLIDAYS_PATH} element={wrapInShell(HolidaysPage)} />
     {/* Attendance tab is a layout route — children render inside the
-        AttendancePage shell's <Outlet />. Sub-paths follow the role-aware
-        pill nav: admin gets sessions/summary/by-session/by-learner; learner
-        gets only `me`. The index route role-redirects. */}
+        AttendancePage shell's <Outlet />. Admin: by-course / by-learner tabs.
+        Learner: my attendance only (no sub-nav). Instructor: redirected away. */}
     <Route path={SESSIONS_ATTENDANCE_PATH} element={wrapInShell(AttendancePage)}>
       <Route index element={<AttendanceIndexRedirect />} />
-      <Route path="sessions" element={<AdminSessionsList />} />
+      <Route path="by-course" element={<PerCourseView />} />
+      <Route path="by-learner" element={<PerLearnerView />} />
+      <Route path="dashboard" element={<CourseSummaryReport />} />
       <Route path="sessions/:sessionId" element={<AttendanceRosterPage />} />
       <Route path="me" element={<MyAttendanceView />} />
-      <Route path="by-learner" element={<PerLearnerHistoryReport />} />
-      <Route path="summary" element={<CourseSummaryReport />} />
     </Route>
   </>
 );

@@ -16,7 +16,7 @@ const { useConfig } = require('../app/useConfig');
 const wrap = (userRole) => {
   useConfig.mockReturnValue({ data: { user_role: userRole } });
   return render(
-    <MemoryRouter initialEntries={['/test-prog/attendance/sessions']}>
+    <MemoryRouter initialEntries={['/test-prog/attendance/by-course']}>
       <Routes>
         <Route
           path="/:programId/attendance"
@@ -26,7 +26,7 @@ const wrap = (userRole) => {
             </IntlProvider>
           )}
         >
-          <Route path="sessions" element={<div>Sessions Outlet</div>} />
+          <Route path="by-course" element={<div>By Course Outlet</div>} />
         </Route>
       </Routes>
     </MemoryRouter>,
@@ -38,15 +38,15 @@ beforeEach(() => jest.clearAllMocks());
 it('renders the admin sub-nav for admin users', () => {
   wrap('admin');
   expect(screen.getByRole('navigation', { name: /attendance sub-sections/i })).toBeInTheDocument();
-  expect(screen.getByText('Sessions')).toBeInTheDocument();
+  expect(screen.getByText('By Course')).toBeInTheDocument();
 });
 
-it('does not render sub-nav for learner (single-item rail is hidden)', () => {
+it('does not render sub-nav for learner', () => {
   wrap('learner');
   expect(screen.queryByRole('navigation', { name: /attendance sub-sections/i })).not.toBeInTheDocument();
 });
 
 it('renders the outlet content', () => {
   wrap('admin');
-  expect(screen.getByText('Sessions Outlet')).toBeInTheDocument();
+  expect(screen.getByText('By Course Outlet')).toBeInTheDocument();
 });

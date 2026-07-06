@@ -3,27 +3,6 @@ import { getConfig } from '@edx/frontend-platform';
 
 const getBaseUrl = () => `${getConfig().LMS_BASE_URL}/fbr/api/attendance/v1`;
 
-export const getAttendanceRecords = async (filters = {}) => {
-  const client = getAuthenticatedHttpClient();
-  const params = new URLSearchParams(filters);
-  const { data } = await client.get(`${getBaseUrl()}/records/?${params}`);
-  return data;
-};
-
-/**
- * Active enrollments for the session's course. Used by the admin roster page
- * to seed the marking UI.
- *
- * GET /fbr/api/attendance/v1/sessions/{session_id}/enrolled-learners/
- */
-export const getEnrolledLearners = async (sessionId) => {
-  const client = getAuthenticatedHttpClient();
-  const { data } = await client.get(
-    `${getBaseUrl()}/sessions/${sessionId}/enrolled-learners/`,
-  );
-  return data;
-};
-
 /**
  * Bulk-upsert manual attendance for a session. Admin-only on the backend.
  *
@@ -85,6 +64,30 @@ export const getPastSessionsForAttendance = async ({ daysBack = 30, startDate, e
 };
 
 /**
+ * Paginated session list for a program.
+ *
+ * GET /fbr/api/attendance/v1/sessions/?program_key=<key>&status=<status>
+ *
+ * @param {Object} opts
+ * @param {string}  opts.programKey  — required
+ * @param {string}  [opts.status]    — e.g. 'completed'
+ * @param {number}  [opts.page]
+ * @param {number}  [opts.pageSize]
+ */
+export const getSessionsPage = async ({
+  programKey, status, page, pageSize,
+} = {}) => {
+  const client = getAuthenticatedHttpClient();
+  const params = new URLSearchParams();
+  if (programKey) { params.set('program_key', programKey); }
+  if (status) { params.set('status', status); }
+  if (page) { params.set('page', String(page)); }
+  if (pageSize) { params.set('page_size', String(pageSize)); }
+  const { data } = await client.get(`${getBaseUrl()}/sessions/?${params}`);
+  return data;
+};
+
+/**
  * Fetch a single session by ID.
  *
  * GET /fbr/api/attendance/v1/sessions/{session_id}/
@@ -98,67 +101,122 @@ export const getSession = async (sessionId) => {
 };
 
 /**
- * Paginated attendance records. Wraps GET /fbr/api/attendance/v1/records/
- * which requires either session_id or course_id. Used by the Per-Session and
- * Per-Learner reports.
+ * Derived attendance roster for a session. Single call replaces the old
+ * 3-call merge (enrolled-learners + records + session detail).
  *
- * @param {Object} opts
- * @param {string}  [opts.sessionId]
- * @param {string}  [opts.userId]
- * @param {string}  [opts.courseId]
- * @param {number}  [opts.page]
- * @param {number}  [opts.pageSize]
+ * GET /fbr/api/attendance/v1/sessions/{sessionId}/attendance-roster/
+ * Returns { results: [...rows], session: { marking_window_open, ... } }
  */
-export const getAttendanceRecordsPage = async ({
-  sessionId, userId, courseId, page, pageSize,
+export const getAttendanceRoster = async (sessionId) => {
+  const client = getAuthenticatedHttpClient();
+  const { data } = await client.get(
+    `${getBaseUrl()}/sessions/${encodeURIComponent(sessionId)}/attendance-roster/`,
+  );
+  return data;
+};
+
+/**
+ * Per-learner attendance history within a course (derived — includes pending/leave).
+ * Replaces the deprecated GET /v1/records/?user_id&course_id.
+ *
+ * GET /fbr/api/attendance/v1/trainees/{userId}/attendance/?course_id=<key>
+ * Returns paginated { count, next, previous, results: [...] }.
+ * Omit courseId to get the trainee's programme-only (no-course) sessions.
+ */
+export const getTraineeAttendance = async (userId, {
+  programKey, courseId, page, pageSize,
 } = {}) => {
   const client = getAuthenticatedHttpClient();
   const params = new URLSearchParams();
-  if (sessionId) { params.set('session_id', sessionId); }
-  if (userId) { params.set('user_id', String(userId)); }
-  if (courseId) { params.set('course_id', String(courseId)); }
+  if (programKey) { params.set('program_key', programKey); }
+  if (courseId) { params.set('course_id', courseId); }
   if (page) { params.set('page', String(page)); }
   if (pageSize) { params.set('page_size', String(pageSize)); }
   const qs = params.toString();
   const { data } = await client.get(
-    `${getBaseUrl()}/records/${qs ? `?${qs}` : ''}`,
+    `${getBaseUrl()}/trainees/${userId}/attendance/${qs ? `?${qs}` : ''}`,
   );
   return data;
 };
 
 /**
- * Active enrolments for a course. Used by the Per-Learner report's learner
- * picker.
+ * Per-learner rollup for a course — one row per enrolled learner.
  *
- * GET /fbr/api/attendance/v1/courses/{courseKey}/enrolled-learners/
+ * GET /fbr/api/attendance/v1/courses/{courseId}/attendance-summary/
+ * Returns { results: [{ user_id, email, full_name, present, absent, leave,
+ *                       pending, total, attendance_rate }] }
  */
-export const getCourseEnrolledLearners = async (courseKey) => {
+export const getCourseSummary = async (courseId, programKey) => {
   const client = getAuthenticatedHttpClient();
+  const params = programKey ? `?program_key=${encodeURIComponent(programKey)}` : '';
   const { data } = await client.get(
-    `${getBaseUrl()}/courses/${encodeURIComponent(courseKey)}/enrolled-learners/`,
+    `${getBaseUrl()}/courses/${encodeURIComponent(courseId)}/attendance-summary/${params}`,
   );
   return data;
 };
 
 /**
- * Per-learner attendance aggregation. Used by the Course Summary report.
+ * All sessions for a specific course within a program.
  *
- * GET /fbr/api/attendance/v1/attendance-summary/
- *
- * @param {Object} opts
- * @param {string}  opts.courseId   — required
- * @param {string}  [opts.startDate] — ISO datetime
- * @param {string}  [opts.endDate]   — ISO datetime
+ * GET /fbr/api/attendance/v1/courses/{courseKey}/sessions/?program_key=<key>
+ * Returns { results: [...] } with fields: id, title, session_type,
+ * scheduled_start_time, scheduled_end_time, status, marking_window_open.
  */
-export const getAttendanceSummary = async ({ courseId, startDate, endDate } = {}) => {
+export const getCourseSessionsList = async (courseKey, programKey) => {
   const client = getAuthenticatedHttpClient();
-  const params = new URLSearchParams();
-  if (courseId) { params.set('course_id', courseId); }
-  if (startDate) { params.set('start_date', startDate); }
-  if (endDate) { params.set('end_date', endDate); }
-  const qs = params.toString();
+  const params = new URLSearchParams({ program_key: programKey });
   const { data } = await client.get(
-    `${getBaseUrl()}/attendance-summary/${qs ? `?${qs}` : ''}`,
+    `${getBaseUrl()}/courses/${encodeURIComponent(courseKey)}/sessions/?${params}`,
   );
+  return data;
+};
+
+/**
+ * Download the full programme attendance as an XLSX file.
+ * Triggers a browser file-save automatically.
+ *
+ * GET /fbr/api/attendance/v1/programs/{programKey}/attendance-export/
+ */
+export const exportProgramAttendance = async (programKey) => {
+  const client = getAuthenticatedHttpClient();
+  const response = await client.get(
+    `${getBaseUrl()}/programs/${encodeURIComponent(programKey)}/attendance-export/`,
+    { responseType: 'blob' },
+  );
+  const disposition = response.headers?.['content-disposition'] || '';
+  const match = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+  const filename = match ? match[1].replace(/['"]/g, '') : 'attendance-export.xlsx';
+  const url = window.URL.createObjectURL(new Blob([response.data]));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(url);
+};
+
+/**
+ * Read the global attendance settings (admin-only).
+ *
+ * GET /fbr/api/attendance/v1/settings/
+ * Returns { marking_window_days, at_risk_threshold_percent }
+ */
+export const getAttendanceSettings = async () => {
+  const client = getAuthenticatedHttpClient();
+  const { data } = await client.get(`${getBaseUrl()}/settings/`);
+  return data;
+};
+
+/**
+ * Update global attendance settings (admin-only).
+ *
+ * PATCH /fbr/api/attendance/v1/settings/
+ * Payload: { at_risk_threshold_percent?, marking_window_days? }
+ * Returns the full updated settings object.
+ */
+export const updateAttendanceSettings = async (payload) => {
+  const client = getAuthenticatedHttpClient();
+  const { data } = await client.patch(`${getBaseUrl()}/settings/`, payload);
   return data;
 };

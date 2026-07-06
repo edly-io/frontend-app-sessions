@@ -6,7 +6,7 @@ import { useConfig } from './useConfig';
 const SECTIONS = [
   { slug: 'calendar', label: 'Calendar' },
   { slug: 'requests', label: 'Requests' },
-  { slug: 'attendance', label: 'Attendance' },
+  { slug: 'attendance', label: 'Attendance', hideForInstructor: true },
   { slug: 'locations', label: 'Locations', adminOnly: true },
   { slug: 'holidays', label: 'Holidays', adminOnly: true },
 ];
@@ -15,7 +15,12 @@ const SectionNav = () => {
   const { programId } = useParams();
   const { data: config } = useConfig();
   const isAdmin = config?.user_role === USER_ROLE.ADMIN;
-  const visibleSections = SECTIONS.filter((s) => !s.adminOnly || isAdmin);
+  const isInstructor = config?.user_role === USER_ROLE.INSTRUCTOR;
+  const visibleSections = SECTIONS.filter((s) => {
+    if (s.adminOnly && !isAdmin) { return false; }
+    if (s.hideForInstructor && isInstructor) { return false; }
+    return true;
+  });
 
   return (
     <nav

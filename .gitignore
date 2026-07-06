@@ -17,3 +17,8 @@ temp/babel-plugin-react-intl
 *~
 /temp
 /.vscode
+
+# Local project docs — not for version control
+BACKEND_REQUESTS.md
+CLAUDE.md
+FEATURE_CONTEXT.md

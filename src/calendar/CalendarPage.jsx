@@ -447,6 +447,7 @@ const CalendarPage = () => {
         session={activeModalSession}
         isOpen={isDetailOpen && Boolean(activeModalSession)}
         onClose={closeModal}
+        canManageSessions={canManageSessions}
       />
 
       {/* Toast — persists across view transitions */}

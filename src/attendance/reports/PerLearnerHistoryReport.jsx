@@ -7,9 +7,9 @@ import {
   Alert, Badge, Container, DataTable, Spinner,
 } from '@openedx/paragon';
 
-import { getAttendanceRecordsPage, getCourseEnrolledLearners } from '../api';
+import { getTraineeAttendance } from '../api';
 import SearchableSelect from '../../shared/SearchableSelect';
-import { fetchProgramCourses } from '../../calendar/api';
+import { fetchProgramCourses, fetchProgramLearners } from '../../calendar/api';
 import { ATTENDANCE_STATUS } from '../../shared/constants';
 import { extractApiError, formatDateTime, getStatusVariant } from '../../shared/utils';
 
@@ -107,42 +107,29 @@ const PerLearnerHistoryReport = () => {
   const [recordsLoading, setRecordsLoading] = useState(false);
   const [recordsError, setRecordsError] = useState('');
 
-  // Load program courses for the course picker.
   useEffect(() => {
     if (!programId) { return () => {}; }
     let cancelled = false;
     (async () => {
       try {
-        const data = await fetchProgramCourses(programId);
+        const [coursesData, learnersData] = await Promise.all([
+          fetchProgramCourses(programId),
+          fetchProgramLearners(programId),
+        ]);
         if (cancelled) { return; }
-        setCourses((data || []).map((c) => ({ id: c.course_key, title: c.display_name })));
+        setCourses((coursesData || []).map((c) => ({ id: c.course_key, title: c.display_name })));
+        setLearners(learnersData || []);
       } catch (err) {
-        if (!cancelled) { setCoursesError(extractApiError(err, 'Failed to load courses')); }
+        if (!cancelled) { setCoursesError(extractApiError(err, 'Failed to load courses or learners')); }
       } finally {
-        if (!cancelled) { setCoursesLoading(false); }
+        if (!cancelled) {
+          setCoursesLoading(false);
+          setLearnersLoading(false);
+        }
       }
     })();
     return () => { cancelled = true; };
   }, [programId]);
-
-  // Load learners for the selected course.
-  const loadLearners = useCallback(async (courseKey) => {
-    setLearnersLoading(true);
-    setLearnersError('');
-    setLearners([]);
-    setSelectedUserId('');
-    setRecords([]);
-    setCount(0);
-    try {
-      const data = await getCourseEnrolledLearners(courseKey);
-      const results = Array.isArray(data) ? data : data.results ?? [];
-      setLearners(results);
-    } catch (err) {
-      setLearnersError(extractApiError(err, 'Failed to load learners'));
-    } finally {
-      setLearnersLoading(false);
-    }
-  }, []);
 
   const handleCourseChange = (option) => {
     const courseKey = option?.value || '';
@@ -150,14 +137,9 @@ const PerLearnerHistoryReport = () => {
     selectedCourseIdRef.current = courseKey;
     selectedUserIdRef.current = '';
     setSelectedCourseId(courseKey);
-    if (courseKey) {
-      loadLearners(courseKey);
-    } else {
-      setLearners([]);
-      setSelectedUserId('');
-      setRecords([]);
-      setCount(0);
-    }
+    setSelectedUserId('');
+    setRecords([]);
+    setCount(0);
   };
 
   // Stable fetchData — empty deps so Paragon's DataTable useEffect never re-fires
@@ -170,8 +152,8 @@ const PerLearnerHistoryReport = () => {
     setRecordsLoading(true);
     setRecordsError('');
     try {
-      const data = await getAttendanceRecordsPage({
-        userId: uid,
+      const data = await getTraineeAttendance(uid, {
+        programKey: programId,
         courseId: cid,
         page: nextPageIndex + 1,
         pageSize: PAGE_SIZE,
@@ -208,10 +190,13 @@ const PerLearnerHistoryReport = () => {
     courseOptions.find((o) => o.value === selectedCourseId) || null
   ), [courseOptions, selectedCourseId]);
 
-  const learnerOptions = useMemo(() => learners.map((l) => ({
-    value: l.user_id,
-    label: l.full_name ? `${l.full_name} (${l.email})` : l.email,
-  })), [learners]);
+  const learnerOptions = useMemo(() => learners.map((l) => {
+    const fullName = [l.first_name, l.last_name].filter(Boolean).join(' ');
+    return {
+      value: l.id,
+      label: fullName ? `${fullName} (${l.email})` : l.email,
+    };
+  }), [learners]);
 
   const selectedLearnerOption = useMemo(() => (
     learnerOptions.find((o) => o.value === selectedUserId) || null

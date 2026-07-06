@@ -69,6 +69,20 @@ export const fetchProgramInstructors = async (programKey) => {
 };
 
 /**
+ * Fetch all learners enrolled in a program.
+ *
+ * GET /fbr/api/programs/<program_key>/learners/?no_page
+ * Returns: [{ id, username, email, first_name, last_name }, ...]
+ */
+export const fetchProgramLearners = async (programKey) => {
+  const client = getAuthenticatedHttpClient();
+  const { data } = await client.get(
+    `${getProgramsBaseUrl()}/${encodeURIComponent(programKey)}/learners/?no_page`,
+  );
+  return Array.isArray(data) ? data : (data.results ?? []);
+};
+
+/**
  * Correct the course assignment and/or instructors on a past session.
  * Admin-only. Routes to Path 1 (non-course-scoped PATCH) — no Zoom sync and
  * no immutability guard apply. Only `course_id` and `instructor_emails` are
@@ -122,13 +136,14 @@ export const getProgramDates = async (programKey) => {
 
 // ─── Calendar API ─────────────────────────────────────────────────────────────
 //
-// Returns sessions within a date window for the calendar UI via the unified
-// SessionViewSet list endpoint. program_key + start_date + end_date are all
-// required; window must be <= 45 days. Visibility is role-scoped on the backend.
+// Returns sessions within a date window for the calendar UI via the dedicated
+// calendar-sessions endpoint (includes course_name, instructor_names, etc.).
+// program_key + start_date + end_date are all required; window must be <= 45 days.
+// Visibility is role-scoped on the backend.
 export const getCalendarSessions = async (startDate, endDate, programKey = '') => {
   const client = getAuthenticatedHttpClient();
   const params = new URLSearchParams({ start_date: startDate, end_date: endDate });
   if (programKey) { params.set('program_key', programKey); }
-  const { data } = await client.get(`${getBaseUrl()}/sessions/?${params}`);
+  const { data } = await client.get(`${getBaseUrl()}/calendar-sessions/?${params}`);
   return { sessions: data.results, userRole: data.user_role };
 };

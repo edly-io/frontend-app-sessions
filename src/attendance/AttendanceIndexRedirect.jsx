@@ -1,13 +1,17 @@
 import React from 'react';
 import { Navigate, useParams } from 'react-router-dom';
-import { getAuthenticatedUser } from '@edx/frontend-platform/auth';
+import { useConfig } from '../app/useConfig';
+import { USER_ROLE } from '../shared/constants';
 
-// Bare `/sessions/:programId/attendance` resolves to the role's default
-// sub-page: Sessions list for admins, My Attendance for everyone else.
 const AttendanceIndexRedirect = () => {
   const { programId } = useParams();
-  const { administrator } = getAuthenticatedUser() || {};
-  const target = administrator ? 'sessions' : 'me';
+  const { data: config } = useConfig();
+  const role = config?.user_role;
+
+  if (role === USER_ROLE.INSTRUCTOR) {
+    return <Navigate replace to={`/${programId}/calendar`} />;
+  }
+  const target = role === USER_ROLE.ADMIN ? 'dashboard' : 'me';
   return <Navigate replace to={`/${programId}/attendance/${target}`} />;
 };
 
