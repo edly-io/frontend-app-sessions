@@ -57,7 +57,7 @@ const StatusCell = ({ row }) => {
   }
 
   return (
-    <div className="d-flex" style={{ gap: 4 }}>
+    <div className="d-flex justify-content-center" style={{ gap: 4 }}>
       {EDIT_OPTIONS.map((opt) => {
         const isSelected = status === opt.value;
         return (
@@ -174,12 +174,53 @@ NoteCell.propTypes = {
   }).isRequired,
 };
 
+const CX = { cellClassName: 'text-center', headerClassName: 'justify-content-center' };
+
+const MarkingWindowCell = ({ row }) => {
+  const { marking_window_open: open, marking_window_remaining_days: days } = row.original;
+  return open
+    ? (
+      <div>
+        <Badge variant="success">Open</Badge>
+        {days != null && (
+          <div className="text-muted mt-1" style={{ fontSize: 11 }}>
+            {days}
+            {' '}
+            {days === 1 ? 'day' : 'days'}
+            {' '}
+            left
+          </div>
+        )}
+      </div>
+    )
+    : <Badge variant="secondary">Closed</Badge>;
+};
+MarkingWindowCell.propTypes = {
+  row: PropTypes.shape({
+    original: PropTypes.shape({
+      marking_window_open: PropTypes.bool,
+      marking_window_remaining_days: PropTypes.number,
+    }),
+  }).isRequired,
+};
+
 const BASE_COLUMNS = [
   { Header: 'Session', accessor: 'session_title', Cell: SessionCell },
-  { Header: 'Status', id: 'status', Cell: StatusCell },
-  { Header: 'Change reason', accessor: 'override_reason', Cell: OverrideCell },
-  { Header: 'Changed by', id: 'marked_by', Cell: MarkedByCell },
-  { Header: 'Source', id: 'source', Cell: SourceCell },
+  {
+    Header: 'Status', id: 'status', Cell: StatusCell, ...CX,
+  },
+  {
+    Header: 'Marking Window', id: 'marking_window', Cell: MarkingWindowCell, ...CX,
+  },
+  {
+    Header: 'Change reason', accessor: 'override_reason', Cell: OverrideCell, ...CX,
+  },
+  {
+    Header: 'Changed by', id: 'marked_by', Cell: MarkedByCell, ...CX,
+  },
+  {
+    Header: 'Source', id: 'source', Cell: SourceCell, ...CX,
+  },
 ];
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -375,7 +416,9 @@ const PerLearnerView = () => {
   const columns = useMemo(() => {
     const cols = [...BASE_COLUMNS];
     if (isAdmin) {
-      cols.push({ Header: 'Note', id: 'note', Cell: NoteCell });
+      cols.push({
+        Header: 'Note', id: 'note', Cell: NoteCell, ...CX,
+      });
     }
     return cols;
   }, [isAdmin]);
@@ -401,15 +444,28 @@ const PerLearnerView = () => {
     learnerOptions.find((o) => o.value === selectedUserId) || null
   ), [learnerOptions, selectedUserId]);
 
-  const tableData = useMemo(() => records.map((row) => ({
-    ...row,
-    session_id: row.session_id ?? row.session, // API returns 'session' as the FK PK
-    canEdit: isAdmin && row.marking_window_open && row.status !== 'leave',
-    isSaving: savingSessionId === String(row.session_id ?? row.session),
-    onStatusChange: handleStatusChange,
-    onNoteClick: openNoteModal,
+  const tableData = useMemo(() => {
+    const windowDays = config?.marking_window_days;
+    return records.map((row) => {
+      const sid = row.session_id ?? row.session;
+      let remainingDays = null;
+      if (row.marking_window_open && row.session_date && windowDays != null) {
+        const deadline = new Date(row.session_date).getTime() + windowDays * 86400000;
+        const remaining = Math.ceil((deadline - Date.now()) / 86400000);
+        remainingDays = remaining > 0 ? remaining : 0;
+      }
+      return {
+        ...row,
+        session_id: sid,
+        marking_window_remaining_days: remainingDays,
+        canEdit: isAdmin && row.marking_window_open && row.status !== 'leave',
+        isSaving: savingSessionId === String(sid),
+        onStatusChange: handleStatusChange,
+        onNoteClick: openNoteModal,
+      };
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  })), [records, isAdmin, savingSessionId, handleStatusChange]);
+  }, [records, isAdmin, savingSessionId, handleStatusChange, config?.marking_window_days]);
 
   return (
     <Container className="py-3">

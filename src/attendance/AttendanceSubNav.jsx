@@ -2,9 +2,9 @@ import React from 'react';
 import { NavLink, useLocation, useParams } from 'react-router-dom';
 
 const ADMIN_ITEMS = [
+  { slug: 'dashboard', label: 'Dashboard' },
   { slug: 'by-course', label: 'By Course' },
   { slug: 'by-learner', label: 'By Learner' },
-  { slug: 'summary', label: 'Summary' },
 ];
 
 const AttendanceSubNav = () => {

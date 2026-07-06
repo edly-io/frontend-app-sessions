@@ -2,7 +2,9 @@ import React, {
   useCallback, useEffect, useMemo, useState,
 } from 'react';
 import PropTypes from 'prop-types';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import {
+  Link, useLocation, useParams, useSearchParams,
+} from 'react-router-dom';
 import {
   Alert, Badge, Button, Container, DataTable, Form, OverlayTrigger, Spinner,
   StandardModal, Toast, Tooltip,
@@ -55,7 +57,7 @@ const StatusCell = ({ row }) => {
   }
 
   return (
-    <div className="d-flex" style={{ gap: 4 }}>
+    <div className="d-flex justify-content-center" style={{ gap: 4 }}>
       {EDIT_OPTIONS.map((opt) => {
         const isSelected = currentStatus === opt.value;
         return (
@@ -173,6 +175,7 @@ const AttendanceRosterPage = () => {
   const { programId, sessionId } = useParams();
   const [searchParams] = useSearchParams();
   const courseId = searchParams.get('course_id') || '';
+  const { state: navState } = useLocation();
   const { data: config } = useConfig();
   const isAdmin = config?.user_role === USER_ROLE.ADMIN;
 
@@ -197,7 +200,12 @@ const AttendanceRosterPage = () => {
   const loadRoster = useCallback(async () => {
     const data = await getAttendanceRoster(sessionId);
     const rows = Array.isArray(data) ? data : data.results ?? [];
-    const meta = data.session ?? null;
+    const meta = {
+      ...(data.session ?? {}),
+      title: navState?.sessionTitle ?? null,
+      scheduled_start_time: navState?.sessionTime ?? null,
+      course_name: navState?.courseName ?? null,
+    };
     setRoster(rows);
     setSessionMeta(meta);
     const seed = {};
@@ -209,7 +217,7 @@ const AttendanceRosterPage = () => {
       };
     });
     setOverrides(seed);
-  }, [sessionId]);
+  }, [sessionId, navState]);
 
   useEffect(() => {
     let cancelled = false;
@@ -220,6 +228,21 @@ const AttendanceRosterPage = () => {
   }, [loadRoster]);
 
   const windowOpen = sessionMeta?.marking_window_open ?? false;
+
+  // Remaining days: prefer nav state (set by PerCourseView), else compute from
+  // scheduled_end_time (in roster response) + config marking_window_days.
+  const markingWindowRemainingDays = useMemo(() => {
+    if (navState?.markingWindowRemainingDays != null) {
+      return navState.markingWindowRemainingDays;
+    }
+    if (!windowOpen) { return 0; }
+    const ref = sessionMeta?.scheduled_end_time;
+    const windowDays = config?.marking_window_days;
+    if (!ref || windowDays == null) { return null; }
+    const deadline = new Date(ref).getTime() + windowDays * 86400000;
+    const remaining = Math.ceil((deadline - Date.now()) / 86400000);
+    return remaining > 0 ? remaining : 0;
+  }, [navState, windowOpen, sessionMeta, config]);
 
   const saveStatusChange = useCallback(async (userId, newStatus, reason) => {
     setSavingUserId(String(userId));
@@ -326,15 +349,26 @@ const AttendanceRosterPage = () => {
   ), [roster, overrides, isAdmin, windowOpen, savingUserId]);
 
   const columns = useMemo(() => {
+    const cx = { cellClassName: 'text-center', headerClassName: 'justify-content-center' };
     const cols = [
       { Header: 'Learner', accessor: 'full_name', Cell: LearnerCell },
-      { Header: 'Status', id: 'status', Cell: StatusCell },
-      { Header: 'Change reason', id: 'reason', Cell: ReasonCell },
-      { Header: 'Changed by', id: 'marked_by', Cell: MarkedByCell },
-      { Header: 'Source', id: 'source', Cell: SourceCell },
+      {
+        Header: 'Status', id: 'status', Cell: StatusCell, ...cx,
+      },
+      {
+        Header: 'Change reason', id: 'reason', Cell: ReasonCell, ...cx,
+      },
+      {
+        Header: 'Changed by', id: 'marked_by', Cell: MarkedByCell, ...cx,
+      },
+      {
+        Header: 'Source', id: 'source', Cell: SourceCell, ...cx,
+      },
     ];
     if (isAdmin) {
-      cols.push({ Header: 'Note', id: 'note', Cell: NoteCell });
+      cols.push({
+        Header: 'Note', id: 'note', Cell: NoteCell, ...cx,
+      });
     }
     return cols;
   }, [isAdmin]);
@@ -363,39 +397,49 @@ const AttendanceRosterPage = () => {
 
       {/* Session context card */}
       <div className="border rounded p-3 mb-4 bg-light">
-        <div className="d-flex flex-column flex-sm-row align-items-sm-start justify-content-between">
+        {sessionMeta?.course_name && (
+          <div className="mb-1">
+            <span
+              className="text-uppercase font-weight-bold text-muted mr-1"
+              style={{ fontSize: '0.7rem', letterSpacing: '0.06em' }}
+            >
+              Course
+            </span>
+            <span className="text-muted" style={{ fontSize: '0.875rem' }}>
+              {sessionMeta.course_name}
+            </span>
+          </div>
+        )}
+        {sessionMeta?.title && (
+          <h4 className="mb-0">
+            <span
+              className="text-uppercase font-weight-bold text-muted mr-2"
+              style={{ fontSize: '0.7rem', letterSpacing: '0.06em', verticalAlign: 'middle' }}
+            >
+              Session
+            </span>
+            {sessionMeta.title}
+          </h4>
+        )}
+        {sessionMeta?.scheduled_start_time && (
+          <div className="text-muted mt-1" style={{ fontSize: '0.875rem' }}>
+            {formatDateTime(sessionMeta.scheduled_start_time)}
+          </div>
+        )}
+        <div className="d-flex justify-content-between align-items-center mt-2">
           <div>
-            {sessionMeta?.course_name && (
-              <div className="mb-1">
-                <span
-                  className="text-uppercase font-weight-bold text-muted mr-1"
-                  style={{ fontSize: '0.7rem', letterSpacing: '0.06em' }}
-                >
-                  Course
-                </span>
-                <span className="text-muted" style={{ fontSize: '0.875rem' }}>
-                  {sessionMeta.course_name}
-                </span>
-              </div>
-            )}
-            {sessionMeta?.title && (
-              <h4 className="mb-0">
-                <span
-                  className="text-uppercase font-weight-bold text-muted mr-2"
-                  style={{ fontSize: '0.7rem', letterSpacing: '0.06em', verticalAlign: 'middle' }}
-                >
-                  Session
-                </span>
-                {sessionMeta.title}
-              </h4>
-            )}
-            {sessionMeta?.scheduled_start_time && (
-              <div className="text-muted mt-1" style={{ fontSize: '0.875rem' }}>
-                {formatDateTime(sessionMeta.scheduled_start_time)}
-              </div>
+            {windowOpen ? (
+              <strong style={{ fontSize: '0.875rem', color: '#16a34a' }}>
+                Marking window open
+                {markingWindowRemainingDays != null && (
+                  <> · {markingWindowRemainingDays} {markingWindowRemainingDays === 1 ? 'day' : 'days'} remaining</>
+                )}
+              </strong>
+            ) : (
+              <strong style={{ fontSize: '0.875rem', color: '#6c757d' }}>Marking window closed</strong>
             )}
           </div>
-          <div className="d-flex mt-2 mt-sm-0" style={{ gap: 6, flexShrink: 0 }}>
+          <div className="d-flex" style={{ gap: 6 }}>
             <Badge variant="success">{counts.present} present</Badge>
             <Badge variant="danger">{counts.absent} absent</Badge>
             <Badge variant="warning">{counts.leave} on leave</Badge>

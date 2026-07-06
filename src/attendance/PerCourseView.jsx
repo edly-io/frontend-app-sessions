@@ -43,13 +43,33 @@ const StatusBadge = ({ value }) => (
 StatusBadge.propTypes = { value: PropTypes.string };
 StatusBadge.defaultProps = { value: '' };
 
-const WindowBadge = ({ value }) => (
-  value
-    ? <Badge variant="success">Open</Badge>
-    : <Badge variant="secondary">Closed</Badge>
-);
-WindowBadge.propTypes = { value: PropTypes.bool };
-WindowBadge.defaultProps = { value: false };
+const MarkingWindowCell = ({ row }) => {
+  const { marking_window_open: open, marking_window_remaining_days: days } = row.original;
+  return open
+    ? (
+      <div>
+        <Badge variant="success">Open</Badge>
+        {days != null && (
+          <div className="text-muted mt-1" style={{ fontSize: 11 }}>
+            {days}
+            {' '}
+            {days === 1 ? 'day' : 'days'}
+            {' '}
+            left
+          </div>
+        )}
+      </div>
+    )
+    : <Badge variant="secondary">Closed</Badge>;
+};
+MarkingWindowCell.propTypes = {
+  row: PropTypes.shape({
+    original: PropTypes.shape({
+      marking_window_open: PropTypes.bool,
+      marking_window_remaining_days: PropTypes.number,
+    }),
+  }).isRequired,
+};
 
 // onViewAttendance is injected into each row via tableData so this cell stays at module scope.
 const ActionsCell = ({ row }) => (
@@ -145,16 +165,41 @@ const PerCourseView = () => {
     const raw = selectedCourseKey === NO_COURSE_VALUE
       ? allSessions.filter((s) => !s.course_id)
       : allSessions;
-    const onViewAttendance = (id) => navigate(`/${programId}/attendance/sessions/${id}?course_id=${encodeURIComponent(selectedCourseKey)}`);
+    const courseName = selectedCourseKey !== NO_COURSE_VALUE
+      ? (courses.find((c) => c.id === selectedCourseKey)?.title || null)
+      : null;
+    const onViewAttendance = (id) => {
+      const session = raw.find((s) => s.id === id);
+      navigate(
+        `/${programId}/attendance/sessions/${id}?course_id=${encodeURIComponent(selectedCourseKey)}`,
+        {
+          state: {
+            sessionTitle: session?.title,
+            sessionTime: session?.scheduled_start_time,
+            courseName,
+            markingWindowRemainingDays: session?.marking_window_remaining_days ?? null,
+          },
+        },
+      );
+    };
     return raw.map((s) => ({ ...s, onViewAttendance }));
-  }, [allSessions, selectedCourseKey, navigate, programId]);
+  }, [allSessions, selectedCourseKey, courses, navigate, programId]);
 
+  const cx = { cellClassName: 'text-center', headerClassName: 'justify-content-center' };
   const columns = useMemo(() => [
     { Header: 'Title', accessor: 'title', Cell: TitleCell },
-    { Header: 'Date', accessor: 'scheduled_start_time', Cell: DateCell },
-    { Header: 'Status', accessor: 'status', Cell: StatusBadge },
-    { Header: 'Marking Window', accessor: 'marking_window_open', Cell: WindowBadge },
-    { Header: 'Actions', id: 'actions', Cell: ActionsCell },
+    {
+      Header: 'Date', accessor: 'scheduled_start_time', Cell: DateCell, ...cx,
+    },
+    {
+      Header: 'Status', accessor: 'status', Cell: StatusBadge, ...cx,
+    },
+    {
+      Header: 'Marking Window', id: 'marking_window', Cell: MarkingWindowCell, ...cx,
+    },
+    {
+      Header: 'Actions', id: 'actions', Cell: ActionsCell, ...cx,
+    },
   ], []);
 
   return (

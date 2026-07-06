@@ -1,5 +1,6 @@
 import React, { useState, useRef, useMemo } from 'react';
 import PropTypes from 'prop-types';
+import { Link, useParams } from 'react-router-dom';
 import {
   Button,
   IconButton,
@@ -202,6 +203,7 @@ const SessionPopover = ({
   canManageSessions = false, isInstructor = false,
   isLearner = false, learnerRequest = null,
 }) => {
+  const { programId } = useParams();
   // Derive display-only status: a session that has ended but was never
   // explicitly marked complete by the backend should show as "Completed".
   const isPast = new Date(session.scheduled_end_time || session.scheduled_start_time) <= new Date();
@@ -275,7 +277,7 @@ const SessionPopover = ({
       </Popover.Title>
       <Popover.Content style={{ fontSize: 13 }}>
         {session.course_name && (
-          <div className="text-muted mb-1">{session.course_name}</div>
+          <div className="text-muted mb-1">Course: {session.course_name}</div>
         )}
         {instructorDisplay && (
           <div className="text-muted mb-1">Instructor: {instructorDisplay}</div>
@@ -360,6 +362,26 @@ const SessionPopover = ({
             {!isPast && isLearner && myRequest?.state === REQUEST_STATUS.APPROVED && (
               <RequestStatusBadge request={myRequest} />
             )}
+          </div>
+        )}
+        {/* Admin-only: quick link to the session's attendance roster. */}
+        {canManageSessions && session.id && (
+          <div className="mt-2">
+            <Button
+              as={Link}
+              variant="tertiary"
+              size="sm"
+              className="p-0"
+              to={`/${programId}/attendance/sessions/${session.id}?course_id=${encodeURIComponent(session.course_id || '')}`}
+              state={{
+                sessionTitle: session.title,
+                sessionTime: session.scheduled_start_time,
+                courseName: session.course_name,
+              }}
+              onClick={() => onOpenChange(false)}
+            >
+              View attendance
+            </Button>
           </div>
         )}
       </Popover.Content>

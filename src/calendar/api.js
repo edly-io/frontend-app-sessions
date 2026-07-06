@@ -136,13 +136,14 @@ export const getProgramDates = async (programKey) => {
 
 // ─── Calendar API ─────────────────────────────────────────────────────────────
 //
-// Returns sessions within a date window for the calendar UI via the unified
-// SessionViewSet list endpoint. program_key + start_date + end_date are all
-// required; window must be <= 45 days. Visibility is role-scoped on the backend.
+// Returns sessions within a date window for the calendar UI via the dedicated
+// calendar-sessions endpoint (includes course_name, instructor_names, etc.).
+// program_key + start_date + end_date are all required; window must be <= 45 days.
+// Visibility is role-scoped on the backend.
 export const getCalendarSessions = async (startDate, endDate, programKey = '') => {
   const client = getAuthenticatedHttpClient();
   const params = new URLSearchParams({ start_date: startDate, end_date: endDate });
   if (programKey) { params.set('program_key', programKey); }
-  const { data } = await client.get(`${getBaseUrl()}/sessions/?${params}`);
+  const { data } = await client.get(`${getBaseUrl()}/calendar-sessions/?${params}`);
   return { sessions: data.results, userRole: data.user_role };
 };

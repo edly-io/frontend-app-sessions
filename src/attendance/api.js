@@ -170,3 +170,53 @@ export const getCourseSessionsList = async (courseKey, programKey) => {
   );
   return data;
 };
+
+/**
+ * Download the full programme attendance as an XLSX file.
+ * Triggers a browser file-save automatically.
+ *
+ * GET /fbr/api/attendance/v1/programs/{programKey}/attendance-export/
+ */
+export const exportProgramAttendance = async (programKey) => {
+  const client = getAuthenticatedHttpClient();
+  const response = await client.get(
+    `${getBaseUrl()}/programs/${encodeURIComponent(programKey)}/attendance-export/`,
+    { responseType: 'blob' },
+  );
+  const disposition = response.headers?.['content-disposition'] || '';
+  const match = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+  const filename = match ? match[1].replace(/['"]/g, '') : 'attendance-export.xlsx';
+  const url = window.URL.createObjectURL(new Blob([response.data]));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(url);
+};
+
+/**
+ * Read the global attendance settings (admin-only).
+ *
+ * GET /fbr/api/attendance/v1/settings/
+ * Returns { marking_window_days, at_risk_threshold_percent }
+ */
+export const getAttendanceSettings = async () => {
+  const client = getAuthenticatedHttpClient();
+  const { data } = await client.get(`${getBaseUrl()}/settings/`);
+  return data;
+};
+
+/**
+ * Update global attendance settings (admin-only).
+ *
+ * PATCH /fbr/api/attendance/v1/settings/
+ * Payload: { at_risk_threshold_percent?, marking_window_days? }
+ * Returns the full updated settings object.
+ */
+export const updateAttendanceSettings = async (payload) => {
+  const client = getAuthenticatedHttpClient();
+  const { data } = await client.patch(`${getBaseUrl()}/settings/`, payload);
+  return data;
+};

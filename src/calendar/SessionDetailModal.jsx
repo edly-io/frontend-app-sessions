@@ -4,6 +4,7 @@
 
 import React from 'react';
 import PropTypes from 'prop-types';
+import { Link, useParams } from 'react-router-dom';
 import {
   Badge, Button, StandardModal,
 } from '@openedx/paragon';
@@ -47,7 +48,10 @@ Field.propTypes = {
 
 const openInNewTab = (url) => window.open(url, '_blank', 'noopener,noreferrer');
 
-const SessionDetailModal = ({ session, isOpen, onClose }) => {
+const SessionDetailModal = ({
+  session, isOpen, onClose, canManageSessions,
+}) => {
+  const { programId } = useParams();
   if (!session) { return null; }
 
   const hasMeeting = Boolean(session.meeting_id || session.meeting_join_url);
@@ -103,6 +107,25 @@ const SessionDetailModal = ({ session, isOpen, onClose }) => {
           )}
         </div>
       </Field>
+      {canManageSessions && session.id && (
+        <Field label="Attendance">
+          <Button
+            as={Link}
+            variant="link"
+            size="sm"
+            className="p-0"
+            to={`/${programId}/attendance/sessions/${session.id}?course_id=${encodeURIComponent(session.course_id || '')}`}
+            state={{
+              sessionTitle: session.title,
+              sessionTime: session.scheduled_start_time,
+              courseName: session.course_name,
+            }}
+            onClick={onClose}
+          >
+            View roster →
+          </Button>
+        </Field>
+      )}
 
       {/* Second section: description (own block, separated). */}
       {session.description && (
@@ -152,7 +175,9 @@ const SessionDetailModal = ({ session, isOpen, onClose }) => {
 };
 
 SessionDetailModal.propTypes = {
+  canManageSessions: PropTypes.bool,
   session: PropTypes.shape({
+    id: PropTypes.string,
     title: PropTypes.string,
     course_name: PropTypes.string,
     location: PropTypes.shape({
@@ -182,6 +207,7 @@ SessionDetailModal.propTypes = {
     meeting_start_url: PropTypes.string,
     meeting_password: PropTypes.string,
     user_role: PropTypes.string,
+    course_id: PropTypes.string,
     my_request: PropTypes.shape({
       status: PropTypes.string,
       request_type: PropTypes.string,
@@ -191,6 +217,7 @@ SessionDetailModal.propTypes = {
   onClose: PropTypes.func.isRequired,
 };
 SessionDetailModal.defaultProps = {
+  canManageSessions: false,
   session: null,
 };
 

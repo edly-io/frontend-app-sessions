@@ -11,7 +11,7 @@ const AttendanceIndexRedirect = () => {
   if (role === USER_ROLE.INSTRUCTOR) {
     return <Navigate replace to={`/${programId}/calendar`} />;
   }
-  const target = role === USER_ROLE.ADMIN ? 'by-course' : 'me';
+  const target = role === USER_ROLE.ADMIN ? 'dashboard' : 'me';
   return <Navigate replace to={`/${programId}/attendance/${target}`} />;
 };
 

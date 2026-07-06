@@ -81,7 +81,7 @@ export const sessionsAdminRoutes = (
       <Route index element={<AttendanceIndexRedirect />} />
       <Route path="by-course" element={<PerCourseView />} />
       <Route path="by-learner" element={<PerLearnerView />} />
-      <Route path="summary" element={<CourseSummaryReport />} />
+      <Route path="dashboard" element={<CourseSummaryReport />} />
       <Route path="sessions/:sessionId" element={<AttendanceRosterPage />} />
       <Route path="me" element={<MyAttendanceView />} />
     </Route>
