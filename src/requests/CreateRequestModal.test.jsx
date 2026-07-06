@@ -24,6 +24,7 @@ jest.mock('../app/useConfig', () => ({
 
 const { createRequest } = require('./api');
 const { useConfig } = require('../app/useConfig');
+
 const scrollIntoViewMock = jest.fn();
 
 const renderModal = (props = {}) => render(

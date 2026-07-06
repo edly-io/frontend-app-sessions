@@ -252,7 +252,9 @@ TitleLink.propTypes = {
   title: PropTypes.string.isRequired,
   onClick: PropTypes.func.isRequired,
   ariaLabel: PropTypes.string,
-  textStyle: PropTypes.object,
+  textStyle: PropTypes.objectOf(
+    PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  ),
 };
 TitleLink.defaultProps = {
   ariaLabel: undefined,
@@ -276,7 +278,6 @@ const SessionPopover = ({
   // Prefer the per-session `my_request` returned by the API; fall back to the
   // window-level studentRequestMap for backward compatibility with older payloads.
   const myRequest = learnerRequest || session.my_request;
-  const hasMeeting = Boolean(session.meeting_id || session.meeting_join_url);
   const learnerCanJoin = (
     session.create_zoom_meeting
     || (myRequest?.state === 'APPROVED' && myRequest?.type === 'remote_session')
@@ -556,7 +557,6 @@ const DayPopover = ({
           {sessions.map((session) => {
             const instructorDisplay = formatInstructors(session);
             const myRequest = studentRequestMap?.get(session.id) || session.my_request;
-            const hasMeeting = Boolean(session.meeting_id || session.meeting_join_url);
             const learnerCanJoin = (
               session.create_zoom_meeting
               || (myRequest?.state === 'APPROVED' && myRequest?.type === 'remote_session')
@@ -1660,9 +1660,9 @@ const TimeGrid = ({
                             wordBreak: 'break-word',
                             textDecoration: isStrikethrough ? 'line-through' : 'none',
                           }}
-                        >
-                          {session.title}
-                        </strong>
+                          >
+                            {session.title}
+                          </strong>
                         </div>
                         {/* Time label — hidden in narrow (3+ lane) columns; popover has it */}
                         {height >= 30 && totalLanes < 3 && (
@@ -2267,6 +2267,7 @@ DayView.propTypes = {
   studentRequestMap: PropTypes.instanceOf(Map),
   leaveDateMap: PropTypes.instanceOf(Map),
   sessionTypeColors: PropTypes.objectOf(PropTypes.string),
+  sessionTypeLabels: PropTypes.objectOf(PropTypes.string),
   holidayMap: PropTypes.instanceOf(Map),
   programDatesMap: PropTypes.instanceOf(Map),
 };
@@ -2282,6 +2283,7 @@ DayView.defaultProps = {
   studentRequestMap: null,
   leaveDateMap: null,
   sessionTypeColors: {},
+  sessionTypeLabels: {},
   holidayMap: null,
   programDatesMap: null,
 };
