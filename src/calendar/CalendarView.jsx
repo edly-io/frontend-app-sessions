@@ -145,12 +145,6 @@ const getSessionTypeLabel = (session, sessionTypeLabels = {}) => {
     .join(' ');
 };
 
-const getSessionScope = (session) => {
-  const hasMeeting = Boolean(session.meeting_id || session.meeting_join_url);
-  if (!hasMeeting) { return 'in_person'; }
-  return session.create_zoom_meeting ? 'public' : 'gated';
-};
-
 const SessionTypeBadge = ({ session, sessionTypeLabels }) => {
   const label = getSessionTypeLabel(session, sessionTypeLabels);
   if (!label) { return null; }
@@ -166,16 +160,9 @@ const SessionTypeBadge = ({ session, sessionTypeLabels }) => {
         <button
           type="button"
           aria-label={tooltip}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            padding: 0,
-            border: 'none',
-            background: 'transparent',
-            cursor: 'help',
-          }}
+          className="btn btn-link d-inline-flex align-items-center p-0 border-0 text-muted"
         >
-          <Icon src={InfoOutline} style={{ width: 14, height: 14, color: '#6c757d' }} />
+          <Icon src={InfoOutline} className="text-muted" />
         </button>
       </OverlayTrigger>
     </span>
@@ -356,7 +343,10 @@ const SessionPopover = ({
           {/* Cancelled session = dead end; suppress scope/instructor noise. */}
           {displayStatus !== 'cancelled' && (
             <>
-              <ScopeBadge scope={getSessionScope(session)} />
+              {canManageSessions && (
+                <ScopeBadge scope={session.create_zoom_meeting ? 'public' : 'gated'} />
+              )}
+              {!canManageSessions && <ScopeBadge scope="in_person" />}
               <SessionTypeBadge session={session} sessionTypeLabels={sessionTypeLabels} />
               {session.user_role === USER_ROLE.INSTRUCTOR && <InstructingBadge />}
             </>
@@ -619,7 +609,10 @@ const DayPopover = ({
                     {/* Cancelled session = dead end; suppress scope/instructor noise. */}
                     {session.status !== 'cancelled' && (
                       <>
-                        <ScopeBadge scope={getSessionScope(session)} />
+                        {canManageSessions && (
+                          <ScopeBadge scope={session.create_zoom_meeting ? 'public' : 'gated'} />
+                        )}
+                        {!canManageSessions && <ScopeBadge scope="in_person" />}
                         <SessionTypeBadge session={session} sessionTypeLabels={sessionTypeLabels} />
                       </>
                     )}
