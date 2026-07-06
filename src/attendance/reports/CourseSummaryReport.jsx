@@ -278,7 +278,7 @@ const CourseSummaryReport = () => {
           onClick={handleExport}
           disabled={exporting}
         >
-          {exporting ? <Spinner animation="border" size="sm" /> : 'Export XLSX'}
+          {exporting ? <Spinner animation="border" size="sm" /> : 'Export Attendance Report'}
         </Button>
       </div>
 
