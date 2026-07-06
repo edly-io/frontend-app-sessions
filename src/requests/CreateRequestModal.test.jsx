@@ -19,10 +19,12 @@ jest.mock('./api', () => ({
   getLeaveUsage: jest.fn().mockResolvedValue({ threshold: 7, leaves: [] }),
 }));
 jest.mock('../app/useConfig', () => ({
-  useConfig: () => ({ data: { user_role: 'learner' } }),
+  useConfig: jest.fn(() => ({ data: { user_role: 'learner' } })),
 }));
 
 const { createRequest } = require('./api');
+const { useConfig } = require('../app/useConfig');
+const scrollIntoViewMock = jest.fn();
 
 const renderModal = (props = {}) => render(
   <IntlProvider locale="en" messages={{}}>
@@ -36,7 +38,15 @@ const renderModal = (props = {}) => render(
   </IntlProvider>,
 );
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  useConfig.mockReturnValue({ data: { user_role: 'learner' } });
+  scrollIntoViewMock.mockReset();
+  Object.defineProperty(window.HTMLElement.prototype, 'scrollIntoView', {
+    configurable: true,
+    value: scrollIntoViewMock,
+  });
+});
 
 // ─── Full-day leave ────────────────────────────────────────────────────────
 
@@ -191,6 +201,7 @@ describe('threshold exceeded confirmation', () => {
     fireEvent.click(screen.getByRole('button', { name: /^submit$/i }));
     expect(await screen.findByText(/leave threshold would be exceeded/i)).toBeInTheDocument();
     expect(screen.getByText(/This request would exceed your leave threshold/i)).toBeInTheDocument();
+    expect(scrollIntoViewMock).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
   });
 
   it('shows Go back and Submit anyway buttons after 422', async () => {
@@ -245,6 +256,59 @@ describe('threshold exceeded confirmation', () => {
             current_usage: 4,
             prospective_usage: 2,
             threshold: 5,
+          },
+        },
+      })
+      .mockResolvedValueOnce({});
+    renderModal();
+    switchToLeaveAndFill();
+    fireEvent.click(screen.getByRole('button', { name: /^submit$/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /submit anyway/i }));
+    expect(createRequest).toHaveBeenLastCalledWith(
+      expect.objectContaining({ override: true }),
+    );
+  });
+});
+
+describe('instructor scheduled-session warning confirmation', () => {
+  const switchToLeaveAndFill = () => {
+    useConfig.mockReturnValue({ data: { user_role: 'instructor' } });
+    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: 'leave' } });
+    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2026-07-01' } });
+    fireEvent.change(screen.getByLabelText('End date'), { target: { value: '2026-07-01' } });
+    fireEvent.change(
+      screen.getByPlaceholderText(/explain why you are making this request/i),
+      { target: { value: 'Need leave' } },
+    );
+  };
+
+  it('shows scheduled-session warning when backend returns 422 scheduled_session_conflict', async () => {
+    createRequest.mockRejectedValue({
+      response: {
+        status: 422,
+        data: {
+          error: 'scheduled_session_conflict',
+          detail: 'You have 1 scheduled session in this leave period. Submitting this request may require substitute coverage.',
+          session_count: 1,
+        },
+      },
+    });
+    renderModal();
+    switchToLeaveAndFill();
+    fireEvent.click(screen.getByRole('button', { name: /^submit$/i }));
+    expect(await screen.findByText(/this leave overlaps scheduled sessions/i)).toBeInTheDocument();
+    expect(screen.getByText(/you have 1 scheduled session in this leave period/i)).toBeInTheDocument();
+  });
+
+  it('Submit anyway calls createRequest with override: true after scheduled-session warning', async () => {
+    createRequest
+      .mockRejectedValueOnce({
+        response: {
+          status: 422,
+          data: {
+            error: 'scheduled_session_conflict',
+            detail: 'You have 2 scheduled sessions in this leave period. Submitting this request may require substitute coverage.',
+            session_count: 2,
           },
         },
       })

@@ -117,3 +117,17 @@ it('shows In Class label for manual platform sessions', () => {
   wrap({ ...BASE_SESSION, platform: 'manual' });
   expect(screen.getByText('In Class')).toBeInTheDocument();
 });
+
+it('shows session type as its own field using configured labels', () => {
+  wrap(
+    { ...BASE_SESSION, session_type: 'ceremony' },
+    { sessionTypeLabels: { ceremony: 'Ceremony' } },
+  );
+  expect(screen.getByText('Session type')).toBeInTheDocument();
+  expect(screen.getByText('Ceremony')).toBeInTheDocument();
+});
+
+it('falls back to formatted backend session type when no configured label exists', () => {
+  wrap({ ...BASE_SESSION, session_type: 'special_event' });
+  expect(screen.getByText('Special Event')).toBeInTheDocument();
+});

@@ -86,6 +86,17 @@ const CalendarPage = () => {
     return map;
   }, [config]);
 
+  const sessionTypeLabels = useMemo(() => {
+    const types = config?.session_types || [];
+    const map = {};
+    types.forEach((t) => {
+      if (t?.value && t?.label) {
+        map[t.value] = t.label;
+      }
+    });
+    return map;
+  }, [config]);
+
   // Calendar navigation state — lifted here because it drives the fetch window.
   const [view, setView] = useState(VIEWS.MONTH);
   const [currentDate, setCurrentDate] = useState(() => {
@@ -368,6 +379,7 @@ const CalendarPage = () => {
           holidays={holidays}
           programDates={programDates}
           sessionTypeColors={sessionTypeColors}
+          sessionTypeLabels={sessionTypeLabels}
         />
       </Container>
     );
@@ -448,6 +460,7 @@ const CalendarPage = () => {
         isOpen={isDetailOpen && Boolean(activeModalSession)}
         onClose={closeModal}
         canManageSessions={canManageSessions}
+        sessionTypeLabels={sessionTypeLabels}
       />
 
       {/* Toast — persists across view transitions */}

@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, {
+  useState, useEffect, useMemo, useRef,
+} from 'react';
 import PropTypes from 'prop-types';
 import {
   Alert, Button, Form, Spinner, StandardModal,
@@ -44,8 +46,9 @@ const CreateRequestModal = ({
   const [error, setError] = useState('');
   const [fetchError, setFetchError] = useState('');
   const [leaveUsageData, setLeaveUsageData] = useState(null);
-  const [thresholdExceeded, setThresholdExceeded] = useState(null);
+  const [submissionWarning, setSubmissionWarning] = useState(null);
   const [programDates, setProgramDates] = useState([]);
+  const modalTopRef = useRef(null);
 
   const resetSessions = () => {
     setSessions([]);
@@ -66,7 +69,7 @@ const CreateRequestModal = ({
     setAttachment(null);
     setError('');
     setLeaveUsageData(null);
-    setThresholdExceeded(null);
+    setSubmissionWarning(null);
     setProgramDates([]);
   };
 
@@ -216,15 +219,18 @@ const CreateRequestModal = ({
 
   const handleSubmit = async () => {
     setError('');
-    setThresholdExceeded(null);
+    setSubmissionWarning(null);
     setSubmitting(true);
     try {
       await createRequest(buildPayload());
       resetForm();
       onSuccess();
     } catch (err) {
-      if (err.response?.status === 422 && err.response?.data?.error === 'threshold_exceeded') {
-        setThresholdExceeded(err.response.data);
+      if (
+        err.response?.status === 422
+        && ['threshold_exceeded', 'scheduled_session_conflict'].includes(err.response?.data?.error)
+      ) {
+        setSubmissionWarning(err.response.data);
       } else {
         setError(extractApiError(err, 'Failed to submit request'));
       }
@@ -242,11 +248,20 @@ const CreateRequestModal = ({
       onSuccess();
     } catch (err) {
       setError(extractApiError(err, 'Failed to submit request'));
-      setThresholdExceeded(null);
+      setSubmissionWarning(null);
     } finally {
       setSubmitting(false);
     }
   };
+
+  const warningHeading = submissionWarning?.error === 'scheduled_session_conflict'
+    ? 'This leave overlaps scheduled sessions'
+    : 'Leave threshold would be exceeded';
+
+  useEffect(() => {
+    if (!submissionWarning) { return; }
+    modalTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [submissionWarning]);
 
   // ── Session list (remote_session + session-specific leave) ──
 
@@ -304,9 +319,9 @@ const CreateRequestModal = ({
       isOpen={isOpen}
       onClose={handleClose}
       title="New Request"
-      footerNode={thresholdExceeded ? (
+      footerNode={submissionWarning ? (
         <>
-          <Button variant="tertiary" onClick={() => setThresholdExceeded(null)} disabled={submitting}>
+          <Button variant="tertiary" onClick={() => setSubmissionWarning(null)} disabled={submitting}>
             Go back
           </Button>
           <Button
@@ -336,15 +351,18 @@ const CreateRequestModal = ({
         </>
       )}
     >
-      {thresholdExceeded && (
+      <div ref={modalTopRef} />
+      {submissionWarning && (
         <Alert variant="warning" className="mb-3">
-          <strong>Leave threshold would be exceeded</strong>
-          <p className="mb-1 mt-2" style={{ fontSize: 13 }}>{thresholdExceeded.detail}</p>
-          <small className="text-muted">
-            Current usage: {thresholdExceeded.current_usage} ·{' '}
-            This request: {thresholdExceeded.prospective_usage} ·{' '}
-            Threshold: {thresholdExceeded.threshold}
-          </small>
+          <strong>{warningHeading}</strong>
+          <p className="mb-1 mt-2" style={{ fontSize: 13 }}>{submissionWarning.detail}</p>
+          {submissionWarning.error === 'threshold_exceeded' && (
+            <small className="text-muted">
+              Current usage: {submissionWarning.current_usage} ·{' '}
+              This request: {submissionWarning.prospective_usage} ·{' '}
+              Threshold: {submissionWarning.threshold}
+            </small>
+          )}
         </Alert>
       )}
       {error && <Alert variant="danger" className="mb-3">{error}</Alert>}
