@@ -19,13 +19,10 @@ jest.mock('./api', () => ({
   getLeaveUsage: jest.fn().mockResolvedValue({ threshold: 7, leaves: [] }),
 }));
 jest.mock('../app/useConfig', () => ({
-  useConfig: jest.fn(() => ({ data: { user_role: 'learner' } })),
+  useConfig: () => ({ data: { user_role: 'learner' } }),
 }));
 
 const { createRequest } = require('./api');
-const { useConfig } = require('../app/useConfig');
-
-const scrollIntoViewMock = jest.fn();
 
 const renderModal = (props = {}) => render(
   <IntlProvider locale="en" messages={{}}>
@@ -39,15 +36,7 @@ const renderModal = (props = {}) => render(
   </IntlProvider>,
 );
 
-beforeEach(() => {
-  jest.clearAllMocks();
-  useConfig.mockReturnValue({ data: { user_role: 'learner' } });
-  scrollIntoViewMock.mockReset();
-  Object.defineProperty(window.HTMLElement.prototype, 'scrollIntoView', {
-    configurable: true,
-    value: scrollIntoViewMock,
-  });
-});
+beforeEach(() => jest.clearAllMocks());
 
 // ─── Full-day leave ────────────────────────────────────────────────────────
 
@@ -202,7 +191,6 @@ describe('threshold exceeded confirmation', () => {
     fireEvent.click(screen.getByRole('button', { name: /^submit$/i }));
     expect(await screen.findByText(/leave threshold would be exceeded/i)).toBeInTheDocument();
     expect(screen.getByText(/This request would exceed your leave threshold/i)).toBeInTheDocument();
-    expect(scrollIntoViewMock).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
   });
 
   it('shows Go back and Submit anyway buttons after 422', async () => {

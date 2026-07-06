@@ -253,7 +253,7 @@ TitleLink.defaultProps = {
 const SessionPopover = ({
   session, children, isOpen, onOpenChange, onEdit, onDelete, onCancel, onSessionDetail,
   canManageSessions = false, isInstructor = false,
-  isLearner = false, learnerRequest = null, sessionTypeLabels = {},
+  isLearner = false, learnerRequest = null, sessionTypeLabels,
 }) => {
   const { programId } = useParams();
   // Derive display-only status: a session that has ended but was never
@@ -265,6 +265,7 @@ const SessionPopover = ({
   // Prefer the per-session `my_request` returned by the API; fall back to the
   // window-level studentRequestMap for backward compatibility with older payloads.
   const myRequest = learnerRequest || session.my_request;
+  const hasMeeting = Boolean(session.meeting_id || session.meeting_join_url);
   const learnerCanJoin = (
     session.create_zoom_meeting
     || (myRequest?.state === 'APPROVED' && myRequest?.type === 'remote_session')
@@ -344,9 +345,10 @@ const SessionPopover = ({
           {displayStatus !== 'cancelled' && (
             <>
               {canManageSessions && (
-                <ScopeBadge scope={session.create_zoom_meeting ? 'public' : 'gated'} />
+                (hasMeeting
+                  ? <ScopeBadge scope={session.create_zoom_meeting ? 'public' : 'gated'} />
+                  : <ScopeBadge scope="in_person" />)
               )}
-              {!canManageSessions && <ScopeBadge scope="in_person" />}
               <SessionTypeBadge session={session} sessionTypeLabels={sessionTypeLabels} />
               {session.user_role === USER_ROLE.INSTRUCTOR && <InstructingBadge />}
             </>
@@ -461,7 +463,7 @@ const DayPopover = ({
   date, sessions, children, isOpen, onOpenChange, onEdit, onDelete, onCancel, onSessionDetail,
   canManageSessions = false, isInstructor = false,
   isLearner = false, studentRequestMap,
-  gradedDates = [], sessionTypeLabels = {},
+  gradedDates = [], sessionTypeLabels,
 }) => {
   const dateLabel = date.toLocaleDateString('en-US', {
     weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
@@ -547,6 +549,7 @@ const DayPopover = ({
           {sessions.map((session) => {
             const instructorDisplay = formatInstructors(session);
             const myRequest = studentRequestMap?.get(session.id) || session.my_request;
+            const hasMeeting = Boolean(session.meeting_id || session.meeting_join_url);
             const learnerCanJoin = (
               session.create_zoom_meeting
               || (myRequest?.state === 'APPROVED' && myRequest?.type === 'remote_session')
@@ -610,9 +613,10 @@ const DayPopover = ({
                     {session.status !== 'cancelled' && (
                       <>
                         {canManageSessions && (
-                          <ScopeBadge scope={session.create_zoom_meeting ? 'public' : 'gated'} />
+                          (hasMeeting
+                            ? <ScopeBadge scope={session.create_zoom_meeting ? 'public' : 'gated'} />
+                            : <ScopeBadge scope="in_person" />)
                         )}
-                        {!canManageSessions && <ScopeBadge scope="in_person" />}
                         <SessionTypeBadge session={session} sessionTypeLabels={sessionTypeLabels} />
                       </>
                     )}
@@ -884,7 +888,7 @@ const DayCell = ({
   openDayKey, setOpenDayKey,
   isOutsideMonth = false, cellMinHeight = 110, canManageSessions = false,
   isInstructor = false, isLearner = false, studentRequestMap, leaveDateMap = null, holidays = [],
-  gradedDates = [], sessionTypeColors = {}, sessionTypeLabels = {},
+  gradedDates = [], sessionTypeColors = {}, sessionTypeLabels,
 }) => {
   const dateKey = toDateKey(date);
   const today = toDateKey(new Date());
@@ -1192,7 +1196,7 @@ const MonthGrid = ({
   openPopoverId, setOpenPopoverId,
   openDayKey, setOpenDayKey, canManageSessions = false, isInstructor = false,
   isLearner = false, studentRequestMap, leaveDateMap = null, holidayMap = new Map(),
-  gradedDatesMap = new Map(), sessionTypeColors = {}, sessionTypeLabels = {},
+  gradedDatesMap = new Map(), sessionTypeColors = {}, sessionTypeLabels,
 }) => {
   const days = getMonthGridDays(currentDate);
   const currentMonth = currentDate.getMonth();
@@ -1346,7 +1350,7 @@ const TimeGrid = ({
   days, sessionMap, onEditSession, onDeleteSession, onCancelSession, onSessionDetail,
   openPopoverId, setOpenPopoverId, canManageSessions = false, isInstructor = false,
   isLearner = false, studentRequestMap, leaveDateMap = null, holidayMap = new Map(),
-  programDatesMap = new Map(), sessionTypeColors = {}, sessionTypeLabels = {},
+  programDatesMap = new Map(), sessionTypeColors = {}, sessionTypeLabels,
 }) => {
   const todayKey = toDateKey(new Date());
 
@@ -1695,7 +1699,7 @@ const WeekGrid = ({
   currentDate, sessionMap, onEditSession, onDeleteSession, onCancelSession, onSessionDetail,
   openPopoverId, setOpenPopoverId, canManageSessions = false, isInstructor = false,
   isLearner = false, studentRequestMap, leaveDateMap = null, holidayMap = new Map(),
-  programDatesMap = new Map(), sessionTypeColors = {}, sessionTypeLabels = {},
+  programDatesMap = new Map(), sessionTypeColors = {}, sessionTypeLabels,
 }) => (
   <TimeGrid
     days={getWeekDays(currentDate)}
@@ -1724,7 +1728,7 @@ const DayView = ({
   currentDate, sessionMap, onEditSession, onDeleteSession, onCancelSession, onSessionDetail,
   openPopoverId, setOpenPopoverId, canManageSessions = false, isInstructor = false,
   isLearner = false, studentRequestMap, leaveDateMap = null, holidayMap = new Map(),
-  programDatesMap = new Map(), sessionTypeColors = {}, sessionTypeLabels = {},
+  programDatesMap = new Map(), sessionTypeColors = {}, sessionTypeLabels,
 }) => (
   <TimeGrid
     days={[currentDate]}
@@ -1754,7 +1758,7 @@ const CalendarView = ({
   onScheduleNew, onEditSession, onDeleteSession, onCancelSession, onSessionDetail,
   loading = false, canManageSessions = false, isInstructor = false,
   isLearner = false, studentRequestMap, leaveDateMap = null, holidays = [],
-  programDates = [], sessionTypeColors = {}, sessionTypeLabels = {},
+  programDates = [], sessionTypeColors = {}, sessionTypeLabels,
 }) => {
   // Only one popover open at a time; null = none. Chip clicks and outside
   // clicks flip this; Edit/Delete actions also reset it before bubbling up.

@@ -1,6 +1,4 @@
-import React, {
-  useState, useEffect, useMemo, useRef,
-} from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import {
   Alert, Button, Form, Spinner, StandardModal,
@@ -48,7 +46,6 @@ const CreateRequestModal = ({
   const [leaveUsageData, setLeaveUsageData] = useState(null);
   const [thresholdExceeded, setThresholdExceeded] = useState(null);
   const [programDates, setProgramDates] = useState([]);
-  const modalTopRef = useRef(null);
 
   const resetSessions = () => {
     setSessions([]);
@@ -251,11 +248,6 @@ const CreateRequestModal = ({
     }
   };
 
-  useEffect(() => {
-    if (!thresholdExceeded) { return; }
-    modalTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, [thresholdExceeded]);
-
   // ── Session list (remote_session + session-specific leave) ──
 
   const renderSessionList = () => {
@@ -344,7 +336,6 @@ const CreateRequestModal = ({
         </>
       )}
     >
-      <div ref={modalTopRef} />
       {thresholdExceeded && (
         <Alert variant="warning" className="mb-3">
           <strong>Leave threshold would be exceeded</strong>
