@@ -55,6 +55,10 @@ const renderLeaveRange = (leave) => {
   return `${start} - ${end}`;
 };
 
+const formatDateTimeWithAt = (value) => (
+  formatDateTime(value).replace(/, (?=\d{1,2}:\d{2} [AP]M$)/, ' at ')
+);
+
 const CreateRequestModal = ({
   isOpen, onClose, programKey, onSuccess, lockedType,
 }) => {
@@ -487,7 +491,7 @@ const CreateRequestModal = ({
           <ul className="mb-2 pl-3" style={{ fontSize: 13 }}>
             {instructorSessionWarning.sessions.map((session) => (
               <li key={session.id}>
-                {formatDateTime(session.scheduled_start_time).replace(', ', ' at ')}
+                {formatDateTimeWithAt(session.scheduled_start_time)}
                 {' · '}
                 {session.title}
               </li>
@@ -528,7 +532,7 @@ const CreateRequestModal = ({
                     <div>
                       Applied on:
                       {' '}
-                      {formatDateTime(leave.applied_on).replace(', ', ' at ')}
+                      {formatDateTimeWithAt(leave.applied_on)}
                     </div>
                   )}
                 </li>

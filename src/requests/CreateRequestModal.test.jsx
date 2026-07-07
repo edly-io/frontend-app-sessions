@@ -5,6 +5,7 @@ import {
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { IntlProvider } from 'react-intl';
 import CreateRequestModal from './CreateRequestModal';
+import { formatDateTime } from '../shared/utils';
 
 // jest-dom v6 doesn't auto-extend when imported via babel-jest; extend manually.
 // eslint-disable-next-line import/no-extraneous-dependencies
@@ -27,6 +28,10 @@ jest.mock('../app/useConfig', () => ({
 const { createRequest } = require('./api');
 const { getCalendarSessions } = require('../calendar/api');
 const useConfigModule = require('../app/useConfig');
+
+const formatDateTimeWithAt = (value) => (
+  formatDateTime(value).replace(/, (?=\d{1,2}:\d{2} [AP]M$)/, ' at ')
+);
 
 const renderModal = (props = {}) => render(
   <IntlProvider locale="en" messages={{}}>
@@ -368,7 +373,7 @@ describe('overlapping leave rejection', () => {
     fireEvent.click(submitButton);
     await waitFor(() => expect(createRequest).toHaveBeenCalled());
 
-    expect(await screen.findByText(/leave dates overlap/i)).toBeInTheDocument();
+    expect(await screen.findByText('Leave dates overlap', { selector: 'strong' })).toBeInTheDocument();
     expect(screen.getByText(/your selected leave dates overlap with an existing leave request/i)).toBeInTheDocument();
     const items = screen.getAllByRole('listitem');
     expect(items).toHaveLength(2);
@@ -376,12 +381,12 @@ describe('overlapping leave rejection', () => {
     expect(items[0]).toHaveTextContent(/Full day/);
     expect(items[0]).toHaveTextContent(/Approved/);
     expect(items[0]).toHaveTextContent(/Date: Aug 1, 2026 - Aug 7, 2026/);
-    expect(items[0]).toHaveTextContent(/Applied on: Jul 28, 2026 at 09:15 AM/);
+    expect(items[0]).toHaveTextContent(`Applied on: ${formatDateTimeWithAt('2026-07-28T09:15:00Z')}`);
     expect(items[1]).toHaveTextContent(/Emergency Leave/);
     expect(items[1]).toHaveTextContent(/Session-specific/);
     expect(items[1]).toHaveTextContent(/Withdrawal Under Review/);
     expect(items[1]).toHaveTextContent(/Date: Aug 5, 2026/);
-    expect(items[1]).toHaveTextContent(/Applied on: Jul 29, 2026 at 10:00 AM/);
+    expect(items[1]).toHaveTextContent(`Applied on: ${formatDateTimeWithAt('2026-07-29T10:00:00Z')}`);
   });
 
   it('keeps the normal submit footer for overlap errors', async () => {
@@ -403,7 +408,7 @@ describe('overlapping leave rejection', () => {
     fireEvent.click(submitButton);
     await waitFor(() => expect(createRequest).toHaveBeenCalled());
 
-    expect(await screen.findByText(/leave dates overlap/i)).toBeInTheDocument();
+    expect(await screen.findByText('Leave dates overlap', { selector: 'strong' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /submit anyway/i })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^submit$/i })).toBeInTheDocument();
   });
