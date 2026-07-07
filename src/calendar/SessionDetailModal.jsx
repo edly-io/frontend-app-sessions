@@ -48,7 +48,6 @@ Field.propTypes = {
 
 const openInNewTab = (url) => window.open(url, '_blank', 'noopener,noreferrer');
 
-const SessionDetailModal = ({
 const getSessionTypeLabel = (session, sessionTypeLabels = {}) => {
   const rawType = session?.session_type;
   if (!rawType) { return ''; }
