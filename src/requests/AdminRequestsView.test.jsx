@@ -172,6 +172,17 @@ describe('would_exceed_threshold flag', () => {
     await screen.findByRole('table');
     expect(screen.queryByText(/approval would exceed threshold/i)).not.toBeInTheDocument();
   });
+
+  it('shows submitter role badge when provided by the leave API', async () => {
+    getRequests.mockResolvedValue({
+      count: 1,
+      results: [makeRequest({ submitter_role: 'instructor' })],
+    });
+    wrap({ lockedType: 'leave' });
+    expect(await screen.findByText('Instructor')).toBeInTheDocument();
+    expect(screen.getByText('Alice')).toBeInTheDocument();
+    expect(screen.getByText('alice@example.com')).toBeInTheDocument();
+  });
 });
 
 describe('would_exceed_threshold false', () => {
