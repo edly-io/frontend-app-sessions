@@ -82,6 +82,43 @@ describe('full-day leave', () => {
   });
 });
 
+// ─── Full-day leave: sessions-in-range notice (trainees) ───────────────────
+
+describe('full-day leave session notice', () => {
+  const switchToLeave = () => {
+    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: 'leave' } });
+  };
+
+  it('tells a trainee when the full-day leave range covers scheduled sessions', async () => {
+    getCalendarSessions.mockResolvedValueOnce({
+      sessions: [
+        {
+          id: 's1', status: 'scheduled', title: 'Math', scheduled_start_time: '2026-07-13T10:00:00Z',
+        },
+        {
+          id: 's2', status: 'scheduled', title: 'Physics', scheduled_start_time: '2026-07-14T10:00:00Z',
+        },
+      ],
+    });
+    renderModal();
+    switchToLeave();
+    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2026-07-13' } });
+    fireEvent.change(screen.getByLabelText('End date'), { target: { value: '2026-07-14' } });
+    expect(
+      await screen.findByText(/you have 2 scheduled sessions during this leave period/i),
+    ).toBeInTheDocument();
+  });
+
+  it('shows no notice when the range covers no sessions', async () => {
+    renderModal(); // default mock resolves { sessions: [] }
+    switchToLeave();
+    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2026-07-13' } });
+    fireEvent.change(screen.getByLabelText('End date'), { target: { value: '2026-07-14' } });
+    await waitFor(() => expect(getCalendarSessions).toHaveBeenCalled());
+    expect(screen.queryByText(/during this leave period/i)).not.toBeInTheDocument();
+  });
+});
+
 // ─── Session-specific leave ────────────────────────────────────────────────
 
 describe('session-specific leave', () => {

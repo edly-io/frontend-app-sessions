@@ -653,6 +653,14 @@ const CreateRequestModal = ({
         </div>
       </Form.Group>
 
+      {/* Full-day leave: heads-up that the selected range covers scheduled
+          sessions. Trainees only — instructors get a submit-time warning. */}
+      {isFullDayLeave && !isInstructor && sessions.length > 0 && (
+        <Alert variant="info" className="mb-3 py-2" style={{ fontSize: 13 }}>
+          You have {sessions.length} scheduled session{sessions.length === 1 ? '' : 's'} during this leave period.
+        </Alert>
+      )}
+
       {/* Graded activity warning */}
       {typeSlug === REQUEST_TYPE.LEAVE && gradedActivitiesInRange.length > 0 && (
         <Alert variant="warning" className="mb-3" style={{ fontSize: 13 }}>
