@@ -192,6 +192,15 @@ describe('attachment requirement for MED/EMER categories', () => {
     selectCategory('CASUAL');
     expect(screen.getByText('(optional)')).toBeInTheDocument();
   });
+
+  it('shows the attachment-required message for MED/EMER but not CASUAL', () => {
+    renderModal();
+    switchToLeave();
+    selectCategory('MED');
+    expect(screen.getByText(/require a supporting attachment/i)).toBeInTheDocument();
+    selectCategory('CASUAL');
+    expect(screen.queryByText(/require a supporting attachment/i)).not.toBeInTheDocument();
+  });
 });
 
 // ─── Threshold exceeded (422) ─────────────────────────────────────────────

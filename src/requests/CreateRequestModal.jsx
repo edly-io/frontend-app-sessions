@@ -582,6 +582,11 @@ const CreateRequestModal = ({
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </Form.Control>
+          {requiresAttachment && (
+            <small className="text-info mt-1 d-block">
+              Medical and Emergency leave require a supporting attachment.
+            </small>
+          )}
         </Form.Group>
       )}
 
