@@ -108,6 +108,31 @@ describe('session-specific leave', () => {
   });
 });
 
+// ─── Session fetch window (exclusive end) ─────────────────────────────────
+
+describe('session fetch window', () => {
+  const switchToSessionSpecific = () => {
+    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: 'leave' } });
+    fireEvent.click(screen.getByLabelText('Session-specific'));
+  };
+
+  it('sends end_date as an exclusive bound (+1 day) for a single-day selection', async () => {
+    renderModal();
+    switchToSessionSpecific();
+    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2026-07-13' } });
+    fireEvent.change(screen.getByLabelText('End date'), { target: { value: '2026-07-13' } });
+    await waitFor(() => expect(getCalendarSessions).toHaveBeenCalledWith('2026-07-13', '2026-07-14', 'program-v1:TEST+PROG+2026'));
+  });
+
+  it('advances the exclusive end across a month boundary', async () => {
+    renderModal();
+    switchToSessionSpecific();
+    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2026-07-30' } });
+    fireEvent.change(screen.getByLabelText('End date'), { target: { value: '2026-07-31' } });
+    await waitFor(() => expect(getCalendarSessions).toHaveBeenCalledWith('2026-07-30', '2026-08-01', 'program-v1:TEST+PROG+2026'));
+  });
+});
+
 // ─── Attachment required for MED / EMER ───────────────────────────────────
 
 describe('attachment requirement for MED/EMER categories', () => {

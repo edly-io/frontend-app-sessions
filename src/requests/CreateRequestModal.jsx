@@ -59,6 +59,16 @@ const formatDateTimeWithAt = (value) => (
   formatDateTime(value).replace(/, (?=\d{1,2}:\d{2} [AP]M$)/, ' at ')
 );
 
+// The calendar-sessions endpoint treats the window as half-open [start, end),
+// so an inclusive "YYYY-MM-DD" end date must be advanced by one day to include
+// that whole day (and to make a single-day selection a valid one-day window).
+// All date math stays in UTC so it is not shifted by the local timezone.
+const toExclusiveEnd = (dateStr) => {
+  const d = new Date(`${dateStr}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10);
+};
+
 const CreateRequestModal = ({
   isOpen, onClose, programKey, onSuccess, lockedType,
 }) => {
@@ -163,7 +173,7 @@ const CreateRequestModal = ({
       setSessions([]);
       setSelectedSessionIds([]);
       try {
-        const { sessions: data } = await getCalendarSessions(startDate, endDate, programKey);
+        const { sessions: data } = await getCalendarSessions(startDate, toExclusiveEnd(endDate), programKey);
         if (cancelled) { return; }
         const scheduled = (data || []).filter((s) => s.status === 'scheduled');
         setSessions(scheduled);
