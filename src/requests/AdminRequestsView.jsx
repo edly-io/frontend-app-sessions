@@ -26,11 +26,18 @@ import ThresholdControl from './ThresholdControl';
 import useModalParams from '../shared/useModalParams';
 import LeaveUsagePanel from './LeaveUsagePanel';
 import SessionLeavesPanel from './SessionLeavesPanel';
+import UserIdentity from './UserIdentity';
 import { getProgram } from '../app/api';
 
 const PAGE_SIZE = 15;
 
 const TRUNCATE_AT = 40;
+
+const SUBMITTER_ROLE_BADGES = {
+  instructor: 'Instructor',
+  learner: 'Trainee',
+  admin: 'Admin',
+};
 
 const SectionHeading = ({ children }) => (
   <h3 style={{
@@ -245,13 +252,17 @@ const AdminRequestsView = ({ readOnly, showNewRequest, lockedType }) => {
           if (!displayName) { return <span className="text-muted">—</span>; }
           return (
             <div>
-              <div>{displayName}</div>
+              <UserIdentity
+                name={displayName}
+                badges={[SUBMITTER_ROLE_BADGES[req.submitter_role]]}
+                size="compact"
+              />
               {req.submitter_name && req.submitter_email && (
-                <small className="text-muted">{req.submitter_email}</small>
+                <small className="text-muted d-block mt-1">{req.submitter_email}</small>
               )}
               {lockedType === REQUEST_TYPE.LEAVE && req.would_exceed_threshold === true && (
-                <small style={{ color: '#dc2626', display: 'block', fontSize: 11 }}>
-                  ⚠ Approval would exceed threshold
+                <small className="text-danger d-block mt-1">
+                  Approval would exceed threshold
                 </small>
               )}
             </div>

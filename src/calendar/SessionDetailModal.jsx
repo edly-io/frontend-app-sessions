@@ -48,8 +48,19 @@ Field.propTypes = {
 
 const openInNewTab = (url) => window.open(url, '_blank', 'noopener,noreferrer');
 
+const getSessionTypeLabel = (session, sessionTypeLabels = {}) => {
+  const rawType = session?.session_type;
+  if (!rawType) { return ''; }
+  if (sessionTypeLabels[rawType]) { return sessionTypeLabels[rawType]; }
+  return rawType
+    .split(/[_-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+};
+
 const SessionDetailModal = ({
-  session, isOpen, onClose, canManageSessions,
+  session, isOpen, onClose, canManageSessions, sessionTypeLabels,
 }) => {
   const { programId } = useParams();
   if (!session) { return null; }
@@ -60,6 +71,7 @@ const SessionDetailModal = ({
   const recurrenceSummary = session.is_recurring ? formatRecurrence(session.recurrence) : '';
   const platformLabel = SESSION_PLATFORM_LABELS[session.platform] || session.platform;
   const instructorList = (session.instructor_names || []).filter(Boolean).join(', ');
+  const sessionTypeLabel = getSessionTypeLabel(session, sessionTypeLabels);
 
   return (
     <StandardModal
@@ -89,6 +101,7 @@ const SessionDetailModal = ({
       )}
       {session.timezone && <Field label="Timezone">{session.timezone}</Field>}
       {platformLabel && <Field label="Platform">{platformLabel}</Field>}
+      {sessionTypeLabel && <Field label="Session type">{sessionTypeLabel}</Field>}
       {recurrenceSummary && <Field label="Recurrence">{recurrenceSummary}</Field>}
       {instructorList && <Field label="Instructors">{instructorList}</Field>}
       <Field label="Status">
@@ -201,6 +214,7 @@ SessionDetailModal.propTypes = {
       end_date_time: PropTypes.string,
     }),
     instructor_names: PropTypes.arrayOf(PropTypes.string),
+    session_type: PropTypes.string,
     create_zoom_meeting: PropTypes.bool,
     meeting_id: PropTypes.string,
     meeting_join_url: PropTypes.string,
@@ -215,10 +229,12 @@ SessionDetailModal.propTypes = {
   }),
   isOpen: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
+  sessionTypeLabels: PropTypes.objectOf(PropTypes.string),
 };
 SessionDetailModal.defaultProps = {
   canManageSessions: false,
   session: null,
+  sessionTypeLabels: {},
 };
 
 export default SessionDetailModal;

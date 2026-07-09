@@ -1,8 +1,11 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import {
+  render, screen, fireEvent, waitFor,
+} from '@testing-library/react';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { IntlProvider } from 'react-intl';
 import CreateRequestModal from './CreateRequestModal';
+import { formatDateTime } from '../shared/utils';
 
 // jest-dom v6 doesn't auto-extend when imported via babel-jest; extend manually.
 // eslint-disable-next-line import/no-extraneous-dependencies
@@ -23,6 +26,12 @@ jest.mock('../app/useConfig', () => ({
 }));
 
 const { createRequest } = require('./api');
+const { getCalendarSessions } = require('../calendar/api');
+const useConfigModule = require('../app/useConfig');
+
+const formatDateTimeWithAt = (value) => (
+  formatDateTime(value).replace(/, (?=\d{1,2}:\d{2} [AP]M$)/, ' at ')
+);
 
 const renderModal = (props = {}) => render(
   <IntlProvider locale="en" messages={{}}>
@@ -188,7 +197,9 @@ describe('threshold exceeded confirmation', () => {
     });
     renderModal();
     switchToLeaveAndFill();
-    fireEvent.click(screen.getByRole('button', { name: /^submit$/i }));
+    const submitButton = await screen.findByRole('button', { name: /^submit$/i });
+    await waitFor(() => expect(submitButton).not.toBeDisabled());
+    fireEvent.click(submitButton);
     expect(await screen.findByText(/leave threshold would be exceeded/i)).toBeInTheDocument();
     expect(screen.getByText(/This request would exceed your leave threshold/i)).toBeInTheDocument();
   });
@@ -208,7 +219,9 @@ describe('threshold exceeded confirmation', () => {
     });
     renderModal();
     switchToLeaveAndFill();
-    fireEvent.click(screen.getByRole('button', { name: /^submit$/i }));
+    const submitButton = await screen.findByRole('button', { name: /^submit$/i });
+    await waitFor(() => expect(submitButton).not.toBeDisabled());
+    fireEvent.click(submitButton);
     expect(await screen.findByRole('button', { name: /go back/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /submit anyway/i })).toBeInTheDocument();
   });
@@ -256,6 +269,148 @@ describe('threshold exceeded confirmation', () => {
     expect(createRequest).toHaveBeenLastCalledWith(
       expect.objectContaining({ override: true }),
     );
+  });
+});
+
+describe('instructor full-day leave warning', () => {
+  beforeEach(() => {
+    useConfigModule.useConfig = () => ({ data: { user_role: 'instructor' } });
+    getCalendarSessions.mockResolvedValue({
+      sessions: [
+        {
+          id: 'session-1',
+          title: 'Remote Session',
+          status: 'scheduled',
+          scheduled_start_time: '2026-07-02T10:00:00Z',
+        },
+      ],
+    });
+  });
+
+  afterEach(() => {
+    useConfigModule.useConfig = () => ({ data: { user_role: 'learner' } });
+  });
+
+  it('shows a warning and submit anyway action before creating the leave', async () => {
+    renderModal();
+    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: 'leave' } });
+    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2026-07-02' } });
+    fireEvent.change(screen.getByLabelText('End date'), { target: { value: '2026-07-02' } });
+    fireEvent.change(
+      screen.getByPlaceholderText(/explain why you are making this request/i),
+      { target: { value: 'Need a day off' } },
+    );
+
+    const submitButton = await screen.findByRole('button', { name: /^submit$/i });
+    await waitFor(() => expect(submitButton).not.toBeDisabled());
+    fireEvent.click(submitButton);
+
+    expect(await screen.findByText(/scheduled sessions during leave/i)).toBeInTheDocument();
+    expect(screen.getByText(/you have a scheduled session during this leave period/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/remote session/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/you can still submit this leave request if needed/i)).toBeInTheDocument();
+    expect(createRequest).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: /submit anyway/i }));
+
+    expect(createRequest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'leave',
+        leave_type: 'full_day',
+      }),
+    );
+  });
+});
+
+// ─── Overlapping leave rejection (400) ─────────────────────────────────────
+
+describe('overlapping leave rejection', () => {
+  const switchToLeaveAndFill = () => {
+    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: 'leave' } });
+    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2026-08-05' } });
+    fireEvent.change(screen.getByLabelText('End date'), { target: { value: '2026-08-10' } });
+    fireEvent.change(
+      screen.getByPlaceholderText(/explain why you are making this request/i),
+      { target: { value: 'Need leave' } },
+    );
+  };
+
+  it('shows overlapping leave details using mapped labels', async () => {
+    createRequest.mockRejectedValue({
+      response: {
+        status: 400,
+        data: {
+          error: 'overlapping_leave',
+          detail: 'Your applied leave dates overlap with the following leave(s).',
+          overlapping_leaves: [
+            {
+              id: 'leave-1',
+              category: 'MED',
+              leave_type: 'full_day',
+              leave_start_date: '2026-08-01',
+              leave_end_date: '2026-08-07',
+              applied_on: '2026-07-28T09:15:00Z',
+              status: 'APPROVED',
+            },
+            {
+              id: 'leave-2',
+              category: 'EMER',
+              leave_type: 'session_specific',
+              leave_start_date: '2026-08-05',
+              leave_end_date: '2026-08-05',
+              applied_on: '2026-07-29T10:00:00Z',
+              status: 'WITHDRAWAL_PENDING',
+            },
+          ],
+        },
+      },
+    });
+
+    renderModal();
+    switchToLeaveAndFill();
+    const submitButton = await screen.findByRole('button', { name: /^submit$/i });
+    await waitFor(() => expect(submitButton).not.toBeDisabled());
+    fireEvent.click(submitButton);
+    await waitFor(() => expect(createRequest).toHaveBeenCalled());
+
+    expect(await screen.findByText('Leave dates overlap', { selector: 'strong' })).toBeInTheDocument();
+    expect(screen.getByText(/your selected leave dates overlap with an existing leave request/i)).toBeInTheDocument();
+    const items = screen.getAllByRole('listitem');
+    expect(items).toHaveLength(2);
+    expect(items[0]).toHaveTextContent(/Medical Leave/);
+    expect(items[0]).toHaveTextContent(/Full day/);
+    expect(items[0]).toHaveTextContent(/Approved/);
+    expect(items[0]).toHaveTextContent(/Date: Aug 1, 2026 - Aug 7, 2026/);
+    expect(items[0]).toHaveTextContent(`Applied on: ${formatDateTimeWithAt('2026-07-28T09:15:00Z')}`);
+    expect(items[1]).toHaveTextContent(/Emergency Leave/);
+    expect(items[1]).toHaveTextContent(/Session-specific/);
+    expect(items[1]).toHaveTextContent(/Withdrawal Under Review/);
+    expect(items[1]).toHaveTextContent(/Date: Aug 5, 2026/);
+    expect(items[1]).toHaveTextContent(`Applied on: ${formatDateTimeWithAt('2026-07-29T10:00:00Z')}`);
+  });
+
+  it('keeps the normal submit footer for overlap errors', async () => {
+    createRequest.mockRejectedValue({
+      response: {
+        status: 400,
+        data: {
+          error: 'overlapping_leave',
+          detail: 'Your applied leave dates overlap with the following leave(s).',
+          overlapping_leaves: [],
+        },
+      },
+    });
+
+    renderModal();
+    switchToLeaveAndFill();
+    const submitButton = await screen.findByRole('button', { name: /^submit$/i });
+    await waitFor(() => expect(submitButton).not.toBeDisabled());
+    fireEvent.click(submitButton);
+    await waitFor(() => expect(createRequest).toHaveBeenCalled());
+
+    expect(await screen.findByText('Leave dates overlap', { selector: 'strong' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /submit anyway/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^submit$/i })).toBeInTheDocument();
   });
 });
 

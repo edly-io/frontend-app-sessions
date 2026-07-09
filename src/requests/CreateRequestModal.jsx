@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, {
+  useState, useEffect, useMemo, useRef,
+} from 'react';
 import PropTypes from 'prop-types';
 import {
   Alert, Button, Form, Spinner, StandardModal,
@@ -6,7 +8,12 @@ import {
 
 import { getCalendarSessions, getProgramDates } from '../calendar/api';
 import { createRequest, getLeaveUsage } from './api';
-import { REQUEST_TYPE, REQUEST_TYPE_LABELS, USER_ROLE } from '../shared/constants';
+import {
+  REQUEST_TYPE,
+  REQUEST_TYPE_LABELS,
+  REQUEST_STATUS_LABELS,
+  USER_ROLE,
+} from '../shared/constants';
 import { extractApiError, formatDateTime } from '../shared/utils';
 import { useConfig } from '../app/useConfig';
 
@@ -20,6 +27,37 @@ const LEAVE_CATEGORIES = [
   { value: 'MED', label: 'Medical' },
   { value: 'EMER', label: 'Emergency' },
 ];
+
+const LEAVE_CATEGORY_LABELS = {
+  CASUAL: 'Casual',
+  MED: 'Medical',
+  EMER: 'Emergency',
+};
+
+const LEAVE_MODE_LABELS = {
+  full_day: 'Full day',
+  session_specific: 'Session-specific',
+};
+
+const formatLeaveDate = (value) => {
+  if (!value) { return null; }
+  const date = value.includes('T') ? new Date(value) : new Date(`${value}T12:00:00`);
+  return date.toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric',
+  });
+};
+
+const renderLeaveRange = (leave) => {
+  const start = formatLeaveDate(leave.leave_start_date);
+  const end = formatLeaveDate(leave.leave_end_date);
+  if (!start) { return end; }
+  if (!end || start === end) { return start; }
+  return `${start} - ${end}`;
+};
+
+const formatDateTimeWithAt = (value) => (
+  formatDateTime(value).replace(/, (?=\d{1,2}:\d{2} [AP]M$)/, ' at ')
+);
 
 const CreateRequestModal = ({
   isOpen, onClose, programKey, onSuccess, lockedType,
@@ -45,7 +83,10 @@ const CreateRequestModal = ({
   const [fetchError, setFetchError] = useState('');
   const [leaveUsageData, setLeaveUsageData] = useState(null);
   const [thresholdExceeded, setThresholdExceeded] = useState(null);
+  const [instructorSessionWarning, setInstructorSessionWarning] = useState(null);
+  const [overlapConflict, setOverlapConflict] = useState(null);
   const [programDates, setProgramDates] = useState([]);
+  const topRef = useRef(null);
 
   const resetSessions = () => {
     setSessions([]);
@@ -67,6 +108,8 @@ const CreateRequestModal = ({
     setError('');
     setLeaveUsageData(null);
     setThresholdExceeded(null);
+    setInstructorSessionWarning(null);
+    setOverlapConflict(null);
     setProgramDates([]);
   };
 
@@ -77,21 +120,33 @@ const CreateRequestModal = ({
 
   const handleTypeChange = (value) => {
     setTypeSlug(value);
+    setThresholdExceeded(null);
+    setInstructorSessionWarning(null);
+    setOverlapConflict(null);
     resetSessions();
   };
 
   const handleLeaveModeChange = (mode) => {
     setLeaveMode(mode);
+    setThresholdExceeded(null);
+    setInstructorSessionWarning(null);
+    setOverlapConflict(null);
     resetSessions();
   };
 
   const handleStartDateChange = (value) => {
     setStartDate(value);
+    setThresholdExceeded(null);
+    setInstructorSessionWarning(null);
+    setOverlapConflict(null);
     resetSessions();
   };
 
   const handleEndDateChange = (value) => {
     setEndDate(value);
+    setThresholdExceeded(null);
+    setInstructorSessionWarning(null);
+    setOverlapConflict(null);
     resetSessions();
   };
 
@@ -185,6 +240,12 @@ const CreateRequestModal = ({
   const requiresAttachment = typeSlug === REQUEST_TYPE.LEAVE
     && (leaveCategory === 'MED' || leaveCategory === 'EMER');
 
+  const shouldAwaitInstructorSessionCheck = isInstructor
+    && isFullDayLeave
+    && Boolean(startDate && endDate)
+    && !sessionsFetched
+    && !fetchError;
+
   const isValid = () => {
     if (!reason.trim()) { return false; }
     if (requiresAttachment && !attachment) { return false; }
@@ -195,6 +256,14 @@ const CreateRequestModal = ({
     }
     return selectedSessionIds.length > 0;
   };
+
+  useEffect(() => {
+    if (thresholdExceeded || instructorSessionWarning || overlapConflict || error) {
+      if (typeof topRef.current?.scrollIntoView === 'function') {
+        topRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  }, [thresholdExceeded, instructorSessionWarning, overlapConflict, error]);
 
   // ── Submit ──
 
@@ -217,6 +286,15 @@ const CreateRequestModal = ({
   const handleSubmit = async () => {
     setError('');
     setThresholdExceeded(null);
+    setInstructorSessionWarning(null);
+    setOverlapConflict(null);
+    if (isInstructor && isFullDayLeave && sessions.length > 0) {
+      setInstructorSessionWarning({
+        detail: 'You have a scheduled session during this leave period:',
+        sessions,
+      });
+      return;
+    }
     setSubmitting(true);
     try {
       await createRequest(buildPayload());
@@ -225,6 +303,28 @@ const CreateRequestModal = ({
     } catch (err) {
       if (err.response?.status === 422 && err.response?.data?.error === 'threshold_exceeded') {
         setThresholdExceeded(err.response.data);
+      } else if (err.response?.status === 400 && err.response?.data?.error === 'overlapping_leave') {
+        setOverlapConflict(err.response.data);
+      } else {
+        setError(extractApiError(err, 'Failed to submit request'));
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleInstructorWarningSubmit = async () => {
+    setError('');
+    setInstructorSessionWarning(null);
+    setOverlapConflict(null);
+    setSubmitting(true);
+    try {
+      await createRequest(buildPayload());
+      resetForm();
+      onSuccess();
+    } catch (err) {
+      if (err.response?.status === 400 && err.response?.data?.error === 'overlapping_leave') {
+        setOverlapConflict(err.response.data);
       } else {
         setError(extractApiError(err, 'Failed to submit request'));
       }
@@ -235,14 +335,20 @@ const CreateRequestModal = ({
 
   const handleOverrideSubmit = async () => {
     setError('');
+    setInstructorSessionWarning(null);
+    setOverlapConflict(null);
     setSubmitting(true);
     try {
       await createRequest({ ...buildPayload(), override: true });
       resetForm();
       onSuccess();
     } catch (err) {
-      setError(extractApiError(err, 'Failed to submit request'));
       setThresholdExceeded(null);
+      if (err.response?.status === 400 && err.response?.data?.error === 'overlapping_leave') {
+        setOverlapConflict(err.response.data);
+      } else {
+        setError(extractApiError(err, 'Failed to submit request'));
+      }
     } finally {
       setSubmitting(false);
     }
@@ -299,43 +405,72 @@ const CreateRequestModal = ({
     );
   };
 
+  let footerNode;
+  if (thresholdExceeded) {
+    footerNode = (
+      <>
+        <Button variant="tertiary" onClick={() => setThresholdExceeded(null)} disabled={submitting}>
+          Go back
+        </Button>
+        <Button
+          variant="warning"
+          onClick={handleOverrideSubmit}
+          disabled={submitting}
+          className="ml-2"
+        >
+          {submitting ? <Spinner animation="border" size="sm" className="mr-2" /> : null}
+          Submit anyway
+        </Button>
+      </>
+    );
+  } else if (instructorSessionWarning) {
+    footerNode = (
+      <>
+        <Button
+          variant="tertiary"
+          onClick={() => setInstructorSessionWarning(null)}
+          disabled={submitting}
+        >
+          Go back
+        </Button>
+        <Button
+          variant="warning"
+          onClick={handleInstructorWarningSubmit}
+          disabled={submitting}
+          className="ml-2"
+        >
+          {submitting ? <Spinner animation="border" size="sm" className="mr-2" /> : null}
+          Submit anyway
+        </Button>
+      </>
+    );
+  } else {
+    footerNode = (
+      <>
+        <Button variant="tertiary" onClick={handleClose} disabled={submitting}>
+          Cancel
+        </Button>
+        <Button
+          variant="primary"
+          onClick={handleSubmit}
+          disabled={submitting || !isValid() || shouldAwaitInstructorSessionCheck}
+          className="ml-2"
+        >
+          {submitting ? <Spinner animation="border" size="sm" className="mr-2" /> : null}
+          Submit
+        </Button>
+      </>
+    );
+  }
+
   return (
     <StandardModal
       isOpen={isOpen}
       onClose={handleClose}
       title="New Request"
-      footerNode={thresholdExceeded ? (
-        <>
-          <Button variant="tertiary" onClick={() => setThresholdExceeded(null)} disabled={submitting}>
-            Go back
-          </Button>
-          <Button
-            variant="warning"
-            onClick={handleOverrideSubmit}
-            disabled={submitting}
-            className="ml-2"
-          >
-            {submitting ? <Spinner animation="border" size="sm" className="mr-2" /> : null}
-            Submit anyway
-          </Button>
-        </>
-      ) : (
-        <>
-          <Button variant="tertiary" onClick={handleClose} disabled={submitting}>
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
-            onClick={handleSubmit}
-            disabled={submitting || !isValid()}
-            className="ml-2"
-          >
-            {submitting ? <Spinner animation="border" size="sm" className="mr-2" /> : null}
-            Submit
-          </Button>
-        </>
-      )}
+      footerNode={footerNode}
     >
+      <div ref={topRef} />
       {thresholdExceeded && (
         <Alert variant="warning" className="mb-3">
           <strong>Leave threshold would be exceeded</strong>
@@ -345,6 +480,65 @@ const CreateRequestModal = ({
             This request: {thresholdExceeded.prospective_usage} ·{' '}
             Threshold: {thresholdExceeded.threshold}
           </small>
+        </Alert>
+      )}
+      {instructorSessionWarning && (
+        <Alert variant="warning" className="mb-3">
+          <strong>Scheduled sessions during leave</strong>
+          <p className="mb-2 mt-2" style={{ fontSize: 13 }}>
+            {instructorSessionWarning.detail}
+          </p>
+          <ul className="mb-2 pl-3" style={{ fontSize: 13 }}>
+            {instructorSessionWarning.sessions.map((session) => (
+              <li key={session.id}>
+                {formatDateTimeWithAt(session.scheduled_start_time)}
+                {' · '}
+                {session.title}
+              </li>
+            ))}
+          </ul>
+          <p className="mb-0" style={{ fontSize: 13 }}>
+            You can still submit this leave request if needed.
+          </p>
+        </Alert>
+      )}
+      {overlapConflict && (
+        <Alert variant="danger" className="mb-3">
+          <strong>Leave dates overlap</strong>
+          <p className="mb-2 mt-2" style={{ fontSize: 13 }}>
+            Your selected leave dates overlap with an existing leave request:
+          </p>
+          {Array.isArray(overlapConflict.overlapping_leaves)
+            && overlapConflict.overlapping_leaves.length > 0 && (
+            <ul className="mb-0 pl-3" style={{ fontSize: 13 }}>
+              {overlapConflict.overlapping_leaves.map((leave) => (
+                <li key={leave.id} className="mb-2">
+                  <div>
+                    <strong>
+                      {LEAVE_CATEGORY_LABELS[leave.category] || leave.category || 'Leave'}
+                      {' Leave'}
+                    </strong>
+                    {' · '}
+                    {LEAVE_MODE_LABELS[leave.leave_type] || leave.leave_type}
+                    {' · '}
+                    {REQUEST_STATUS_LABELS[leave.status] || leave.status}
+                  </div>
+                  <div>
+                    Date:
+                    {' '}
+                    {renderLeaveRange(leave)}
+                  </div>
+                  {leave.applied_on && (
+                    <div>
+                      Applied on:
+                      {' '}
+                      {formatDateTimeWithAt(leave.applied_on)}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
         </Alert>
       )}
       {error && <Alert variant="danger" className="mb-3">{error}</Alert>}
