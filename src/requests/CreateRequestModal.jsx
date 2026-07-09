@@ -59,6 +59,16 @@ const formatDateTimeWithAt = (value) => (
   formatDateTime(value).replace(/, (?=\d{1,2}:\d{2} [AP]M$)/, ' at ')
 );
 
+// The calendar-sessions endpoint treats the window as half-open [start, end),
+// so an inclusive "YYYY-MM-DD" end date must be advanced by one day to include
+// that whole day (and to make a single-day selection a valid one-day window).
+// All date math stays in UTC so it is not shifted by the local timezone.
+const toExclusiveEnd = (dateStr) => {
+  const d = new Date(`${dateStr}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10);
+};
+
 const CreateRequestModal = ({
   isOpen, onClose, programKey, onSuccess, lockedType,
 }) => {
@@ -163,7 +173,7 @@ const CreateRequestModal = ({
       setSessions([]);
       setSelectedSessionIds([]);
       try {
-        const { sessions: data } = await getCalendarSessions(startDate, endDate, programKey);
+        const { sessions: data } = await getCalendarSessions(startDate, toExclusiveEnd(endDate), programKey);
         if (cancelled) { return; }
         const scheduled = (data || []).filter((s) => s.status === 'scheduled');
         setSessions(scheduled);
@@ -572,6 +582,11 @@ const CreateRequestModal = ({
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </Form.Control>
+          {requiresAttachment && (
+            <small className="text-info mt-1 d-block">
+              Medical and Emergency leave require a supporting attachment.
+            </small>
+          )}
         </Form.Group>
       )}
 
@@ -637,6 +652,14 @@ const CreateRequestModal = ({
           {sessionsLoading && <Spinner animation="border" size="sm" />}
         </div>
       </Form.Group>
+
+      {/* Full-day leave: heads-up that the selected range covers scheduled
+          sessions. Trainees only — instructors get a submit-time warning. */}
+      {isFullDayLeave && !isInstructor && sessions.length > 0 && (
+        <Alert variant="info" className="mb-3 py-2" style={{ fontSize: 13 }}>
+          You have {sessions.length} scheduled session{sessions.length === 1 ? '' : 's'} during this leave period.
+        </Alert>
+      )}
 
       {/* Graded activity warning */}
       {typeSlug === REQUEST_TYPE.LEAVE && gradedActivitiesInRange.length > 0 && (

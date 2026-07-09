@@ -39,4 +39,8 @@ describe('REQUEST_STATUS_VARIANTS', () => {
   it('maps PENDING to warning', () => {
     expect(REQUEST_STATUS_VARIANTS[REQUEST_STATUS.PENDING]).toBe('warning');
   });
+
+  it('maps WITHDRAWN to a neutral secondary (not success)', () => {
+    expect(REQUEST_STATUS_VARIANTS[REQUEST_STATUS.WITHDRAWN]).toBe('secondary');
+  });
 });

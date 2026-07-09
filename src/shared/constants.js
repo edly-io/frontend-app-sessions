@@ -68,7 +68,9 @@ export const REQUEST_STATUS_VARIANTS = {
   [REQUEST_STATUS.REJECTED]: 'danger',
   [REQUEST_STATUS.CANCELLED]: 'secondary',
   [REQUEST_STATUS.WITHDRAWAL_PENDING]: 'warning',
-  [REQUEST_STATUS.WITHDRAWN]: 'success',
+  // Withdrawn is a terminal, inactive outcome — neutral grey (like CANCELLED),
+  // not green 'success' which reads as an active/approved leave.
+  [REQUEST_STATUS.WITHDRAWN]: 'secondary',
   [REQUEST_STATUS.WITHDRAWAL_REJECTED]: 'danger',
 };
 
