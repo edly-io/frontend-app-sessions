@@ -30,7 +30,7 @@ jest.mock('../app/api', () => ({
 jest.mock('./CreateRequestModal', () => function MockCreateRequestModal() { return null; });
 jest.mock('./SessionLeavesPanel', () => function MockSessionLeavesPanel() { return null; });
 
-const { getRequests, reviewRequest } = require('./api');
+const { getRequests, reviewRequest, bulkApproveLeaves } = require('./api');
 
 const wrap = (props = {}) => render(
   <IntlProvider locale="en" messages={{}}>
@@ -149,6 +149,120 @@ describe('WITHDRAWAL_PENDING request actions', () => {
       { state: 'WITHDRAWAL_REJECTED', reviewer_note: '' },
       'leave',
     );
+  });
+});
+
+// ─── Past-dated leaves: pending is one-click, withdrawal needs a note ──────────
+
+describe('past-dated leave approvals', () => {
+  const offsetDate = (days) => {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    return d.toLocaleDateString('en-CA'); // YYYY-MM-DD
+  };
+  const pastDate = () => offsetDate(-1);
+  const futureDate = () => offsetDate(1);
+
+  it('shows the approve warning on a past-dated pending request', async () => {
+    getRequests.mockResolvedValue({
+      count: 1,
+      results: [makeRequest({ leave_start_date: pastDate() })],
+    });
+    wrap();
+    expect(await screen.findByText(/check the trainee wasn't marked present/i)).toBeInTheDocument();
+  });
+
+  it('approves a past-dated pending leave in one click, with no note and no modal', async () => {
+    reviewRequest.mockResolvedValue({ id: '1', state: 'APPROVED' });
+    getRequests.mockResolvedValue({
+      count: 1,
+      results: [makeRequest({ leave_start_date: pastDate() })],
+    });
+    wrap();
+    fireEvent.click(await screen.findByRole('button', { name: /^approve$/i }));
+    expect(reviewRequest).toHaveBeenCalledWith('1', { state: 'APPROVED', reviewer_note: '' }, 'leave');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('requires a note in a modal for a past-dated withdrawal approval', async () => {
+    reviewRequest.mockResolvedValue({ id: '1', state: 'WITHDRAWN' });
+    getRequests.mockResolvedValue({
+      count: 1,
+      results: [makeRequest({ state: 'WITHDRAWAL_PENDING', leave_start_date: pastDate() })],
+    });
+    wrap();
+    fireEvent.click(await screen.findByRole('button', { name: /approve withdrawal/i }));
+    const dialog = screen.getByRole('dialog');
+    expect(reviewRequest).not.toHaveBeenCalled();
+    const confirm = within(dialog).getByRole('button', { name: /approve withdrawal/i });
+    expect(confirm).toBeDisabled();
+    fireEvent.change(
+      within(dialog).getByPlaceholderText(/explain why this withdrawal is being approved/i),
+      { target: { value: 'Confirmed attended' } },
+    );
+    expect(confirm).not.toBeDisabled();
+    fireEvent.click(confirm);
+    expect(reviewRequest).toHaveBeenCalledWith(
+      '1',
+      { state: 'WITHDRAWN', reviewer_note: 'Confirmed attended' },
+      'leave',
+    );
+  });
+
+  it('does not require a note for a future-dated withdrawal (one click)', async () => {
+    reviewRequest.mockResolvedValue({ id: '1', state: 'WITHDRAWN' });
+    getRequests.mockResolvedValue({
+      count: 1,
+      results: [makeRequest({ state: 'WITHDRAWAL_PENDING', leave_start_date: futureDate() })],
+    });
+    wrap();
+    fireEvent.click(await screen.findByRole('button', { name: /approve withdrawal/i }));
+    expect(reviewRequest).toHaveBeenCalledWith('1', { state: 'WITHDRAWN', reviewer_note: '' }, 'leave');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+});
+
+// ─── Bulk approve confirmation for past-dated leaves ──────────────────────────
+
+describe('bulk approve confirmation', () => {
+  const offsetDate = (days) => {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    return d.toLocaleDateString('en-CA');
+  };
+
+  it('shows a confirm dialog before bulk-approving when a selected leave is past-dated', async () => {
+    bulkApproveLeaves.mockResolvedValue({ approved_count: 1, ignored_count: 0 });
+    getRequests.mockResolvedValue({
+      count: 1,
+      results: [makeRequest({ leave_start_date: offsetDate(-1) })],
+    });
+    wrap({ lockedType: 'leave' });
+    fireEvent.click(await screen.findByLabelText(/select all pending/i));
+    fireEvent.click(screen.getByRole('button', { name: /bulk approve/i }));
+    // Confirm dialog appears, lists the past-dated leaf, and nothing is sent yet.
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText(/already passed/i)).toBeInTheDocument();
+    expect(within(dialog).getByText(/Alice/)).toBeInTheDocument();
+    expect(bulkApproveLeaves).not.toHaveBeenCalled();
+    // Confirm.
+    fireEvent.click(within(dialog).getByRole('button', { name: /approve all/i }));
+    expect(bulkApproveLeaves).toHaveBeenCalledWith(
+      expect.objectContaining({ leave_ids: ['1'] }),
+    );
+  });
+
+  it('bulk-approves directly (no confirm) when no selected leaf is past-dated', async () => {
+    bulkApproveLeaves.mockResolvedValue({ approved_count: 1, ignored_count: 0 });
+    getRequests.mockResolvedValue({
+      count: 1,
+      results: [makeRequest({ leave_start_date: offsetDate(1) })],
+    });
+    wrap({ lockedType: 'leave' });
+    fireEvent.click(await screen.findByLabelText(/select all pending/i));
+    fireEvent.click(screen.getByRole('button', { name: /bulk approve/i }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(bulkApproveLeaves).toHaveBeenCalled();
   });
 });
 

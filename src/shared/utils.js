@@ -23,6 +23,33 @@ export const toDateTimeLocal = (isoString) => {
   return localDate.toISOString().slice(0, 16);
 };
 
+/**
+ * True when a leave request's start date is strictly before today.
+ * Date-only comparison (ignores time-of-day) so "today" is never "passed",
+ * mirroring the backend's `leave_start_date < now().date()` rule.
+ */
+export const isLeaveStartDatePast = (req) => {
+  if (!req || !req.leave_start_date) { return false; }
+  const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD (local)
+  return req.leave_start_date < today;
+};
+
+/** Format a date-only value (YYYY-MM-DD) as e.g. "Jul 10, 2026". */
+export const formatLeaveDate = (value) => {
+  if (!value) { return ''; }
+  return new Date(`${value}T12:00:00`).toLocaleDateString('en-US', {
+    year: 'numeric', month: 'short', day: 'numeric',
+  });
+};
+
+/** Human date range for a leave: single date, or "start – end". */
+export const formatLeaveRange = (req) => {
+  if (!req || !req.leave_start_date) { return ''; }
+  const start = formatLeaveDate(req.leave_start_date);
+  if (!req.leave_end_date || req.leave_end_date === req.leave_start_date) { return start; }
+  return `${start} – ${formatLeaveDate(req.leave_end_date)}`;
+};
+
 export const formatDuration = (seconds) => {
   if (!seconds || seconds === 0) { return '0m'; }
   const hours = Math.floor(seconds / 3600);

@@ -19,7 +19,9 @@ import {
   REQUEST_TYPE_LABELS,
   REQUEST_TYPE_VARIANTS,
 } from '../shared/constants';
-import { extractApiError, formatDateTime } from '../shared/utils';
+import {
+  extractApiError, formatDateTime, isLeaveStartDatePast, formatLeaveRange,
+} from '../shared/utils';
 import RequestDetailCell from './RequestDetailCell';
 import CreateRequestModal from './CreateRequestModal';
 import ThresholdControl from './ThresholdControl';
@@ -32,6 +34,11 @@ import { getProgram } from '../app/api';
 const PAGE_SIZE = 15;
 
 const TRUNCATE_AT = 40;
+
+// Past-dated (leave_start_date < today) warnings, per action.
+const PAST_LEAVE_APPROVE_WARNING = "Leave date has passed. Check the trainee wasn't marked present before approving.";
+const PAST_LEAVE_WITHDRAWAL_WARNING = "Leave date has passed. Approving cancels the leave and returns it to the trainee's balance. Add a note to say why.";
+const PAST_LEAVE_SHORT_WARNING = 'Leave date has already passed.';
 
 const SUBMITTER_ROLE_BADGES = {
   instructor: 'Instructor',
@@ -115,6 +122,8 @@ const AdminRequestsView = ({ readOnly, showNewRequest, lockedType }) => {
   // Bulk selection — leaves tab only; driven by a single Select All checkbox
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [bulkApproving, setBulkApproving] = useState(false);
+  // When set, a confirm dialog lists the selected leaves whose date has already passed.
+  const [bulkPastLeaves, setBulkPastLeaves] = useState(null);
 
   // Threshold — leaves tab only (for ThresholdControl settings UI)
   const [threshold, setThreshold] = useState(null);
@@ -195,6 +204,28 @@ const AdminRequestsView = ({ readOnly, showNewRequest, lockedType }) => {
   const handleApprove = (request) => applyReview(request, REQUEST_STATUS.APPROVED);
   const handleApproveWithdrawal = (request) => applyReview(request, REQUEST_STATUS.WITHDRAWN);
 
+  // Approving the withdrawal of a past-dated leave reverses an approved leave, so it
+  // needs a deliberate confirmation + justification note (also enforced server-side).
+  // Forward approvals (pending) stay one-click; they only show an inline warning.
+  const handleOpenWithdrawalModal = (request) => {
+    setNoteText('');
+    setNoteModal({
+      request,
+      targetState: REQUEST_STATUS.WITHDRAWN,
+      title: 'Approve withdrawal',
+      confirmLabel: 'Approve withdrawal',
+      confirmVariant: 'success',
+      noteRequired: true,
+      warning: PAST_LEAVE_WITHDRAWAL_WARNING,
+    });
+  };
+
+  const handleApproveWithdrawalClick = (request) => (
+    isLeaveStartDatePast(request)
+      ? handleOpenWithdrawalModal(request)
+      : handleApproveWithdrawal(request)
+  );
+
   const handleOpenRejectModal = (request, targetState) => {
     setNoteText('');
     const isWithdrawal = targetState === REQUEST_STATUS.WITHDRAWAL_REJECTED;
@@ -212,7 +243,7 @@ const AdminRequestsView = ({ readOnly, showNewRequest, lockedType }) => {
     setNoteModal(null);
   };
 
-  const handleBulkApprove = async () => {
+  const doBulkApprove = async () => {
     setBulkApproving(true);
     try {
       const result = await bulkApproveLeaves({
@@ -229,6 +260,23 @@ const AdminRequestsView = ({ readOnly, showNewRequest, lockedType }) => {
     } finally {
       setBulkApproving(false);
     }
+  };
+
+  const handleBulkApprove = () => {
+    // Warn once, listing the selected leaves whose date has already passed.
+    const pastLeaves = [...selectedIds]
+      .map((id) => requests.find((r) => r.id === id))
+      .filter((r) => r && isLeaveStartDatePast(r));
+    if (pastLeaves.length > 0) {
+      setBulkPastLeaves(pastLeaves);
+      return;
+    }
+    doBulkApprove();
+  };
+
+  const handleConfirmBulkApprove = () => {
+    setBulkPastLeaves(null);
+    doBulkApprove();
   };
 
   /* eslint-disable react/no-unstable-nested-components, react/prop-types */
@@ -324,48 +372,59 @@ const AdminRequestsView = ({ readOnly, showNewRequest, lockedType }) => {
           const isWithdrawalPending = request.state === REQUEST_STATUS.WITHDRAWAL_PENDING;
           if (!isPending && !isWithdrawalPending) { return null; }
           const busy = actioningId === request.id;
+          const datePassed = isLeaveStartDatePast(request);
 
           if (isWithdrawalPending) {
             return (
-              <div className="d-flex" style={{ gap: '0.4rem' }}>
-                <Button
-                  variant="success"
-                  size="sm"
-                  onClick={() => handleApproveWithdrawal(request)}
-                  disabled={busy}
-                >
-                  Approve Withdrawal
-                </Button>
-                <Button
-                  variant="outline-danger"
-                  size="sm"
-                  onClick={() => handleOpenRejectModal(request, REQUEST_STATUS.WITHDRAWAL_REJECTED)}
-                  disabled={busy}
-                >
-                  Reject Withdrawal
-                </Button>
+              <div>
+                {datePassed && (
+                  <small className="text-danger d-block mb-1">{PAST_LEAVE_SHORT_WARNING}</small>
+                )}
+                <div className="d-flex" style={{ gap: '0.4rem' }}>
+                  <Button
+                    variant="success"
+                    size="sm"
+                    onClick={() => handleApproveWithdrawalClick(request)}
+                    disabled={busy}
+                  >
+                    Approve Withdrawal
+                  </Button>
+                  <Button
+                    variant="outline-danger"
+                    size="sm"
+                    onClick={() => handleOpenRejectModal(request, REQUEST_STATUS.WITHDRAWAL_REJECTED)}
+                    disabled={busy}
+                  >
+                    Reject Withdrawal
+                  </Button>
+                </div>
               </div>
             );
           }
 
           return (
-            <div className="d-flex" style={{ gap: '0.4rem' }}>
-              <Button
-                variant="success"
-                size="sm"
-                onClick={() => handleApprove(request)}
-                disabled={busy}
-              >
-                Approve
-              </Button>
-              <Button
-                variant="outline-danger"
-                size="sm"
-                onClick={() => handleOpenRejectModal(request, REQUEST_STATUS.REJECTED)}
-                disabled={busy}
-              >
-                Reject
-              </Button>
+            <div>
+              {datePassed && (
+                <small className="text-danger d-block mb-1">{PAST_LEAVE_APPROVE_WARNING}</small>
+              )}
+              <div className="d-flex" style={{ gap: '0.4rem' }}>
+                <Button
+                  variant="success"
+                  size="sm"
+                  onClick={() => handleApprove(request)}
+                  disabled={busy}
+                >
+                  Approve
+                </Button>
+                <Button
+                  variant="outline-danger"
+                  size="sm"
+                  onClick={() => handleOpenRejectModal(request, REQUEST_STATUS.REJECTED)}
+                  disabled={busy}
+                >
+                  Reject
+                </Button>
+              </div>
             </div>
           );
         },
@@ -565,9 +624,12 @@ const AdminRequestsView = ({ readOnly, showNewRequest, lockedType }) => {
             <>
               <Button variant="tertiary" onClick={() => setNoteModal(null)}>Cancel</Button>
               <Button
-                variant="danger"
+                variant={noteModal?.confirmVariant ?? 'danger'}
                 onClick={handleConfirmNoteModal}
-                disabled={actioningId === noteModal?.request?.id}
+                disabled={
+                  actioningId === noteModal?.request?.id
+                  || (noteModal?.noteRequired && !noteText.trim())
+                }
                 className="ml-2"
               >
                 {noteModal?.confirmLabel ?? 'Reject request'}
@@ -575,17 +637,62 @@ const AdminRequestsView = ({ readOnly, showNewRequest, lockedType }) => {
             </>
           )}
         >
+          {noteModal?.warning && (
+            <Alert variant="warning" className="py-2 px-3 mb-2">{noteModal.warning}</Alert>
+          )}
           <Form.Group>
-            <Form.Label>Note for the learner (optional)</Form.Label>
+            <Form.Label>
+              {noteModal?.noteRequired ? 'Justification note (required)' : 'Note for the learner (optional)'}
+            </Form.Label>
             <Form.Control
               as="textarea"
               rows={3}
               value={noteText}
               onChange={(e) => setNoteText(e.target.value)}
-              placeholder="Let them know why you couldn't approve this request."
+              placeholder={noteModal?.noteRequired
+                ? 'Explain why this withdrawal is being approved after the leave date.'
+                : "Let them know why you couldn't approve this request."}
               maxLength={500}
             />
           </Form.Group>
+        </StandardModal>
+      )}
+
+      {!readOnly && (
+        <StandardModal
+          isOpen={bulkPastLeaves !== null}
+          onClose={() => setBulkPastLeaves(null)}
+          title={`Approve past-dated ${(bulkPastLeaves?.length ?? 0) === 1 ? 'leave' : 'leaves'}?`}
+          footerNode={(
+            <>
+              <Button variant="tertiary" onClick={() => setBulkPastLeaves(null)}>Cancel</Button>
+              <Button variant="success" onClick={handleConfirmBulkApprove} className="ml-2">
+                {`Approve all (${selectedIds.size})`}
+              </Button>
+            </>
+          )}
+        >
+          <p className="mb-2">
+            {`You are approving ${selectedIds.size} `
+              + `${selectedIds.size === 1 ? 'leave' : 'leaves'}; `
+              + `${bulkPastLeaves?.length ?? 0} of them `
+              + `${(bulkPastLeaves?.length ?? 0) === 1
+                ? 'is for a date that has'
+                : 'are for dates that have'} already passed (listed below):`}
+          </p>
+          <ul className="pl-3 mb-2">
+            {(bulkPastLeaves ?? []).map((lv) => (
+              <li key={lv.id}>
+                {lv.submitter_name || lv.submitter_email}
+                {' — '}
+                {formatLeaveRange(lv)}
+                {lv.reason ? ` (${lv.reason})` : ''}
+              </li>
+            ))}
+          </ul>
+          <p className="mb-0">
+            {(bulkPastLeaves?.length ?? 0) === 1 ? 'Approve it anyway?' : 'Approve them anyway?'}
+          </p>
         </StandardModal>
       )}
     </Container>
