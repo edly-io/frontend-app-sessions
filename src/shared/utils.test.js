@@ -6,6 +6,9 @@ import {
   getStatusVariant,
   extractApiError,
   bucketSessionsByDay,
+  isLeaveStartDatePast,
+  formatLeaveDate,
+  formatLeaveRange,
 } from './utils';
 
 describe('formatDateTime', () => {
@@ -192,5 +195,65 @@ describe('bucketSessionsByDay', () => {
     const day = result.get('2026-06-01');
     expect(day[0].id).toBe(1);
     expect(day[1].id).toBe(2);
+  });
+});
+
+describe('isLeaveStartDatePast', () => {
+  const isoDate = (offsetDays) => {
+    const d = new Date();
+    d.setDate(d.getDate() + offsetDays);
+    return d.toLocaleDateString('en-CA'); // YYYY-MM-DD
+  };
+
+  it('returns false for null/undefined request', () => {
+    expect(isLeaveStartDatePast(null)).toBe(false);
+    expect(isLeaveStartDatePast(undefined)).toBe(false);
+  });
+
+  it('returns false when leave_start_date is missing', () => {
+    expect(isLeaveStartDatePast({})).toBe(false);
+  });
+
+  it('returns true when the start date is before today', () => {
+    expect(isLeaveStartDatePast({ leave_start_date: isoDate(-1) })).toBe(true);
+  });
+
+  it('returns false when the start date is today', () => {
+    expect(isLeaveStartDatePast({ leave_start_date: isoDate(0) })).toBe(false);
+  });
+
+  it('returns false when the start date is in the future', () => {
+    expect(isLeaveStartDatePast({ leave_start_date: isoDate(1) })).toBe(false);
+  });
+});
+
+describe('formatLeaveDate', () => {
+  it('returns empty string for a falsy value', () => {
+    expect(formatLeaveDate('')).toBe('');
+    expect(formatLeaveDate(null)).toBe('');
+  });
+
+  it('formats a date-only value without timezone drift', () => {
+    expect(formatLeaveDate('2026-07-10')).toBe('Jul 10, 2026');
+  });
+});
+
+describe('formatLeaveRange', () => {
+  it('returns a single date when start equals end', () => {
+    expect(formatLeaveRange({ leave_start_date: '2026-07-10', leave_end_date: '2026-07-10' }))
+      .toBe('Jul 10, 2026');
+  });
+
+  it('returns a single date when end is missing', () => {
+    expect(formatLeaveRange({ leave_start_date: '2026-07-10' })).toBe('Jul 10, 2026');
+  });
+
+  it('returns a range when start and end differ', () => {
+    expect(formatLeaveRange({ leave_start_date: '2026-07-10', leave_end_date: '2026-07-12' }))
+      .toBe('Jul 10, 2026 – Jul 12, 2026');
+  });
+
+  it('returns empty string when there is no start date', () => {
+    expect(formatLeaveRange({})).toBe('');
   });
 });
