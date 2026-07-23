@@ -128,7 +128,7 @@ const ProgramSelector = ({
 };
 
 ProgramSelector.propTypes = {
-  section: PropTypes.oneOf(['calendar', 'requests', 'attendance']).isRequired,
+  section: PropTypes.oneOf(['courses', 'calendar', 'requests', 'attendance', 'locations', 'holidays']).isRequired,
   programs: PropTypes.arrayOf(PropTypes.shape({ id: PropTypes.string, name: PropTypes.string })).isRequired,
   loading: PropTypes.bool.isRequired,
   error: PropTypes.string.isRequired,
