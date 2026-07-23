@@ -4,6 +4,7 @@ import { USER_ROLE } from '../shared/constants';
 import { useConfig } from './useConfig';
 
 const SECTIONS = [
+  { slug: 'courses', label: 'Courses' },
   { slug: 'calendar', label: 'Calendar' },
   { slug: 'requests', label: 'Requests' },
   { slug: 'attendance', label: 'Attendance', hideForInstructor: true },
@@ -23,24 +24,12 @@ const SectionNav = () => {
   });
 
   return (
-    <nav
-      aria-label="Sessions admin sections"
-      className="d-flex"
-      style={{ gap: 4, borderBottom: '1px solid #dee2e6' }}
-    >
+    <nav aria-label="Sessions admin sections" className="section-nav">
       {visibleSections.map(({ slug, label }) => (
         <NavLink
           key={slug}
           to={`/${programId}/${slug}`}
-          className={({ isActive }) => [
-            'px-3 py-2',
-            'text-decoration-none',
-            isActive ? 'text-primary font-weight-bold' : 'text-muted',
-          ].join(' ')}
-          style={({ isActive }) => ({
-            borderBottom: isActive ? '2px solid #0d6efd' : '2px solid transparent',
-            marginBottom: -1,
-          })}
+          className={({ isActive }) => `section-nav__link${isActive ? ' active' : ''}`}
         >
           {label}
         </NavLink>
