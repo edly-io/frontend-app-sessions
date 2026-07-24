@@ -18,6 +18,7 @@ import PerLearnerView from '../attendance/PerLearnerView';
 import CourseSummaryReport from '../attendance/reports/CourseSummaryReport';
 import LocationsPage from '../locations/LocationsPage';
 import HolidaysPage from '../holidays/HolidaysPage';
+import ProgramCoursesPage from '../programs/ProgramCoursesPage';
 
 /**
  * Route paths owned by the sessions-admin area. Importing from here keeps
@@ -30,24 +31,26 @@ import HolidaysPage from '../holidays/HolidaysPage';
  * matches `/sessions/<id>/calendar`, etc.
  */
 // Deprecated alias — old `/sessions/calendar` bookmarks (relative `/calendar`
-// under the MFE basename) redirect into the landing resolver below.
+// under the MFE basename) redirect to the root programs list.
 export const LEGACY_CALENDAR_PATH = '/calendar';
-// Bare entry: silent resolver picks the first program and forwards to its
-// calendar.
+// Root entry: programs list page (all roles).
 export const SESSIONS_ROOT_PATH = '/';
 // Program-scoped sections.
 export const SESSIONS_CALENDAR_PATH = '/:programId/calendar';
 export const SESSIONS_REQUESTS_PATH = '/:programId/requests';
 export const SESSIONS_ATTENDANCE_PATH = '/:programId/attendance';
+export const SESSIONS_COURSES_PATH = '/:programId/courses';
 export const SESSIONS_LOCATIONS_PATH = '/:programId/locations';
 export const SESSIONS_HOLIDAYS_PATH = '/:programId/holidays';
+
+const Shell = SessionsAdminLayout as React.FC<{ children?: React.ReactNode }>;
 
 const wrapInShell = (Component: React.ComponentType) => (
   <PageWrap>
     <AuthGate>
-      <SessionsAdminLayout>
+      <Shell>
         <Component />
-      </SessionsAdminLayout>
+      </Shell>
     </AuthGate>
   </PageWrap>
 );
@@ -65,6 +68,7 @@ export const sessionsAdminRoutes = (
       path={SESSIONS_ROOT_PATH}
       element={<PageWrap><AuthGate><SessionsLanding /></AuthGate></PageWrap>}
     />
+    <Route path={SESSIONS_COURSES_PATH} element={wrapInShell(ProgramCoursesPage)} />
     <Route path={SESSIONS_CALENDAR_PATH} element={wrapInShell(CalendarPage)} />
     <Route path={SESSIONS_REQUESTS_PATH} element={wrapInShell(RequestsPage)}>
       <Route index element={<Navigate to="leaves" replace />} />

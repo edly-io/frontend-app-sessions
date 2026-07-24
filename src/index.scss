@@ -2,6 +2,7 @@
 
 @import "~@edx/frontend-component-header/dist/index";
 @import "~@edx/frontend-component-footer/dist/footer";
+@import "./programs/programs";
 
 .sticky-header-table .pgn__data-table-container {
   max-height: 420px;
