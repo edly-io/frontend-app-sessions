@@ -548,6 +548,16 @@ const ScheduleMeetingModal = ({
       setTimeout(() => errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
       return false;
     }
+    if (!isPastSession && formData.scheduled_start_time && formData.scheduled_end_time) {
+      const durationMinutes = Math.round(
+        (new Date(formData.scheduled_end_time) - new Date(formData.scheduled_start_time)) / (1000 * 60),
+      );
+      if (![60, 90, 120].includes(durationMinutes)) {
+        setError('Session duration must be 1 hour, 1 hour 30 minutes, or 2 hours');
+        setTimeout(() => errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+        return false;
+      }
+    }
     if (!isPastSession && new Date(formData.scheduled_start_time) <= new Date()) {
       setError('Start time must be in the future');
       setTimeout(() => errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
