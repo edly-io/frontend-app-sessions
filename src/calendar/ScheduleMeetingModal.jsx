@@ -549,16 +549,11 @@ const ScheduleMeetingModal = ({
       return false;
     }
     if (!isPastSession && formData.scheduled_start_time && formData.scheduled_end_time) {
-      const durationHours = (
-        new Date(formData.scheduled_end_time) - new Date(formData.scheduled_start_time)
-      ) / (1000 * 60 * 60);
-      if (durationHours < 1) {
-        setError('Session duration must be at least 1 hour');
-        setTimeout(() => errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
-        return false;
-      }
-      if (durationHours > 2) {
-        setError('Session duration cannot exceed 2 hours');
+      const durationMinutes = Math.round(
+        (new Date(formData.scheduled_end_time) - new Date(formData.scheduled_start_time)) / (1000 * 60),
+      );
+      if (![60, 90, 120].includes(durationMinutes)) {
+        setError('Session duration must be 1 hour, 1 hour 30 minutes, or 2 hours');
         setTimeout(() => errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
         return false;
       }
