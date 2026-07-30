@@ -1,0 +1,40 @@
+// Trainee certificate page. The certificate document itself (`.fbr-cert`) is
+// styled by the backend template's inlined `<style>` (injected via the
+// shared `CertificateHtmlView`); only the page chrome lives here. Printing
+// is handled by the shared `PrintCertificateButton` (isolated iframe with
+// its own `@page`), so there are no print rules in this stylesheet.
+
+.trainee-cert-page {
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 2.5rem;
+
+  &--centered {
+    display: flex;
+    justify-content: center;
+    padding-top: 4rem;
+  }
+}
+
+.trainee-cert-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+
+.trainee-cert-empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #6C757D;
+
+  &__title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: .5rem;
+    color: #454545;
+  }
+
+  &__text {
+    margin: 0;
+  }
+}

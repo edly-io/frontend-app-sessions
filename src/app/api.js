@@ -38,6 +38,23 @@ export const updateProgram = async (programKey, payload) => {
   return data;
 };
 
+export const getMyCertificate = async (programKey) => {
+  // Served by the LMS (the fbr program_certificates app is mounted on both CMS
+  // and LMS under the same /fbr/api/cms/certificates/ path). Keyed to the
+  // requesting learner, so it returns only their own active certificate.
+  const client = getAuthenticatedHttpClient();
+  const url = `${getConfig().LMS_BASE_URL}/fbr/api/cms/certificates/my/${programKey}/certificate/`;
+  const { data } = await client.get(url);
+  return {
+    html: data.html,
+    certificateNumber: data.certificate_number,
+    issuedAt: data.issued_at,
+    status: data.status,
+    programName: data.program_name,
+    traineeName: data.trainee_name,
+  };
+};
+
 export const getLearnerCourseMap = async () => {
   const client = getAuthenticatedHttpClient();
   const { data } = await client.get(`${getConfig().LMS_BASE_URL}/api/learner_home/init`);
