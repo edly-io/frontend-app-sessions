@@ -36,6 +36,7 @@
     "url": "https://github.com/openedx/frontend-template-application/issues"
   },
   "dependencies": {
+    "@edly-io/frontend-component-fbr": "github:edly-io/frontend-component-fbr",
     "@edx/brand": "npm:@openedx/brand-openedx@^1.2.2",
     "@edx/frontend-component-footer": "^14.9.2",
     "@edx/frontend-component-header": "^8.0.0",

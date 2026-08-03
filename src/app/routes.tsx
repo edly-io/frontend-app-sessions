@@ -19,6 +19,7 @@ import CourseSummaryReport from '../attendance/reports/CourseSummaryReport';
 import LocationsPage from '../locations/LocationsPage';
 import HolidaysPage from '../holidays/HolidaysPage';
 import ProgramCoursesPage from '../programs/ProgramCoursesPage';
+import ProgramCertificatePage from '../programs/ProgramCertificatePage';
 
 /**
  * Route paths owned by the sessions-admin area. Importing from here keeps
@@ -40,6 +41,7 @@ export const SESSIONS_CALENDAR_PATH = '/:programId/calendar';
 export const SESSIONS_REQUESTS_PATH = '/:programId/requests';
 export const SESSIONS_ATTENDANCE_PATH = '/:programId/attendance';
 export const SESSIONS_COURSES_PATH = '/:programId/courses';
+export const SESSIONS_CERTIFICATE_PATH = '/:programId/certificate';
 export const SESSIONS_LOCATIONS_PATH = '/:programId/locations';
 export const SESSIONS_HOLIDAYS_PATH = '/:programId/holidays';
 
@@ -69,6 +71,7 @@ export const sessionsAdminRoutes = (
       element={<PageWrap><AuthGate><SessionsLanding /></AuthGate></PageWrap>}
     />
     <Route path={SESSIONS_COURSES_PATH} element={wrapInShell(ProgramCoursesPage)} />
+    <Route path={SESSIONS_CERTIFICATE_PATH} element={wrapInShell(ProgramCertificatePage)} />
     <Route path={SESSIONS_CALENDAR_PATH} element={wrapInShell(CalendarPage)} />
     <Route path={SESSIONS_REQUESTS_PATH} element={wrapInShell(RequestsPage)}>
       <Route index element={<Navigate to="leaves" replace />} />
