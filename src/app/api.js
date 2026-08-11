@@ -1,6 +1,12 @@
 import { getAuthenticatedHttpClient } from '@edx/frontend-platform/auth';
 import { getConfig } from '@edx/frontend-platform';
 
+export const getMyFbrRoles = async () => {
+  const client = getAuthenticatedHttpClient();
+  const { data } = await client.get(`${getConfig().LMS_BASE_URL}/fbr/api/biodata/v1/users/me/`);
+  return Array.isArray(data?.roles) ? data.roles : [];
+};
+
 export const getPrograms = async () => {
   const client = getAuthenticatedHttpClient();
   const { data } = await client.get(`${getConfig().STUDIO_BASE_URL}/fbr/api/programs/`);
