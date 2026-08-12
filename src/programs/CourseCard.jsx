@@ -20,6 +20,7 @@ const CourseCard = ({ course, isInstructor = false, learnerData = null }) => {
     run,
     target_audience: targetAudience,
     course_url: courseUrl,
+    course_about_url: courseAboutUrl,
     course_image_url: courseImageUrl,
     short_description: shortDescription,
     start,
@@ -48,6 +49,11 @@ const CourseCard = ({ course, isInstructor = false, learnerData = null }) => {
   const certDownloadable = learnerData?.certificate?.isDownloadable ?? false;
   const certUrl = learnerData?.certificate?.certPreviewUrl ?? null;
   const resumeUrl = learnerData?.courseRun?.resumeUrl || courseUrl;
+
+  const canPreviewEarly = isInstructor;
+  const primaryUrl = (isTooEarly && !canPreviewEarly && courseAboutUrl)
+    ? courseAboutUrl
+    : courseUrl;
 
   // Date range label
   const dateRange = [fmtDate(rawStart), fmtDate(rawEnd)].filter(Boolean).join(' – ');
@@ -92,15 +98,15 @@ const CourseCard = ({ course, isInstructor = false, learnerData = null }) => {
 
   // Action button
   const getActionButton = () => {
-    if (!courseUrl && !resumeUrl) { return null; }
+    if (!primaryUrl && !resumeUrl) { return null; }
     if (isArchived) {
-      return { href: courseUrl || resumeUrl, label: 'View Course' };
+      return { href: primaryUrl || resumeUrl, label: 'View Course' };
     }
     if (hasStarted && resumeUrl) {
       return { href: resumeUrl, label: 'Resume' };
     }
-    if (courseUrl) {
-      return { href: courseUrl, label: isTooEarly ? 'View Course' : 'Begin Course' };
+    if (primaryUrl) {
+      return { href: primaryUrl, label: isTooEarly ? 'View Course' : 'Begin Course' };
     }
     return null;
   };
@@ -198,6 +204,7 @@ CourseCard.propTypes = {
     run: PropTypes.string,
     target_audience: PropTypes.shape({ name: PropTypes.string }),
     course_url: PropTypes.string,
+    course_about_url: PropTypes.string,
     course_image_url: PropTypes.string,
     short_description: PropTypes.string,
     start: PropTypes.string,
