@@ -21,6 +21,7 @@ const baseCourse = {
   run: '2026',
   target_audience: { name: 'Grade-17' },
   course_url: 'http://lms.test/courses/course-v1:Org+Course+Run/course/',
+  course_about_url: 'http://lms.test/courses/course-v1:Org+Course+Run/about',
   course_image_url: null,
   short_description: 'A comprehensive course on advanced taxation.',
   start: null,
@@ -178,8 +179,47 @@ describe('CourseCard — action button', () => {
   });
 
   it('shows no action button when course_url is absent', () => {
-    renderCard({ course_url: null }, null);
+    renderCard({ course_url: null, course_about_url: null }, null);
     expect(screen.queryByRole('link', { name: /Begin|Resume|View/i })).not.toBeInTheDocument();
+  });
+});
+
+describe('CourseCard — pre-start linking', () => {
+  it('links a learner to the about page when the course has not started', () => {
+    renderCard({ start: FUTURE_DATE }, null);
+    const btn = screen.getByRole('link', { name: 'View Course' });
+    expect(btn).toHaveAttribute('href', 'http://lms.test/courses/course-v1:Org+Course+Run/about');
+  });
+
+  it('links a learner to courseware once the course has started', () => {
+    renderCard({ start: PAST_DATE }, null);
+    const btn = screen.getByRole('link', { name: 'Begin Course' });
+    expect(btn).toHaveAttribute('href', 'http://lms.test/courses/course-v1:Org+Course+Run/course/');
+  });
+
+  it('keeps the courseware link for instructors before the start date', () => {
+    renderCard({ start: FUTURE_DATE }, null, true);
+    const btn = screen.getByRole('link', { name: 'View Course' });
+    expect(btn).toHaveAttribute('href', 'http://lms.test/courses/course-v1:Org+Course+Run/course/');
+  });
+
+  it('prefers the isTooEarly flag from learner data over the raw start date', () => {
+    renderCard({ start: PAST_DATE }, {
+      courseRun: { ...baseLearnerData.courseRun, startDate: FUTURE_DATE },
+      enrollment: {
+        ...baseLearnerData.enrollment,
+        hasStarted: false,
+        coursewareAccess: { isTooEarly: true },
+      },
+    });
+    const btn = screen.getByRole('link', { name: 'View Course' });
+    expect(btn).toHaveAttribute('href', 'http://lms.test/courses/course-v1:Org+Course+Run/about');
+  });
+
+  it('falls back to courseware when the API omits course_about_url', () => {
+    renderCard({ start: FUTURE_DATE, course_about_url: undefined }, null);
+    const btn = screen.getByRole('link', { name: 'View Course' });
+    expect(btn).toHaveAttribute('href', 'http://lms.test/courses/course-v1:Org+Course+Run/course/');
   });
 });
 
