@@ -2,11 +2,13 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { getConfig } from '@edx/frontend-platform';
 
-const resolveImageUrl = (url) => {
+const resolveUrl = (url) => {
   if (!url) { return null; }
   if (url.startsWith('http')) { return url; }
   return `${getConfig().LMS_BASE_URL}${url}`;
 };
+
+const resolveImageUrl = resolveUrl;
 
 const fmtDate = (dateStr) => {
   if (!dateStr) { return null; }
@@ -15,6 +17,7 @@ const fmtDate = (dateStr) => {
 
 const CourseCard = ({ course, isInstructor = false, learnerData = null }) => {
   const {
+    course_key: courseKey,
     display_name: displayName,
     org,
     run,
@@ -28,6 +31,13 @@ const CourseCard = ({ course, isInstructor = false, learnerData = null }) => {
   } = course;
 
   const resolvedImageUrl = resolveImageUrl(courseImageUrl);
+  const learningBase = getConfig().LEARNING_MICROFRONTEND_URL || null;
+  // Use the learning MFE URL format (/learning/course/...) when available.
+  // Fall back to resolving the backend course_url against LMS_BASE_URL.
+  const resolvedCourseUrl = learningBase && courseKey
+    ? `${learningBase.replace(/\/$/, '')}/course/${courseKey}/`
+    : resolveUrl(courseUrl);
+  const resolvedCourseAboutUrl = resolveUrl(courseAboutUrl);
   const metaParts = [org, run, targetAudience?.name].filter(Boolean);
 
   // Enrichment from learner_home/init — all optional
@@ -48,12 +58,12 @@ const CourseCard = ({ course, isInstructor = false, learnerData = null }) => {
   const minPassingGrade = learnerData?.courseRun?.minPassingGrade ?? null;
   const certDownloadable = learnerData?.certificate?.isDownloadable ?? false;
   const certUrl = learnerData?.certificate?.certPreviewUrl ?? null;
-  const resumeUrl = learnerData?.courseRun?.resumeUrl || courseUrl;
+  const resumeUrl = resolveUrl(learnerData?.courseRun?.resumeUrl) || resolvedCourseUrl;
 
   const canPreviewEarly = isInstructor;
-  const primaryUrl = (isTooEarly && !canPreviewEarly && courseAboutUrl)
-    ? courseAboutUrl
-    : courseUrl;
+  const primaryUrl = (isTooEarly && !canPreviewEarly && resolvedCourseAboutUrl)
+    ? resolvedCourseAboutUrl
+    : resolvedCourseUrl;
 
   // Date range label
   const dateRange = [fmtDate(rawStart), fmtDate(rawEnd)].filter(Boolean).join(' – ');
@@ -199,6 +209,7 @@ const CourseCard = ({ course, isInstructor = false, learnerData = null }) => {
 
 CourseCard.propTypes = {
   course: PropTypes.shape({
+    course_key: PropTypes.string,
     display_name: PropTypes.string,
     org: PropTypes.string,
     run: PropTypes.string,

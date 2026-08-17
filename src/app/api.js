@@ -17,6 +17,7 @@ export const getPrograms = async () => {
     description: p.description,
     cardImage: p.card_image || null,
     enrolledAt: p.learner_enrolled_at || null,
+    courseCount: p.course_count ?? 0,
   }));
 };
 
