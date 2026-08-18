@@ -39,7 +39,7 @@ const SessionsAdminLayout = ({ children = null }) => {
   const { programs, loading, error } = usePrograms();
   const { data: config } = useConfig();
   const isAdmin = config?.user_role === USER_ROLE.ADMIN;
-  const studioBaseUrl = getConfig().STUDIO_BASE_URL || null;
+  const authoringBaseUrl = getConfig().AUTHORING_BASE_URL || null;
 
   // Redirect stale/invalid program IDs back to the programs list.
   const isStaleUrl = !loading && !error && programs.length > 0
@@ -50,8 +50,8 @@ const SessionsAdminLayout = ({ children = null }) => {
 
   const program = programs.find((p) => p.id === programId) || null;
   const statusKey = (program?.status || '').toLowerCase();
-  const studioUrl = isAdmin && studioBaseUrl && programId
-    ? `${studioBaseUrl.replace(/\/$/, '')}/authoring/programs/${programId}`
+  const studioUrl = isAdmin && authoringBaseUrl && programId
+    ? `${authoringBaseUrl.replace(/\/$/, '')}/authoring/programs/${programId}`
     : null;
   const subtitle = [program?.org, program?.programType, program?.batch].filter(Boolean).join(' · ');
   const dateRange = [

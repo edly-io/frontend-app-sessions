@@ -34,7 +34,7 @@ const ProgramsListPage = () => {
   const { programs, loading, error } = usePrograms();
   const { data: config } = useConfig();
   const isAdmin = config?.user_role === USER_ROLE.ADMIN;
-  const studioBaseUrl = getConfig().STUDIO_BASE_URL || null;
+  const authoringBaseUrl = getConfig().AUTHORING_BASE_URL || null;
 
   const defaultSort = isAdmin ? 'az' : 'enrolled';
   const [search, setSearch] = useState('');
@@ -142,7 +142,7 @@ const ProgramsListPage = () => {
             key={program.id}
             program={program}
             isAdmin={isAdmin}
-            studioBaseUrl={studioBaseUrl}
+            authoringBaseUrl={authoringBaseUrl}
           />
         ))}
       </div>
