@@ -278,3 +278,23 @@ export const getSubstituteRequest = async (id) => {
   const { data } = await getAuthenticatedHttpClient().get(substituteUrl(`${id}/`));
   return data;
 };
+
+// ─── Tab badge counts ────────────────────────────────────────────────────────
+
+/**
+ * Outstanding work per Requests tab for one programme.
+ *
+ * One call rather than three list requests whose payloads would be discarded.
+ * The counts come from the same rules the tabs themselves use, so a badge can
+ * never disagree with what opening the tab shows — or with the Needs attention
+ * dashboard card, which reads the same definitions.
+ *
+ * Returns `{ leaves, remote_sessions, substitute_requests }`.
+ */
+export const getRequestCounts = async (programKey) => {
+  const params = new URLSearchParams({ program_key: programKey });
+  const { data } = await getAuthenticatedHttpClient().get(
+    `${getBaseUrl()}/requests/counts/?${params.toString()}`,
+  );
+  return data;
+};
