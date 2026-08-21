@@ -8,6 +8,8 @@ import {
 
 import { useConfig } from '../app/useConfig';
 import {
+  SESSION_STATUS,
+  SESSION_STATUS_LABELS,
   SUBSTITUTE_REQUEST_STATUS,
   SUBSTITUTE_REQUEST_STATUS_LABELS,
   SUBSTITUTE_REQUEST_STATUS_VARIANTS,
@@ -20,6 +22,16 @@ import AssignSubstituteModal from './AssignSubstituteModal';
 import useModalParams from '../shared/useModalParams';
 
 const PAGE_SIZE = 15;
+
+/**
+ * A cancelled session needs no cover.
+ *
+ * Cancelling from this tab already closes the request, but the calendar's
+ * cancel does not — so a row can outlive the session it covers. The backend
+ * refuses to assign against one (`session_cancelled`), and this is the same
+ * rule applied in the UI so the admin is never offered the action.
+ */
+const isSessionCancelled = (session) => session?.status === SESSION_STATUS.CANCELLED;
 
 const SubstituteRequestsView = () => {
   const { programId } = useParams();
@@ -76,6 +88,16 @@ const SubstituteRequestsView = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAssignOpen, modalId, requests]);
 
+  const handleCloseRequest = async (req) => {
+    try {
+      await closeSubstituteRequest(req.id);
+    } catch (err) {
+      setError(extractApiError(err, 'Failed to close substitute request'));
+    } finally {
+      fetchData({ pageIndex: 0 });
+    }
+  };
+
   const handleCancelSession = async (req) => {
     try {
       await cancelSession(req.session.id);
@@ -97,7 +119,15 @@ const SubstituteRequestsView = () => {
         const { session } = row.original;
         return (
           <div>
-            <div style={{ fontWeight: 600 }}>{session.title}</div>
+            <div className="d-flex align-items-center font-weight-bold">
+              {session.title}
+              {/* The Status column reports the *request's* status, so without
+                  this a cancelled session is indistinguishable from a live one
+                  and an admin arranges cover for a class that is not happening. */}
+              {isSessionCancelled(session) && (
+                <Badge variant="light" className="ml-2">{SESSION_STATUS_LABELS.cancelled}</Badge>
+              )}
+            </div>
             <div className="text-muted" style={{ fontSize: 12 }}>
               {formatDateTime(session.scheduled_start_time)}
             </div>
@@ -173,6 +203,23 @@ const SubstituteRequestsView = () => {
         }
 
         if (isClosed) { return null; }
+
+        // Neither action is meaningful once the session is cancelled: assigning
+        // is refused by the backend, and cancelling again returns
+        // `already_cancelled`. The row still needs clearing though, and closing
+        // is otherwise only reachable as a side effect of "Cancel Session" —
+        // so offer it on its own here rather than stranding the row.
+        if (isSessionCancelled(req.session)) {
+          return (
+            <Button
+              variant="outline-secondary"
+              size="sm"
+              onClick={() => handleCloseRequest(req)}
+            >
+              Close
+            </Button>
+          );
+        }
 
         return (
           <span style={{ display: 'flex', gap: 4 }}>

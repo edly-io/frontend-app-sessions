@@ -5,6 +5,12 @@ export const ATTENDANCE_STATUS = {
   pending: 'Pending',
 };
 
+// Values of Session.status (distinct from AttendanceRecord.status). Only the
+// ones read in a condition are named; the rest are display-only.
+export const SESSION_STATUS = {
+  CANCELLED: 'cancelled',
+};
+
 // Labels for Session.status field (distinct from AttendanceRecord.status)
 export const SESSION_STATUS_LABELS = {
   scheduled: 'Scheduled',
