@@ -119,16 +119,13 @@ const SubstituteRequestsView = () => {
         const { session } = row.original;
         return (
           <div>
-            <div style={{
-              fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6,
-            }}
-            >
+            <div className="d-flex align-items-center font-weight-bold">
               {session.title}
               {/* The Status column reports the *request's* status, so without
                   this a cancelled session is indistinguishable from a live one
                   and an admin arranges cover for a class that is not happening. */}
               {isSessionCancelled(session) && (
-                <Badge variant="light">{SESSION_STATUS_LABELS.cancelled}</Badge>
+                <Badge variant="light" className="ml-2">{SESSION_STATUS_LABELS.cancelled}</Badge>
               )}
             </div>
             <div className="text-muted" style={{ fontSize: 12 }}>

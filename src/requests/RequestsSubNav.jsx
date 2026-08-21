@@ -40,11 +40,7 @@ const RequestsSubNav = () => {
   }, [isAdmin, programId]);
 
   return (
-    <nav
-      aria-label="Requests sub-sections"
-      className="d-flex flex-wrap mb-3"
-      style={{ gap: 4 }}
-    >
+    <nav aria-label="Requests sub-sections" className="d-flex flex-wrap mb-3">
       {items.map(({ slug, label, countKey }) => {
         const count = counts?.[countKey] ?? 0;
         return (
@@ -52,19 +48,19 @@ const RequestsSubNav = () => {
             key={slug}
             to={`/${programId}/requests/${slug}`}
             className={({ isActive }) => [
-              'px-3 py-1',
+              'px-3 py-1 mr-1 mb-1',
               'rounded-pill',
+              'small',
               'text-decoration-none',
               'd-inline-flex align-items-center',
               isActive ? 'bg-primary text-white' : 'text-muted',
             ].join(' ')}
-            style={{ fontSize: 14, gap: 6 }}
           >
             {label}
             {/* Zero is not rendered: an empty queue is not news, and a row of
                 "0" badges is noise that trains the eye to skip all of them. */}
             {count > 0 && (
-              <Badge variant="warning" aria-label={`${count} awaiting action`}>
+              <Badge variant="warning" className="ml-2" aria-label={`${count} awaiting action`}>
                 {count}
               </Badge>
             )}
