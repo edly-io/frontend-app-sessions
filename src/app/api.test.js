@@ -2,8 +2,11 @@ import { getConfig } from '@edx/frontend-platform';
 import { getAuthenticatedHttpClient } from '@edx/frontend-platform/auth';
 
 import {
+  getFeedbackDetail,
+  getInstructorDashboard,
   getMyFbrRoles,
   getTraineeDashboard,
+  submitFeedback,
 } from './api';
 
 jest.mock('@edx/frontend-platform/auth', () => ({
@@ -15,6 +18,7 @@ jest.mock('@edx/frontend-platform', () => ({
 
 const mockClient = {
   get: jest.fn(),
+  post: jest.fn(),
 };
 
 beforeEach(() => {
@@ -60,6 +64,47 @@ describe('getTraineeDashboard', () => {
 
     expect(mockClient.get).toHaveBeenCalledWith(
       'http://localhost:18000/fbr/api/trainee-dashboard/v1/summary/?program_key=program-v1%3AFBR%2BSTP%2F2026%20A',
+    );
+  });
+});
+
+describe('getInstructorDashboard', () => {
+  it('loads the instructor dashboard summary from the LMS', async () => {
+    const response = { state: 'ready', upcoming_sessions: [] };
+    mockClient.get.mockResolvedValue({ data: response });
+
+    await expect(getInstructorDashboard()).resolves.toEqual(response);
+    expect(mockClient.get).toHaveBeenCalledWith(
+      'http://localhost:18000/fbr/api/instructor-dashboard/v1/summary/',
+    );
+  });
+});
+
+describe('instructor feedback', () => {
+  it('loads a feedback request detail from the LMS', async () => {
+    const response = { id: 602, feedback_name: 'Faculty evaluation' };
+    mockClient.get.mockResolvedValue({ data: response });
+
+    await expect(getFeedbackDetail(602)).resolves.toEqual(response);
+    expect(mockClient.get).toHaveBeenCalledWith(
+      'http://localhost:18000/fbr/api/feedback/602/',
+    );
+  });
+
+  it('submits feedback answers to the LMS', async () => {
+    const payload = {
+      answers: [
+        { question_id: 1, star_value: 4 },
+        { question_id: 2, text_value: 'Clear and helpful.' },
+      ],
+    };
+    const response = { detail: 'Feedback submitted successfully.' };
+    mockClient.post.mockResolvedValue({ data: response });
+
+    await expect(submitFeedback(602, payload)).resolves.toEqual(response);
+    expect(mockClient.post).toHaveBeenCalledWith(
+      'http://localhost:18000/fbr/api/feedback/602/submit/',
+      payload,
     );
   });
 });

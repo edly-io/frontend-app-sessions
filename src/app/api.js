@@ -17,6 +17,27 @@ export const getTraineeDashboard = async (programKey = undefined) => {
   return data;
 };
 
+export const getInstructorDashboard = async () => {
+  const client = getAuthenticatedHttpClient();
+  const url = `${getConfig().LMS_BASE_URL}/fbr/api/instructor-dashboard/v1/summary/`;
+  const { data } = await client.get(url);
+  return data;
+};
+
+export const getFeedbackDetail = async (requestId) => {
+  const client = getAuthenticatedHttpClient();
+  const url = `${getConfig().LMS_BASE_URL}/fbr/api/feedback/${encodeURIComponent(requestId)}/`;
+  const { data } = await client.get(url);
+  return data;
+};
+
+export const submitFeedback = async (requestId, payload) => {
+  const client = getAuthenticatedHttpClient();
+  const url = `${getConfig().LMS_BASE_URL}/fbr/api/feedback/${encodeURIComponent(requestId)}/submit/`;
+  const { data } = await client.post(url, payload);
+  return data;
+};
+
 export const getPrograms = async () => {
   const client = getAuthenticatedHttpClient();
   const { data } = await client.get(`${getConfig().STUDIO_BASE_URL}/fbr/api/programs/`);

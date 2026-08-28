@@ -103,8 +103,9 @@ export const USER_ROLE = {
   LEARNER: 'learner',
 };
 
-// FBR profile roles returned by the app config endpoint. Unlike `user_role`,
-// this collection can contain multiple roles for a single person.
+// FBR profile roles returned by the biodata current-user endpoint. Unlike
+// `user_role`, this collection can contain multiple roles for a single person.
 export const FBR_ROLE = {
+  INSTRUCTOR: 'instructor',
   TRAINEE: 'trainee',
 };

@@ -1,10 +1,13 @@
 import React from 'react';
 import { defineMessages, useIntl } from '@edx/frontend-platform/i18n';
 import { Alert, Container, Spinner } from '@openedx/paragon';
+import { useSearchParams } from 'react-router-dom';
 
+import ProfileSwitcher from '../dashboard/ProfileSwitcher';
+import InstructorDashboardPage from '../instructor-dashboard/InstructorDashboardPage';
 import ProgramsListPage from '../programs/ProgramsListPage';
-import TraineeDashboardPage from '../trainee-dashboard/TraineeDashboardPage';
 import { FBR_ROLE } from '../shared/constants';
+import TraineeDashboardPage from '../trainee-dashboard/TraineeDashboardPage';
 import { useMyFbrRoles } from './useMyFbrRoles';
 
 const messages = defineMessages({
@@ -22,19 +25,27 @@ const messages = defineMessages({
 
 const SessionsLanding = () => {
   const intl = useIntl();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { data: fbrRoles = [], isLoading, isError } = useMyFbrRoles();
   const hasTraineeRole = fbrRoles.includes(FBR_ROLE.TRAINEE);
+  const hasInstructorRole = fbrRoles.includes(FBR_ROLE.INSTRUCTOR);
+  const requestedProfile = searchParams.get('profile');
+  const activeProfile = requestedProfile === FBR_ROLE.INSTRUCTOR
+    ? FBR_ROLE.INSTRUCTOR
+    : FBR_ROLE.TRAINEE;
 
   if (process.env.NODE_ENV !== 'test') {
     // Temporary diagnostics for confirming the running MFE bundle and role payload.
     // eslint-disable-next-line no-console
-    console.info('[SessionsLanding] trainee dashboard role gate', {
+    console.info('[SessionsLanding] profile dashboard role gate', {
       path: window.location.pathname,
       rolesUrl: '/fbr/api/biodata/v1/users/me/',
       isLoading,
       isError,
       fbrRoles,
       hasTraineeRole,
+      hasInstructorRole,
+      activeProfile: hasTraineeRole && hasInstructorRole ? activeProfile : undefined,
     });
   }
 
@@ -61,9 +72,37 @@ const SessionsLanding = () => {
     );
   }
 
-  return hasTraineeRole
-    ? <TraineeDashboardPage />
-    : <ProgramsListPage />;
+  if (hasTraineeRole && hasInstructorRole) {
+    const handleProfileSelect = (profile) => {
+      if (profile !== FBR_ROLE.TRAINEE && profile !== FBR_ROLE.INSTRUCTOR) {
+        return;
+      }
+
+      const nextSearchParams = new URLSearchParams(searchParams);
+      nextSearchParams.set('profile', profile);
+      setSearchParams(nextSearchParams, { replace: true });
+    };
+    const profileSwitcher = (
+      <ProfileSwitcher
+        activeProfile={activeProfile}
+        onSelect={handleProfileSelect}
+      />
+    );
+
+    return activeProfile === FBR_ROLE.INSTRUCTOR
+      ? <InstructorDashboardPage profileSwitcher={profileSwitcher} />
+      : <TraineeDashboardPage profileSwitcher={profileSwitcher} />;
+  }
+
+  if (hasInstructorRole) {
+    return <InstructorDashboardPage />;
+  }
+
+  if (hasTraineeRole) {
+    return <TraineeDashboardPage />;
+  }
+
+  return <ProgramsListPage />;
 };
 
 export default SessionsLanding;
