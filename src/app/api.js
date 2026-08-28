@@ -7,6 +7,16 @@ export const getMyFbrRoles = async () => {
   return Array.isArray(data?.roles) ? data.roles : [];
 };
 
+export const getTraineeDashboard = async (programKey = undefined) => {
+  const client = getAuthenticatedHttpClient();
+  const baseUrl = `${getConfig().LMS_BASE_URL}/fbr/api/trainee-dashboard/v1/summary/`;
+  const url = programKey
+    ? `${baseUrl}?program_key=${encodeURIComponent(programKey)}`
+    : baseUrl;
+  const { data } = await client.get(url);
+  return data;
+};
+
 export const getPrograms = async () => {
   const client = getAuthenticatedHttpClient();
   const { data } = await client.get(`${getConfig().STUDIO_BASE_URL}/fbr/api/programs/`);

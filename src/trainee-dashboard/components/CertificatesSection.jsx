@@ -1,13 +1,21 @@
 import React from 'react';
+import PropTypes from 'prop-types';
+import { Link } from 'react-router-dom';
 import {
-  Badge, Button, Card, Col, Icon, Row,
+  Alert, Badge, Button, Card, Col, Icon, Row,
 } from '@openedx/paragon';
-import { Download, Lock, WorkspacePremium } from '@openedx/paragon/icons';
+import { Lock, WorkspacePremium } from '@openedx/paragon/icons';
 import { useIntl } from '@edx/frontend-platform/i18n';
-import { certificates } from '../dashboardData';
 import messages from '../messages';
+import { formatDate } from '../utils';
 
-const CertificatesSection = () => {
+const STATUS_MESSAGES = {
+  earned: messages.earned,
+  locked: messages.locked,
+  revoked: messages.revoked,
+};
+
+const CertificatesSection = ({ certificates, programme }) => {
   const intl = useIntl();
 
   return (
@@ -16,47 +24,67 @@ const CertificatesSection = () => {
         <h2 id="certificates-heading">{intl.formatMessage(messages.myCertificates)}</h2>
         <span>{intl.formatMessage(messages.earnedUpcoming)}</span>
       </div>
-      <Row>
-        {certificates.map(certificate => (
-          <Col xs={12} md={6} xl={4} key={certificate.title} className="mb-3">
-            <Card className={`trainee-dashboard__certificate h-100${certificate.earned ? ' trainee-dashboard__certificate--earned' : ''}`}>
-              <Card.Section>
-                <span className="trainee-dashboard__certificate-icon" aria-hidden="true">
-                  <Icon src={certificate.earned ? WorkspacePremium : Lock} />
-                </span>
-                <h3>{certificate.title}</h3>
-                <p>{certificate.programme}</p>
-                {certificate.earned ? (
-                  <>
+      {certificates.length === 0 ? <Alert variant="info">{intl.formatMessage(messages.noCertificates)}</Alert> : (
+        <Row>
+          {certificates.map(certificate => (
+            <Col xs={12} md={6} xl={4} key={certificate.id} className="mb-3">
+              <Card className={`trainee-dashboard__certificate h-100${certificate.status === 'earned' ? ' trainee-dashboard__certificate--earned' : ''}`}>
+                <Card.Section>
+                  <span className="trainee-dashboard__certificate-icon" aria-hidden="true">
+                    <Icon src={certificate.status === 'earned' ? WorkspacePremium : Lock} />
+                  </span>
+                  <h3>{certificate.title}</h3>
+                  <p>{programme.name}</p>
+                  {certificate.certificate_number && (
                     <div className="trainee-dashboard__certificate-meta">
-                      <span>{certificate.number}</span>
-                      <span>{intl.formatMessage(messages.issued, { date: certificate.date })}</span>
+                      <span>{certificate.certificate_number}</span>
+                      {certificate.issued_at && (
+                        <span>{intl.formatMessage(messages.issued, {
+                          date: formatDate(intl, certificate.issued_at),
+                        })}
+                        </span>
+                      )}
                     </div>
-                    <div className="trainee-dashboard__certificate-action">
-                      <Badge variant="success">{intl.formatMessage(messages.earned)}</Badge>
+                  )}
+                  {certificate.eligibility_message && (
+                    <p className="trainee-dashboard__certificate-requirement">{certificate.eligibility_message}</p>
+                  )}
+                  <div className="trainee-dashboard__certificate-action">
+                    <Badge variant={certificate.status === 'earned' ? 'success' : 'light'}>
+                      {intl.formatMessage(STATUS_MESSAGES[certificate.status])}
+                    </Badge>
+                    {certificate.can_download && (
                       <Button
+                        as={Link}
+                        to={`/${certificate.programme_key}/certificate`}
                         size="sm"
-                        iconBefore={Download}
-                        disabled
-                        title={intl.formatMessage(messages.downloadUnavailable)}
                       >
-                        {intl.formatMessage(messages.downloadCertificate)}
+                        {intl.formatMessage(messages.viewCertificate)}
                       </Button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <p className="trainee-dashboard__certificate-requirement">{certificate.requirement}</p>
-                    <Badge variant="light"><Icon src={Lock} />{intl.formatMessage(messages.notEarned)}</Badge>
-                  </>
-                )}
-              </Card.Section>
-            </Card>
-          </Col>
-        ))}
-      </Row>
+                    )}
+                  </div>
+                </Card.Section>
+              </Card>
+            </Col>
+          ))}
+        </Row>
+      )}
     </section>
   );
+};
+
+CertificatesSection.propTypes = {
+  certificates: PropTypes.arrayOf(PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    title: PropTypes.string.isRequired,
+    programme_key: PropTypes.string.isRequired,
+    certificate_number: PropTypes.string,
+    status: PropTypes.oneOf(['earned', 'locked', 'revoked']).isRequired,
+    issued_at: PropTypes.string,
+    can_download: PropTypes.bool.isRequired,
+    eligibility_message: PropTypes.string,
+  })).isRequired,
+  programme: PropTypes.shape({ name: PropTypes.string.isRequired }).isRequired,
 };
 
 export default CertificatesSection;

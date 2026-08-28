@@ -166,6 +166,21 @@
   margin-bottom: 1.25rem;
 }
 
+.trainee-dashboard__programme-switcher {
+  width: min(100%, 24rem);
+  margin: 0 0 1rem auto;
+}
+
+.trainee-dashboard__empty-state {
+  max-width: 42rem;
+  margin: 2rem auto 1.25rem;
+  text-align: center;
+
+  h1 {
+    font-size: 1.5rem;
+  }
+}
+
 .trainee-dashboard__section-heading {
   display: flex;
   gap: .625rem;
@@ -440,7 +455,7 @@
 
 .trainee-dashboard__attendance-counts {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: .625rem;
   margin: 1rem 0;
 }

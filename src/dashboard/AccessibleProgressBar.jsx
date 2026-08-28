@@ -9,7 +9,6 @@ const AccessibleProgressBar = ({ label, now, variant = undefined }) => (
     aria-valuemin="0"
     aria-valuemax="100"
     aria-valuenow={now}
-    className="trainee-dashboard__accessible-progress"
   >
     <ProgressBar now={now} variant={variant} aria-hidden="true" />
   </div>

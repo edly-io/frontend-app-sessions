@@ -1,7 +1,10 @@
 import { getConfig } from '@edx/frontend-platform';
 import { getAuthenticatedHttpClient } from '@edx/frontend-platform/auth';
 
-import { getMyFbrRoles } from './api';
+import {
+  getMyFbrRoles,
+  getTraineeDashboard,
+} from './api';
 
 jest.mock('@edx/frontend-platform/auth', () => ({
   getAuthenticatedHttpClient: jest.fn(),
@@ -36,5 +39,27 @@ describe('getMyFbrRoles', () => {
     mockClient.get.mockResolvedValue({ data: {} });
 
     await expect(getMyFbrRoles()).resolves.toEqual([]);
+  });
+});
+
+describe('getTraineeDashboard', () => {
+  it('loads the default trainee dashboard summary from the LMS', async () => {
+    const response = { state: 'ready', selected_program_key: 'program-v1:FBR+STP+2026' };
+    mockClient.get.mockResolvedValue({ data: response });
+
+    await expect(getTraineeDashboard()).resolves.toEqual(response);
+    expect(mockClient.get).toHaveBeenCalledWith(
+      'http://localhost:18000/fbr/api/trainee-dashboard/v1/summary/',
+    );
+  });
+
+  it('adds only the encoded program_key when a programme is selected', async () => {
+    mockClient.get.mockResolvedValue({ data: { state: 'ready' } });
+
+    await getTraineeDashboard('program-v1:FBR+STP/2026 A');
+
+    expect(mockClient.get).toHaveBeenCalledWith(
+      'http://localhost:18000/fbr/api/trainee-dashboard/v1/summary/?program_key=program-v1%3AFBR%2BSTP%2F2026%20A',
+    );
   });
 });

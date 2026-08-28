@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 import {
   Card, Col, Icon, Row,
 } from '@openedx/paragon';
@@ -6,25 +7,38 @@ import {
   CalendarToday, CheckCircle, Feedback, WorkspacePremium,
 } from '@openedx/paragon/icons';
 import { useIntl } from '@edx/frontend-platform/i18n';
-import {
-  attendancePercentage, courseProgress, totals,
-} from '../dashboardData';
 import messages from '../messages';
 
-const DashboardStats = () => {
+const DashboardStats = ({ summary }) => {
   const intl = useIntl();
   const stats = [
     {
-      value: `${courseProgress}%`, label: intl.formatMessage(messages.moduleProgress, { completed: totals.completedModules, total: totals.modules }), icon: CheckCircle, variant: 'primary',
+      value: `${summary.course_progress.percentage}%`,
+      label: intl.formatMessage(messages.moduleProgress, {
+        completed: summary.course_progress.completed_modules,
+        total: summary.course_progress.total_modules,
+      }),
+      icon: CheckCircle,
+      variant: 'primary',
     },
     {
-      value: `${attendancePercentage}%`, label: intl.formatMessage(messages.attendanceRequirement), icon: CalendarToday, variant: 'success',
+      value: `${Math.round(summary.attendance.percentage)}%`,
+      label: intl.formatMessage(summary.attendance.meets_requirement
+        ? messages.attendanceRequirementMet : messages.attendanceRequirementNotMet),
+      icon: CalendarToday,
+      variant: summary.attendance.meets_requirement ? 'success' : 'warning',
     },
     {
-      value: totals.pendingFeedback, label: intl.formatMessage(messages.feedbackForms), icon: Feedback, variant: 'warning',
+      value: summary.pending_feedback,
+      label: intl.formatMessage(messages.feedbackForms),
+      icon: Feedback,
+      variant: 'warning',
     },
     {
-      value: totals.certificates, label: intl.formatMessage(messages.certificatesEarned), icon: WorkspacePremium, variant: 'gold',
+      value: summary.earned_certificates,
+      label: intl.formatMessage(messages.certificatesEarned),
+      icon: WorkspacePremium,
+      variant: 'gold',
     },
   ];
 
@@ -49,6 +63,22 @@ const DashboardStats = () => {
       </Row>
     </section>
   );
+};
+
+DashboardStats.propTypes = {
+  summary: PropTypes.shape({
+    course_progress: PropTypes.shape({
+      completed_modules: PropTypes.number.isRequired,
+      total_modules: PropTypes.number.isRequired,
+      percentage: PropTypes.number.isRequired,
+    }).isRequired,
+    attendance: PropTypes.shape({
+      percentage: PropTypes.number.isRequired,
+      meets_requirement: PropTypes.bool.isRequired,
+    }).isRequired,
+    pending_feedback: PropTypes.number.isRequired,
+    earned_certificates: PropTypes.number.isRequired,
+  }).isRequired,
 };
 
 export default DashboardStats;
