@@ -108,3 +108,10 @@ export const USER_ROLE = {
   INSTRUCTOR: 'instructor',
   LEARNER: 'learner',
 };
+
+// FBR profile roles returned by the biodata current-user endpoint. Unlike
+// `user_role`, this collection can contain multiple roles for a single person.
+export const FBR_ROLE = {
+  INSTRUCTOR: 'instructor',
+  TRAINEE: 'trainee',
+};

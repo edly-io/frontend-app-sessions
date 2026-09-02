@@ -1,6 +1,43 @@
 import { getAuthenticatedHttpClient } from '@edx/frontend-platform/auth';
 import { getConfig } from '@edx/frontend-platform';
 
+export const getMyFbrRoles = async () => {
+  const client = getAuthenticatedHttpClient();
+  const { data } = await client.get(`${getConfig().LMS_BASE_URL}/fbr/api/biodata/v1/users/me/`);
+  return Array.isArray(data?.roles) ? data.roles : [];
+};
+
+export const getTraineeDashboard = async (programKey = undefined) => {
+  const client = getAuthenticatedHttpClient();
+  const baseUrl = `${getConfig().LMS_BASE_URL}/fbr/api/trainee-dashboard/v1/summary/`;
+  const url = programKey
+    ? `${baseUrl}?program_key=${encodeURIComponent(programKey)}`
+    : baseUrl;
+  const { data } = await client.get(url);
+  return data;
+};
+
+export const getInstructorDashboard = async () => {
+  const client = getAuthenticatedHttpClient();
+  const url = `${getConfig().LMS_BASE_URL}/fbr/api/instructor-dashboard/v1/summary/`;
+  const { data } = await client.get(url);
+  return data;
+};
+
+export const getFeedbackDetail = async (requestId) => {
+  const client = getAuthenticatedHttpClient();
+  const url = `${getConfig().LMS_BASE_URL}/fbr/api/feedback/${encodeURIComponent(requestId)}/`;
+  const { data } = await client.get(url);
+  return data;
+};
+
+export const submitFeedback = async (requestId, payload) => {
+  const client = getAuthenticatedHttpClient();
+  const url = `${getConfig().LMS_BASE_URL}/fbr/api/feedback/${encodeURIComponent(requestId)}/submit/`;
+  const { data } = await client.post(url, payload);
+  return data;
+};
+
 export const getPrograms = async () => {
   const client = getAuthenticatedHttpClient();
   const { data } = await client.get(`${getConfig().STUDIO_BASE_URL}/fbr/api/programs/`);
