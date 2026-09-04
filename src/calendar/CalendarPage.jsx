@@ -2,10 +2,10 @@ import React, {
   useState, useEffect, useMemo, useCallback,
 } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import AuditLogTable from '../shared/AuditLogTable';
 import {
   Container, Spinner, Alert, Toast, StandardModal, Button,
 } from '@openedx/paragon';
+import AuditLogTable from '../shared/AuditLogTable';
 import {
   getCalendarSessions, deleteSession, cancelSession, getProgramDates, getSession,
 } from './api';
@@ -409,14 +409,14 @@ const CalendarPage = () => {
     <>
       {canManageSessions && (
         <div className="page-view-toggle page-view-toggle--inset">
-          {['calendar', 'audit-log'].map(view => (
+          {['calendar', 'audit-log'].map(tabKey => (
             <button
-              key={view}
+              key={tabKey}
               type="button"
-              onClick={() => handleTabChange(view)}
-              className={`page-view-toggle__tab${activeView === view ? ' page-view-toggle__tab--active' : ''}`}
+              onClick={() => handleTabChange(tabKey)}
+              className={`page-view-toggle__tab${activeView === tabKey ? ' page-view-toggle__tab--active' : ''}`}
             >
-              {view === 'calendar' ? 'Calendar' : 'Audit Log'}
+              {tabKey === 'calendar' ? 'Calendar' : 'Audit Log'}
             </button>
           ))}
         </div>
@@ -426,7 +426,7 @@ const CalendarPage = () => {
         <div className="audit-log-view">
           <AuditLogTable
             appLabel="attendance"
-            models={["session"]}
+            models={['session']}
             programKey={programId}
             recordFilter={recordFilter}
             onClearFilter={handleClearFilter}

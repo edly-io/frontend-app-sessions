@@ -238,7 +238,7 @@ const LocationsPage = () => {
       {activeView === 'audit-log' ? (
         <AuditLogTable
           appLabel="attendance"
-          models={["location"]}
+          models={['location']}
           recordFilter={recordFilter}
           onClearFilter={handleClearFilter}
         />

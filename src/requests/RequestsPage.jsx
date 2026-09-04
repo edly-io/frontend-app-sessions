@@ -75,7 +75,7 @@ const RequestsPage = () => {
         <div className="audit-log-view">
           <AuditLogTable
             appLabel="attendance"
-            models={["leaverequest", "remotesessionrequest", "substituterequest"]}
+            models={['leaverequest', 'remotesessionrequest', 'substituterequest']}
             programKey={programId}
             recordFilter={recordFilter}
             onClearFilter={handleClearFilter}

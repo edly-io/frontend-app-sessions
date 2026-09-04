@@ -1,3 +1,5 @@
+/* eslint-disable react/prop-types */
+/* eslint-disable react/no-unstable-nested-components */
 import React, { useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import {
@@ -34,7 +36,9 @@ const ROLE_CODES = {
 
 const getInitials = (name) => (name || '?')
   .split(/\s+/).filter(Boolean).slice(0, 2)
-  .map(p => p[0]).join('').toUpperCase();
+  .map(p => p[0])
+  .join('')
+  .toUpperCase();
 
 const ActorBadge = ({ name, role }) => {
   const label = ROLE_LABELS[role] || '';
@@ -166,7 +170,7 @@ const ChangesModal = ({ entry, onClose }) => {
 
 ChangesModal.propTypes = {
   entry: PropTypes.shape({
-    changes: PropTypes.objectOf(PropTypes.array),
+    changes: PropTypes.objectOf(PropTypes.arrayOf(PropTypes.any)),
     object_repr: PropTypes.string,
     timestamp: PropTypes.string,
     actor_name: PropTypes.string,
@@ -260,8 +264,11 @@ const RecordHistoryModal = ({
                     <tr key={entry.id} className={i % 2 === 0 ? 'audit-modal__tr--even' : 'audit-modal__tr--odd'}>
                       <td className="audit-modal__td">
                         {date.toLocaleString('en-GB', {
-                          day: '2-digit', month: 'short', year: 'numeric',
-                          hour: '2-digit', minute: '2-digit',
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
                         })}
                       </td>
                       <td className="audit-modal__td">

@@ -1,5 +1,7 @@
 import React from 'react';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import {
+  render, screen, waitFor, fireEvent,
+} from '@testing-library/react';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { IntlProvider } from 'react-intl';
 import { MemoryRouter } from 'react-router-dom';

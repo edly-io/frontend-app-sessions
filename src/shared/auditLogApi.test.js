@@ -6,7 +6,6 @@ jest.mock('@edx/frontend-platform/auth', () => ({
   getAuthenticatedHttpClient: jest.fn(),
 }));
 
-const { getConfig } = require('@edx/frontend-platform');
 const { getAuthenticatedHttpClient } = require('@edx/frontend-platform/auth');
 const { getAuditLogs } = require('./auditLogApi');
 

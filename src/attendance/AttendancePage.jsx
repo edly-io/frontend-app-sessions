@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import { Navigate, Outlet, useParams, useSearchParams } from 'react-router-dom';
+import React from 'react';
+import {
+  Navigate, Outlet, useParams, useSearchParams,
+} from 'react-router-dom';
 
 import { useConfig } from '../app/useConfig';
 import { USER_ROLE } from '../shared/constants';
@@ -57,7 +59,7 @@ const AttendancePage = () => {
         <div className="audit-log-view">
           <AuditLogTable
             appLabel="attendance"
-            models={["attendancerecord"]}
+            models={['attendancerecord']}
             programKey={programId}
             recordFilter={recordFilter}
             onClearFilter={handleClearFilter}
