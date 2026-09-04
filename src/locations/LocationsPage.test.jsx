@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { IntlProvider } from 'react-intl';
 import { MemoryRouter } from 'react-router-dom';
@@ -14,6 +14,9 @@ jest.mock('./api', () => ({
   getLocations: jest.fn(),
   deleteLocation: jest.fn(),
 }));
+jest.mock('../shared/AuditLogTable', () => function MockAuditLogTable() {
+  return <div data-testid="audit-log-table">Audit Log</div>;
+});
 
 const { useConfig } = require('../app/useConfig');
 const { getLocations } = require('./api');
@@ -86,5 +89,22 @@ describe('admin', () => {
     wrap();
     await waitFor(() => expect(screen.getByText('Science lab')).toBeInTheDocument());
     expect(screen.getByText('SN-001')).toBeInTheDocument();
+  });
+
+  it('shows Locations and Audit Log tab buttons', async () => {
+    getLocations.mockResolvedValue({ count: 0, results: [] });
+    wrap();
+    await waitFor(() => expect(screen.getByText(/no locations found/i)).toBeInTheDocument());
+    expect(screen.getByRole('button', { name: /^locations$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^audit log$/i })).toBeInTheDocument();
+  });
+
+  it('switches to audit log view when Audit Log tab is clicked', async () => {
+    getLocations.mockResolvedValue({ count: 0, results: [] });
+    wrap();
+    await waitFor(() => expect(screen.getByText(/no locations found/i)).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /^audit log$/i }));
+    await waitFor(() => expect(screen.getByTestId('audit-log-table')).toBeInTheDocument());
+    expect(screen.queryByText(/no locations found/i)).not.toBeInTheDocument();
   });
 });

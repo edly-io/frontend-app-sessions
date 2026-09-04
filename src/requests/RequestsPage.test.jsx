@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { IntlProvider } from 'react-intl';
@@ -20,6 +20,9 @@ jest.mock('./AdminRequestsView', () => function MockAdminView() {
 });
 jest.mock('./LearnerRequestsView', () => function MockLearnerView() {
   return <div>LearnerView</div>;
+});
+jest.mock('../shared/AuditLogTable', () => function MockAuditLogTable() {
+  return <div data-testid="audit-log-table">Audit Log</div>;
 });
 
 const { useConfig } = require('../app/useConfig');
@@ -93,5 +96,33 @@ describe('RequestsTabPage', () => {
     useConfig.mockReturnValue({ data: null });
     renderTabPage('leave');
     expect(screen.getByText('LearnerView')).toBeInTheDocument();
+  });
+});
+
+// ─── Admin audit log tab toggle ───────────────────────────────────────────────
+
+describe('RequestsPage admin audit log toggle', () => {
+  beforeEach(() => {
+    useConfig.mockReturnValue({ data: { user_role: 'admin' } });
+  });
+
+  it('shows Requests and Audit Log tab buttons for admin', () => {
+    renderLayout();
+    expect(screen.getByRole('button', { name: /^requests$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^audit log$/i })).toBeInTheDocument();
+  });
+
+  it('does not show tab toggle for non-admin', () => {
+    useConfig.mockReturnValue({ data: { user_role: 'learner' } });
+    renderLayout();
+    expect(screen.queryByRole('button', { name: /^audit log$/i })).not.toBeInTheDocument();
+  });
+
+  it('switches to audit log view when Audit Log tab is clicked', () => {
+    renderLayout();
+    fireEvent.click(screen.getByRole('button', { name: /^audit log$/i }));
+    expect(screen.getByTestId('audit-log-table')).toBeInTheDocument();
+    // Sub-nav links should no longer be visible
+    expect(screen.queryByRole('link', { name: 'Leaves' })).not.toBeInTheDocument();
   });
 });
