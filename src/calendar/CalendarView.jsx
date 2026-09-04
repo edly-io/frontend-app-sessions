@@ -417,7 +417,7 @@ const SessionPopover = ({
             )}
           </div>
         )}
-        {/* Admin-only: quick link to the session's attendance roster. */}
+        {/* Admin-only: quick links to attendance roster and audit history. */}
         {canManageSessions && session.id && (
           <div className="mt-2">
             <Button
@@ -434,6 +434,16 @@ const SessionPopover = ({
               onClick={() => onOpenChange(false)}
             >
               View attendance
+            </Button>
+            <Button
+              as={Link}
+              variant="tertiary"
+              size="sm"
+              className="p-0 d-block"
+              to={`/${programId}/calendar?view=audit-log&record_id=${session.id}`}
+              onClick={() => onOpenChange(false)}
+            >
+              View history
             </Button>
           </div>
         )}

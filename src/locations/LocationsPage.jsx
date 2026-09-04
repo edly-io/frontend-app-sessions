@@ -4,7 +4,7 @@
 import React, {
   useState, useEffect, useCallback, useMemo,
 } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import {
   Alert, Button, Container, DataTable, Form, Spinner, StandardModal, Toast,
 } from '@openedx/paragon';
@@ -17,6 +17,7 @@ import { getLocations, deleteLocation } from './api';
 import { extractApiError } from '../shared/utils';
 import LocationModal from './LocationModal';
 import useModalParams from '../shared/useModalParams';
+import AuditLogTable from '../shared/AuditLogTable';
 
 const DescriptionCell = ({ value }) => (
   value ? <span>{value}</span> : <span className="text-muted">—</span>
@@ -31,7 +32,9 @@ SerialCell.propTypes = { value: PropTypes.string };
 SerialCell.defaultProps = { value: '' };
 
 const ActionsCell = ({ row, column }) => {
-  const { isAdmin, onEdit, onDelete } = column;
+  const {
+    isAdmin, onEdit, onDelete, onAuditHistory,
+  } = column;
   if (!isAdmin) { return null; }
   return (
     <div className="d-flex" style={{ gap: 4 }}>
@@ -52,6 +55,13 @@ const ActionsCell = ({ row, column }) => {
       >
         Delete
       </Button>
+      <Button
+        variant="tertiary"
+        size="sm"
+        onClick={() => onAuditHistory(row.original)}
+      >
+        History
+      </Button>
     </div>
   );
 };
@@ -66,6 +76,7 @@ ActionsCell.propTypes = {
     isAdmin: PropTypes.bool.isRequired,
     onEdit: PropTypes.func.isRequired,
     onDelete: PropTypes.func.isRequired,
+    onAuditHistory: PropTypes.func.isRequired,
   }).isRequired,
 };
 
@@ -76,6 +87,25 @@ const LocationsPage = () => {
   const { data: config } = useConfig();
   const isAdmin = config?.user_role === USER_ROLE.ADMIN;
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeView = searchParams.get('view') || 'list';
+  const recordFilter = searchParams.get('record_id') || undefined;
+
+  const handleViewChange = (view) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('view', view);
+      if (view !== 'audit-log') { next.delete('record_id'); }
+      return next;
+    });
+  };
+  const handleClearFilter = () => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('record_id');
+      return next;
+    });
+  };
   const [programInfo, setProgramInfo] = useState(null);
   useEffect(() => {
     if (!programId) { return; }
@@ -147,6 +177,12 @@ const LocationsPage = () => {
       isAdmin,
       onEdit: (loc) => openModal('edit-location', loc.id),
       onDelete: setDeleteTarget,
+      onAuditHistory: (loc) => setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('view', 'audit-log');
+        next.set('record_id', String(loc.id));
+        return next;
+      }),
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [isAdmin, openModal, programInfo]);
@@ -186,50 +222,74 @@ const LocationsPage = () => {
 
   return (
     <Container className="py-3">
-      <div className="d-flex align-items-center justify-content-between mb-3">
-        <div>
-          <h2 className="mb-1">Locations</h2>
-          <p className="text-muted mb-0" style={{ fontSize: 13 }}>
-            Physical venues where in-person sessions are held. Create them once
-            here, then pick one when scheduling a meeting.
-          </p>
-        </div>
-        <Button variant="primary" iconBefore={Add} onClick={() => openModal('new-location')}>
-          New location
-        </Button>
+      <div className="page-view-toggle">
+        {['list', 'audit-log'].map(view => (
+          <button
+            key={view}
+            type="button"
+            onClick={() => handleViewChange(view)}
+            className={`page-view-toggle__tab${activeView === view ? ' page-view-toggle__tab--active' : ''}`}
+          >
+            {view === 'list' ? 'Locations' : 'Audit Log'}
+          </button>
+        ))}
       </div>
 
-      <Form.Control
-        type="search"
-        placeholder="Search locations…"
-        value={searchInput}
-        onChange={(e) => setSearchInput(e.target.value)}
-        className="mb-3"
-        style={{ maxWidth: 320 }}
-      />
-
-      {error && <Alert variant="danger" className="mb-3">{error}</Alert>}
-
-      {initialLoading ? (
-        <div className="py-5 text-center">
-          <Spinner animation="border" screenReaderText="Loading locations" />
-        </div>
+      {activeView === 'audit-log' ? (
+        <AuditLogTable
+          appLabel="attendance"
+          models={["location"]}
+          recordFilter={recordFilter}
+          onClearFilter={handleClearFilter}
+        />
       ) : (
-        <DataTable
-          key={debouncedSearch}
-          isPaginated
-          manualPagination
-          fetchData={fetchData}
-          pageCount={Math.max(1, Math.ceil(count / PAGE_SIZE))}
-          itemCount={count}
-          data={locations}
-          columns={columns}
-          initialState={{ pageIndex: 0, pageSize: PAGE_SIZE }}
-        >
-          <DataTable.Table />
-          <DataTable.EmptyTable content="No locations found." />
-          <DataTable.TableFooter />
-        </DataTable>
+        <>
+          <div className="d-flex align-items-center justify-content-between mb-3">
+            <div>
+              <h2 className="mb-1">Locations</h2>
+              <p className="text-muted mb-0" style={{ fontSize: 13 }}>
+                Physical venues where in-person sessions are held. Create them once
+                here, then pick one when scheduling a meeting.
+              </p>
+            </div>
+            <Button variant="primary" iconBefore={Add} onClick={() => openModal('new-location')}>
+              New location
+            </Button>
+          </div>
+
+          <Form.Control
+            type="search"
+            placeholder="Search locations…"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            className="mb-3"
+            style={{ maxWidth: 320 }}
+          />
+
+          {error && <Alert variant="danger" className="mb-3">{error}</Alert>}
+
+          {initialLoading ? (
+            <div className="py-5 text-center">
+              <Spinner animation="border" screenReaderText="Loading locations" />
+            </div>
+          ) : (
+            <DataTable
+              key={debouncedSearch}
+              isPaginated
+              manualPagination
+              fetchData={fetchData}
+              pageCount={Math.max(1, Math.ceil(count / PAGE_SIZE))}
+              itemCount={count}
+              data={locations}
+              columns={columns}
+              initialState={{ pageIndex: 0, pageSize: PAGE_SIZE }}
+            >
+              <DataTable.Table />
+              <DataTable.EmptyTable content="No locations found." />
+              <DataTable.TableFooter />
+            </DataTable>
+          )}
+        </>
       )}
 
       <LocationModal

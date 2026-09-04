@@ -2,7 +2,7 @@ import React, {
   useCallback, useEffect, useMemo, useState,
 } from 'react';
 import PropTypes from 'prop-types';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import {
   Alert, Badge, Button, Container, DataTable, Form, Spinner, StandardModal,
 } from '@openedx/paragon';
@@ -359,6 +359,21 @@ const AdminRequestsView = ({ readOnly, showNewRequest, lockedType }) => {
             </a>
           );
         },
+      },
+      {
+        Header: 'Audit log',
+        id: 'audit-log',
+        Cell: ({ row }) => (
+          <Button
+            as={Link}
+            variant="link"
+            size="sm"
+            className="p-0"
+            to={`?view=audit-log&record_id=${row.original.id}`}
+          >
+            History →
+          </Button>
+        ),
       },
     ];
 
