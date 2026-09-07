@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import {
-  Alert, Badge, DataTable, Pagination, Spinner,
+  Alert, Badge, Button, DataTable, Pagination, Spinner,
 } from '@openedx/paragon';
 import { getAuditLogs } from './auditLogApi';
 import './AuditLogTable.scss';
@@ -138,7 +138,7 @@ const ChangesModal = ({ entry, onClose }) => {
               {actorEmail && ` (${actorEmail})`}
             </small>
           </div>
-          <button type="button" onClick={onClose} className="audit-modal__close-btn">×</button>
+          <Button variant="tertiary" onClick={onClose} className="audit-modal__close-btn">×</Button>
         </div>
 
         {!changes || Object.keys(changes).length === 0 ? (
@@ -231,7 +231,7 @@ const RecordHistoryModal = ({
             <h5 className="audit-modal__title">Full History</h5>
             <small className="audit-modal__subtitle">{objectRepr}</small>
           </div>
-          <button type="button" onClick={onClose} className="audit-modal__close-btn">×</button>
+          <Button variant="tertiary" onClick={onClose} className="audit-modal__close-btn">×</Button>
         </div>
 
         {loading && (
@@ -283,13 +283,13 @@ const RecordHistoryModal = ({
                       </td>
                       <td className="audit-modal__td">
                         {fieldCount > 0 ? (
-                          <button
-                            type="button"
+                          <Button
+                            variant="link"
                             onClick={() => setChangesEntry(entry)}
                             className="audit-modal__fields-btn"
                           >
                             {fieldCount} field{fieldCount !== 1 ? 's' : ''} changed
-                          </button>
+                          </Button>
                         ) : '—'}
                       </td>
                     </tr>
@@ -463,13 +463,13 @@ const AuditLogTable = ({
             {entry.object_pk && (
               <div className="audit-log__record-id">ID: {entry.object_pk}</div>
             )}
-            <button
-              type="button"
+            <Button
+              variant="link"
               onClick={() => setHistoryModal(entry)}
               className="audit-log__history-btn"
             >
               ⟳ Full history
-            </button>
+            </Button>
           </div>
         );
       },
@@ -499,13 +499,13 @@ const AuditLogTable = ({
                 <li className="audit-log__changes-more">+{fieldCount - 3} more…</li>
               )}
             </ul>
-            <button
-              type="button"
+            <Button
+              variant="link"
               onClick={() => setChangesModal(row.original)}
               className="audit-log__view-changes-btn"
             >
               View all changes
-            </button>
+            </Button>
           </div>
         );
       },
@@ -518,13 +518,13 @@ const AuditLogTable = ({
         <div className="audit-log__filter-banner">
           <span>Showing full history for record <strong>#{recordFilter}</strong></span>
           {onClearFilter && (
-            <button
-              type="button"
+            <Button
+              variant="link"
               onClick={onClearFilter}
               className="audit-log__filter-banner-clear"
             >
               ← Show all records
-            </button>
+            </Button>
           )}
         </div>
       )}

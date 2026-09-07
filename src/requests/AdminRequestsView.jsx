@@ -78,21 +78,13 @@ const CollapsibleText = ({ text, muted }) => {
         {expanded ? text : `${text.slice(0, TRUNCATE_AT)}…`}
       </span>
       {' '}
-      <button
-        type="button"
+      <Button
+        variant="link"
         onClick={() => setExpanded((p) => !p)}
-        style={{
-          background: 'none',
-          border: 'none',
-          padding: 0,
-          fontSize: 'inherit',
-          color: '#374151',
-          cursor: 'pointer',
-          textDecoration: 'underline',
-        }}
+        style={{ fontSize: 'inherit' }}
       >
         {expanded ? 'less' : 'more'}
-      </button>
+      </Button>
     </span>
   );
 };
