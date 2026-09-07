@@ -18,6 +18,7 @@ import { SESSION_STATUS_LABELS, USER_ROLE, REQUEST_STATUS } from '../shared/cons
 import RequestStatusBadge from '../shared/RequestStatusBadge';
 import ScopeBadge from '../shared/ScopeBadge';
 import InstructingBadge from '../shared/InstructingBadge';
+import { getSessionStartLink } from './api';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -25,6 +26,25 @@ const VIEWS = { MONTH: 'month', WEEK: 'week', DAY: 'day' };
 
 // Sun(0) first, matching JS getDay() order
 const WEEK_DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+// Fetch a fresh Zoom host start link and open it. The link is minted on demand
+// (it expires ~2h after Zoom generates it), so we open a blank tab first — inside
+// the click gesture, to dodge popup blockers — then navigate it once the link
+// arrives. opener is nulled to keep the no-opener protection without 'noopener',
+// which would otherwise deny us the window handle.
+const openSessionStartLink = async (sessionId) => {
+  const win = window.open('about:blank', '_blank');
+  if (win) { win.opener = null; }
+  try {
+    const url = await getSessionStartLink(sessionId);
+    if (!url) { throw new Error('No start link returned'); }
+    if (win) { win.location.href = url; } else { window.open(url, '_blank', 'noopener,noreferrer'); }
+  } catch (err) {
+    if (win) { win.close(); }
+    // eslint-disable-next-line no-alert
+    window.alert('Could not open the meeting start link. Please try again.');
+  }
+};
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 
@@ -270,6 +290,10 @@ const SessionPopover = ({
     session.create_zoom_meeting
     || (myRequest?.state === 'APPROVED' && myRequest?.type === 'remote_session')
   );
+  // Hosts (admin or the session's instructor) start the meeting; the start link
+  // is fetched on demand, not carried on the session.
+  const canStartMeeting = !isPast && Boolean(session.meeting_id)
+    && (canManageSessions || session.user_role === USER_ROLE.INSTRUCTOR);
 
   const handleEdit = (e) => {
     e.stopPropagation();
@@ -387,24 +411,25 @@ const SessionPopover = ({
                 </Button>
               </>
             )}
-            {/* Host (admin/instructor) → Start with meeting_start_url. */}
-            {canManageSessions && session.meeting_start_url && !isPast && (
+            {/* Host (admin or session instructor) → Start; the link is fetched
+                on demand from the backend. */}
+            {canStartMeeting && (
               <Button
                 variant="success"
                 size="sm"
                 iconAfter={Launch}
-                onClick={(e) => handleJoin(e, session.meeting_start_url)}
+                onClick={(e) => { e.stopPropagation(); onOpenChange(false); openSessionStartLink(session.id); }}
               >
-                Start
+                Start as host
               </Button>
             )}
-            {/* Join button — admins always when URL present; learners only when scope allows. */}
+            {/* Join button — shown to non-hosts; learners only when scope allows. */}
             {(() => {
               if (isPast) { return null; }
-              if (canManageSessions && session.meeting_start_url) { return null; }
+              if (canStartMeeting) { return null; }
               if (isLearner && !learnerCanJoin) { return null; }
               const requestJoinUrl = myRequest?.data?.meetings?.[session.id]?.meeting_join_url;
-              const joinUrl = session.meeting_join_url || requestJoinUrl;
+              const joinUrl = session.my_join_url || session.meeting_join_url || requestJoinUrl;
               return joinUrl ? (
                 <Button variant="primary" size="sm" iconAfter={Launch} onClick={(e) => handleJoin(e, joinUrl)}>
                   Join
@@ -566,6 +591,8 @@ const DayPopover = ({
             );
             const isPast = new Date(session.scheduled_end_time || session.scheduled_start_time) <= new Date();
             const displayStatus = (isPast && session.status === 'scheduled') ? 'completed' : session.status;
+            const canStartMeeting = !isPast && Boolean(session.meeting_id)
+              && (canManageSessions || session.user_role === USER_ROLE.INSTRUCTOR);
             return (
               <div
                 key={session.id}
@@ -672,24 +699,24 @@ const DayPopover = ({
                         </Button>
                       </>
                     )}
-                    {/* Host → Start with meeting_start_url. */}
-                    {canManageSessions && session.meeting_start_url && !isPast && (
+                    {/* Host (admin or session instructor) → Start; link fetched on demand. */}
+                    {canStartMeeting && (
                       <Button
                         variant="success"
                         size="sm"
                         iconAfter={Launch}
-                        onClick={(e) => handleJoin(e, session.meeting_start_url)}
+                        onClick={(e) => { e.stopPropagation(); onOpenChange(false); openSessionStartLink(session.id); }}
                       >
-                        Start
+                        Start as host
                       </Button>
                     )}
-                    {/* Join — admins always when URL present; learners only when scope allows. */}
+                    {/* Join — shown to non-hosts; learners only when scope allows. */}
                     {(() => {
                       if (isPast) { return null; }
-                      if (canManageSessions && session.meeting_start_url) { return null; }
+                      if (canStartMeeting) { return null; }
                       if (isLearner && !learnerCanJoin) { return null; }
                       const requestJoinUrl = myRequest?.data?.meetings?.[session.id]?.meeting_join_url;
-                      const joinUrl = session.meeting_join_url || requestJoinUrl;
+                      const joinUrl = session.my_join_url || session.meeting_join_url || requestJoinUrl;
                       return joinUrl ? (
                         <Button
                           variant="primary"
@@ -2014,7 +2041,7 @@ const sessionShape = PropTypes.shape({
   scheduled_end_time: PropTypes.string,
   meeting_id: PropTypes.string,
   meeting_join_url: PropTypes.string,
-  meeting_start_url: PropTypes.string,
+  my_join_url: PropTypes.string,
   create_zoom_meeting: PropTypes.bool,
   user_role: PropTypes.string,
   session_type: PropTypes.string,

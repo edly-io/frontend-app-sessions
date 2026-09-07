@@ -99,6 +99,16 @@ export const extractApiError = (err, fallback = 'An unexpected error occurred') 
 };
 
 /**
+ * Format a Date as a local calendar day string (YYYY-MM-DD).
+ *
+ * Uses the browser's local timezone (PKT for our users), so midnight-local
+ * dates keep their intended day. Do NOT use `toISOString().slice(0, 10)` for
+ * this: it converts to UTC first and rolls a midnight-local date back to the
+ * previous day in any positive-offset timezone — the calendar-window bug.
+ */
+export const toLocalDateStr = (d) => d.toLocaleDateString('en-CA'); // YYYY-MM-DD (local)
+
+/**
  * Group an array of sessions into a Map keyed by local date string (YYYY-MM-DD).
  * Each session appears under its start day in the user's local timezone.
  */

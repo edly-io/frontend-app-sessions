@@ -14,6 +14,7 @@ import { ArrowBack, Edit } from '@openedx/paragon/icons';
 import {
   getAttendanceRoster,
   markAttendance,
+  syncSessionAttendance,
 } from './api';
 import { useConfig } from '../app/useConfig';
 import { ATTENDANCE_STATUS, USER_ROLE } from '../shared/constants';
@@ -189,6 +190,9 @@ const AttendanceRosterPage = () => {
   const [savingUserId, setSavingUserId] = useState(null);
   const [showToast, setShowToast] = useState(false);
 
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState('');
+
   const [reasonModal, setReasonModal] = useState(null); // { userId, pendingStatus }
   const [reasonText, setReasonText] = useState('');
 
@@ -226,6 +230,21 @@ const AttendanceRosterPage = () => {
       .finally(() => { if (!cancelled) { setLoading(false); } });
     return () => { cancelled = true; };
   }, [loadRoster]);
+
+  const handleSync = useCallback(async () => {
+    setSyncing(true);
+    setSyncMessage('');
+    setError('');
+    try {
+      const result = await syncSessionAttendance(sessionId);
+      setSyncMessage(result.message || 'Attendance synced.');
+      await loadRoster();
+    } catch (err) {
+      setError(extractApiError(err, 'Failed to sync attendance from Zoom'));
+    } finally {
+      setSyncing(false);
+    }
+  }, [sessionId, loadRoster]);
 
   const windowOpen = sessionMeta?.marking_window_open ?? false;
 
@@ -447,6 +466,20 @@ const AttendanceRosterPage = () => {
           </div>
         </div>
       </div>
+
+      {isAdmin && sessionMeta?.meeting_id && (
+        <div className="d-flex align-items-center mb-3">
+          <Button
+            variant="outline-primary"
+            size="sm"
+            onClick={handleSync}
+            disabled={syncing}
+          >
+            {syncing ? 'Syncing…' : 'Sync attendance from Zoom'}
+          </Button>
+          {syncMessage && <span className="small text-muted ml-2">{syncMessage}</span>}
+        </div>
+      )}
 
       {isAdmin && !windowOpen && (
         <Alert variant="warning" className="mb-3">

@@ -13,7 +13,7 @@ import { getProgram } from '../app/api';
 import useModalParams from '../shared/useModalParams';
 import { getHolidays } from '../holidays/api';
 import { getApprovedLeaves } from '../requests/api';
-import { extractApiError } from '../shared/utils';
+import { extractApiError, toLocalDateStr } from '../shared/utils';
 import { USER_ROLE, REQUEST_TYPE } from '../shared/constants';
 import { useConfig } from '../app/useConfig';
 import ScheduleMeetingModal from './ScheduleMeetingModal';
@@ -181,8 +181,14 @@ const CalendarPage = () => {
     const fetchSessions = async () => {
       setLoading(true);
       try {
-        const toDateStr = (d) => d.toISOString().slice(0, 10);
-        const { sessions: data } = await getCalendarSessions(toDateStr(start), toDateStr(end), programId);
+        // Stringify the window in local time. toISOString() would convert to
+        // UTC first and shift the whole [start, end) window back a day in
+        // +offset timezones (PKT), dropping the intended day's sessions.
+        const { sessions: data } = await getCalendarSessions(
+          toLocalDateStr(start),
+          toLocalDateStr(end),
+          programId,
+        );
         if (cancelled) { return; }
         setSessions(data);
         setError('');
