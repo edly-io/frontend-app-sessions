@@ -4,6 +4,39 @@
 @import "~@edx/frontend-component-footer/dist/footer";
 @import "./programs/programs";
 
+.audit-log-view {
+  padding: 0 1rem 1rem;
+}
+
+.page-view-toggle {
+  display: flex;
+  border-bottom: 2px solid var(--pgn-color-border);
+  margin-bottom: 1.25rem;
+
+  &--inset {
+    padding: 0 1rem;
+  }
+
+  &__tab {
+    padding: 8px 16px;
+    margin-bottom: -2px;
+    border: none;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    color: var(--pgn-color-text-light);
+    font-size: 13.5px;
+    font-weight: 400;
+    white-space: nowrap;
+    cursor: pointer;
+
+    &--active {
+      color: var(--pgn-color-primary-base);
+      font-weight: 600;
+      border-bottom-color: var(--pgn-color-primary-base);
+    }
+  }
+}
+
 .sticky-header-table .pgn__data-table-container {
   max-height: 420px;
   overflow-y: auto;

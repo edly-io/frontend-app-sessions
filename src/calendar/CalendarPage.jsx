@@ -1,10 +1,11 @@
 import React, {
   useState, useEffect, useMemo, useCallback,
 } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import {
   Container, Spinner, Alert, Toast, StandardModal, Button,
 } from '@openedx/paragon';
+import AuditLogTable from '../shared/AuditLogTable';
 import {
   getCalendarSessions, deleteSession, cancelSession, getProgramDates, getSession,
 } from './api';
@@ -76,6 +77,25 @@ const CalendarPage = () => {
   const isInstructor = userRole === USER_ROLE.INSTRUCTOR;
   const isLearner = userRole === USER_ROLE.LEARNER;
   const [refreshKey, setRefreshKey] = useState(0);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeView = searchParams.get('view') || 'calendar';
+  const recordFilter = searchParams.get('record_id') || undefined;
+
+  const handleTabChange = (view) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('view', view);
+      if (view !== 'audit-log') { next.delete('record_id'); }
+      return next;
+    });
+  };
+  const handleClearFilter = () => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('record_id');
+      return next;
+    });
+  };
 
   const sessionTypeColors = useMemo(() => {
     const types = config?.session_types || [];
@@ -387,9 +407,36 @@ const CalendarPage = () => {
 
   return (
     <>
-      <main id="main-content" className="d-flex flex-column flex-grow-1">
-        {renderContent()}
-      </main>
+      {canManageSessions && (
+        <div className="page-view-toggle page-view-toggle--inset">
+          {['calendar', 'audit-log'].map(tabKey => (
+            <Button
+              key={tabKey}
+              variant="tertiary"
+              onClick={() => handleTabChange(tabKey)}
+              className={`page-view-toggle__tab${activeView === tabKey ? ' page-view-toggle__tab--active' : ''}`}
+            >
+              {tabKey === 'calendar' ? 'Calendar' : 'Audit Log'}
+            </Button>
+          ))}
+        </div>
+      )}
+
+      {canManageSessions && activeView === 'audit-log' ? (
+        <div className="audit-log-view">
+          <AuditLogTable
+            appLabel="attendance"
+            models={['session']}
+            programKey={programId}
+            recordFilter={recordFilter}
+            onClearFilter={handleClearFilter}
+          />
+        </div>
+      ) : (
+        <main id="main-content" className="d-flex flex-column flex-grow-1">
+          {renderContent()}
+        </main>
+      )}
 
       {/* Schedule modal: admins get full edit; instructors get description-only edit */}
       {(canManageSessions || isInstructor) && isScheduleOpen && (

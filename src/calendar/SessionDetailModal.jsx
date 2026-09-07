@@ -139,6 +139,20 @@ const SessionDetailModal = ({
           </Button>
         </Field>
       )}
+      {canManageSessions && session.id && (
+        <Field label="Audit log">
+          <Button
+            as={Link}
+            variant="link"
+            size="sm"
+            className="p-0"
+            to={`/${programId}/calendar?view=audit-log&record_id=${session.id}`}
+            onClick={onClose}
+          >
+            View history →
+          </Button>
+        </Field>
+      )}
 
       {/* Second section: description (own block, separated). */}
       {session.description && (

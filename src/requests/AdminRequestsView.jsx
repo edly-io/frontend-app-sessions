@@ -2,7 +2,7 @@ import React, {
   useCallback, useEffect, useMemo, useState,
 } from 'react';
 import PropTypes from 'prop-types';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import {
   Alert, Badge, Button, Container, DataTable, Form, Spinner, StandardModal,
 } from '@openedx/paragon';
@@ -78,21 +78,13 @@ const CollapsibleText = ({ text, muted }) => {
         {expanded ? text : `${text.slice(0, TRUNCATE_AT)}…`}
       </span>
       {' '}
-      <button
-        type="button"
+      <Button
+        variant="link"
         onClick={() => setExpanded((p) => !p)}
-        style={{
-          background: 'none',
-          border: 'none',
-          padding: 0,
-          fontSize: 'inherit',
-          color: '#374151',
-          cursor: 'pointer',
-          textDecoration: 'underline',
-        }}
+        style={{ fontSize: 'inherit' }}
       >
         {expanded ? 'less' : 'more'}
-      </button>
+      </Button>
     </span>
   );
 };
@@ -359,6 +351,21 @@ const AdminRequestsView = ({ readOnly, showNewRequest, lockedType }) => {
             </a>
           );
         },
+      },
+      {
+        Header: 'Audit log',
+        id: 'audit-log',
+        Cell: ({ row }) => (
+          <Button
+            as={Link}
+            variant="link"
+            size="sm"
+            className="p-0"
+            to={`?view=audit-log&record_id=${row.original.id}`}
+          >
+            History →
+          </Button>
+        ),
       },
     ];
 
