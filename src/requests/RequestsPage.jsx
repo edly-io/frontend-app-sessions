@@ -1,5 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import { Button } from '@openedx/paragon';
 import { Outlet, useParams, useSearchParams } from 'react-router-dom';
 
 import { useConfig } from '../app/useConfig';
@@ -59,14 +60,14 @@ const RequestsPage = () => {
       {isAdmin && (
         <div className="page-view-toggle">
           {['list', 'audit-log'].map(view => (
-            <button
+            <Button
               key={view}
-              type="button"
+              variant="tertiary"
               onClick={() => handleViewChange(view)}
               className={`page-view-toggle__tab${activeView === view ? ' page-view-toggle__tab--active' : ''}`}
             >
               {view === 'list' ? 'Requests' : 'Audit Log'}
-            </button>
+            </Button>
           ))}
         </div>
       )}

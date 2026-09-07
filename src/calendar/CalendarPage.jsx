@@ -410,14 +410,14 @@ const CalendarPage = () => {
       {canManageSessions && (
         <div className="page-view-toggle page-view-toggle--inset">
           {['calendar', 'audit-log'].map(tabKey => (
-            <button
+            <Button
               key={tabKey}
-              type="button"
+              variant="tertiary"
               onClick={() => handleTabChange(tabKey)}
               className={`page-view-toggle__tab${activeView === tabKey ? ' page-view-toggle__tab--active' : ''}`}
             >
               {tabKey === 'calendar' ? 'Calendar' : 'Audit Log'}
-            </button>
+            </Button>
           ))}
         </div>
       )}

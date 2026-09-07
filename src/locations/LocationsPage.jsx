@@ -224,14 +224,14 @@ const LocationsPage = () => {
     <Container className="py-3">
       <div className="page-view-toggle">
         {['list', 'audit-log'].map(view => (
-          <button
+          <Button
             key={view}
-            type="button"
+            variant="tertiary"
             onClick={() => handleViewChange(view)}
             className={`page-view-toggle__tab${activeView === view ? ' page-view-toggle__tab--active' : ''}`}
           >
             {view === 'list' ? 'Locations' : 'Audit Log'}
-          </button>
+          </Button>
         ))}
       </div>
 
