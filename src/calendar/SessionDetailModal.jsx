@@ -17,6 +17,7 @@ import { formatDateTime, getStatusVariant } from '../shared/utils';
 import {
   SESSION_STATUS_LABELS, SESSION_PLATFORM_LABELS, USER_ROLE,
 } from '../shared/constants';
+import { getSessionStartLink } from './api';
 
 const RECURRENCE_TYPE_LABEL = { 1: 'Daily', 2: 'Weekly', 3: 'Monthly' };
 
@@ -48,6 +49,23 @@ Field.propTypes = {
 
 const openInNewTab = (url) => window.open(url, '_blank', 'noopener,noreferrer');
 
+// Fetch a fresh Zoom host start link and open it. Minted on demand (it expires
+// ~2h after Zoom generates it), so open a blank tab inside the click gesture to
+// dodge popup blockers, then navigate it once the link arrives.
+const openSessionStartLink = async (sessionId) => {
+  const win = window.open('about:blank', '_blank');
+  if (win) { win.opener = null; }
+  try {
+    const url = await getSessionStartLink(sessionId);
+    if (!url) { throw new Error('No start link returned'); }
+    if (win) { win.location.href = url; } else { window.open(url, '_blank', 'noopener,noreferrer'); }
+  } catch (err) {
+    if (win) { win.close(); }
+    // eslint-disable-next-line no-alert
+    window.alert('Could not open the meeting start link. Please try again.');
+  }
+};
+
 const getSessionTypeLabel = (session, sessionTypeLabels = {}) => {
   const rawType = session?.session_type;
   if (!rawType) { return ''; }
@@ -66,6 +84,9 @@ const SessionDetailModal = ({
   if (!session) { return null; }
 
   const hasMeeting = Boolean(session.meeting_id || session.meeting_join_url);
+  const isPast = new Date(session.scheduled_end_time || session.scheduled_start_time) <= new Date();
+  const canStartMeeting = !isPast && Boolean(session.meeting_id)
+    && (canManageSessions || session.user_role === USER_ROLE.INSTRUCTOR);
   let scope = 'in_person';
   if (hasMeeting) { scope = session.create_zoom_meeting ? 'public' : 'gated'; }
   const recurrenceSummary = session.is_recurring ? formatRecurrence(session.recurrence) : '';
@@ -151,16 +172,16 @@ const SessionDetailModal = ({
       )}
 
       {/* Third section: meeting (own block, separated). */}
-      {hasMeeting && (session.meeting_join_url || session.meeting_start_url) && (
+      {hasMeeting && (canStartMeeting || session.my_join_url || session.meeting_join_url) && (
         <div className="mt-4 pt-3" style={{ borderTop: '1px solid #dee2e6' }}>
           <div className="text-muted mb-2" style={{ fontSize: 13 }}>Meeting</div>
           <div className="d-flex flex-wrap" style={{ gap: 8 }}>
-            {session.meeting_start_url ? (
+            {canStartMeeting ? (
               <Button
                 variant="success"
                 size="sm"
                 iconAfter={Launch}
-                onClick={() => openInNewTab(session.meeting_start_url)}
+                onClick={() => openSessionStartLink(session.id)}
               >
                 Start as host
               </Button>
@@ -169,7 +190,7 @@ const SessionDetailModal = ({
                 variant="primary"
                 size="sm"
                 iconAfter={Launch}
-                onClick={() => openInNewTab(session.meeting_join_url)}
+                onClick={() => openInNewTab(session.my_join_url || session.meeting_join_url)}
               >
                 Join meeting
               </Button>
@@ -218,7 +239,7 @@ SessionDetailModal.propTypes = {
     create_zoom_meeting: PropTypes.bool,
     meeting_id: PropTypes.string,
     meeting_join_url: PropTypes.string,
-    meeting_start_url: PropTypes.string,
+    my_join_url: PropTypes.string,
     meeting_password: PropTypes.string,
     user_role: PropTypes.string,
     course_id: PropTypes.string,

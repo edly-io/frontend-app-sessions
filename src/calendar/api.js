@@ -22,6 +22,16 @@ export const updateSession = async (sessionId, sessionData) => {
   return data;
 };
 
+// Fetch a fresh Zoom host start link on demand. The start URL embeds a host
+// token and expires ~2h after Zoom generates it, so it is never stored or sent
+// in list payloads — the host (admin or the session's instructor) fetches it
+// at click time. Returns the start_url string.
+export const getSessionStartLink = async (sessionId) => {
+  const client = getAuthenticatedHttpClient();
+  const { data } = await client.get(`${getBaseUrl()}/sessions/${sessionId}/start-link/`);
+  return data.start_url;
+};
+
 // Soft-cancel: preserves the session row and Zoom meeting for audit/rescheduling.
 export const cancelSession = async (sessionId) => {
   const client = getAuthenticatedHttpClient();
