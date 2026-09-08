@@ -171,13 +171,13 @@ const SessionTypeBadge = ({ session, sessionTypeLabels }) => {
         placement="top"
         overlay={<Tooltip id={`session-type-tip-${session.session_type || 'unknown'}`}>{tooltip}</Tooltip>}
       >
-        <button
-          type="button"
+        <Button
+          variant="link"
           aria-label={tooltip}
-          className="btn btn-link d-inline-flex align-items-center p-0 border-0 text-muted"
+          className="d-inline-flex align-items-center p-0 border-0 text-muted"
         >
           <Icon src={InfoOutline} className="text-muted" />
-        </button>
+        </Button>
       </OverlayTrigger>
     </span>
   );
@@ -217,20 +217,20 @@ const formatInstructors = (session) => {
   return session.instructor_name || '';
 };
 
-// Inline button styled as a hyperlink — blue + always-underlined, with a
-// hover/focus state that darkens the colour. Used by both popovers for the
+// Paragon's link Button, restyled by .calendar-link-button as an always-underlined
+// hyperlink that darkens on hover/focus. Used by both popovers for the
 // session-title click target.
 const TitleLink = ({
   title, onClick, ariaLabel, isCancelled,
 }) => (
-  <button
-    type="button"
+  <Button
+    variant="link"
     onClick={onClick}
     aria-label={ariaLabel}
     className="calendar-link-button border-0 p-0 text-left"
   >
     <span className={isCancelled ? 'calendar-strikethrough' : undefined}>{title}</span>
-  </button>
+  </Button>
 );
 TitleLink.propTypes = {
   title: PropTypes.string.isRequired,
@@ -967,13 +967,13 @@ const DayCell = ({
 
       {/* Overflow — clickable, opens the day popover */}
       {overflow > 0 && (
-        <button
-          type="button"
+        <Button
+          variant="link"
           onClick={(e) => { e.stopPropagation(); setOpenPopoverId(null); setDayOpen(true); }}
           className="calendar-link-button calendar-link-button--chip border-0 p-0 text-left"
         >
           +{overflow} more
-        </button>
+        </Button>
       )}
     </div>
   );

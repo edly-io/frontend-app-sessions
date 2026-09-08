@@ -532,21 +532,32 @@ $month-gap: 4px;
   }
 }
 
-// A link-styled button. `:hover`/`:focus` is the whole reason this cannot be an
-// inline style, and is what the removed React hover state was working around.
 .calendar-link-button {
-  font: inherit;
-  color: #0D6EFD;
-  background: none;
-  text-decoration: underline;
-  cursor: pointer;
+  // Paragon's link Button, restyled as an inline hyperlink: always underlined,
+  // darkening on hover and focus. Compounded with .btn so the reset outranks
+  // Paragon's own button rules whichever order the two stylesheets land in.
+  &.btn {
+    // Back to a run of text: .btn is a centring flex box, which would pull the
+    // label off the left edge and shift it against the line box.
+    display: inline-block;
+    font: inherit;
+    color: #0D6EFD;
+    background: none;
+    text-decoration: underline;
+    border-radius: 0;
+    cursor: pointer;
 
-  &:hover,
-  &:focus {
-    color: #0A58CA;
+    &:hover,
+    &:focus {
+      color: #0A58CA;
+      text-decoration: underline;
+    }
   }
 
-  &--chip {
+  // The "+N more" affordance at the foot of a day cell. display: block undoes
+  // .btn's flex centring, keeping the label left-aligned across the cell.
+  &--chip.btn {
+    display: block;
     font-size: 11px;
     margin-top: auto;
   }
