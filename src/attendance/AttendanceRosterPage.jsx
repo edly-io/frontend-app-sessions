@@ -7,7 +7,7 @@ import {
 } from 'react-router-dom';
 import {
   Alert, Badge, Button, Container, DataTable, Form, OverlayTrigger, Spinner,
-  StandardModal, Toast, Tooltip,
+  Stack, StandardModal, Toast, Tooltip,
 } from '@openedx/paragon';
 import { ArrowBack, Edit } from '@openedx/paragon/icons';
 
@@ -16,6 +16,7 @@ import {
   markAttendance,
 } from './api';
 import { useConfig } from '../app/useConfig';
+import './attendance.scss';
 import { ATTENDANCE_STATUS, USER_ROLE } from '../shared/constants';
 import { extractApiError, formatDateTime, getStatusVariant } from '../shared/utils';
 
@@ -57,7 +58,7 @@ const StatusCell = ({ row }) => {
   }
 
   return (
-    <div className="d-flex justify-content-center" style={{ gap: 4 }}>
+    <Stack direction="horizontal" gap={1} className="justify-content-center">
       {EDIT_OPTIONS.map((opt) => {
         const isSelected = currentStatus === opt.value;
         return (
@@ -67,13 +68,13 @@ const StatusCell = ({ row }) => {
             variant={isSelected ? opt.variant : 'outline-secondary'}
             onClick={() => !isSelected && !isSaving && onStatusChange(userId, opt.value)}
             disabled={isSaving}
-            style={{ minWidth: 76, borderRadius: 20 }}
+            className="attendance-status-btn"
           >
             {opt.label}
           </Button>
         );
       })}
-    </div>
+    </Stack>
   );
 };
 StatusCell.propTypes = {
@@ -145,7 +146,7 @@ const NoteCell = ({ row }) => {
     );
   }
   return (
-    <div className="d-flex align-items-center" style={{ gap: 6 }}>
+    <Stack direction="horizontal" gap={2}>
       <small className="text-muted">{notes}</small>
       <Button
         variant="tertiary"
@@ -154,7 +155,7 @@ const NoteCell = ({ row }) => {
         aria-label="Edit note"
         onClick={() => onNoteClick(recordId, userId, currentStatus, notes)}
       />
-    </div>
+    </Stack>
   );
 };
 NoteCell.propTypes = {
@@ -396,55 +397,43 @@ const AttendanceRosterPage = () => {
       </Button>
 
       {/* Session context card */}
-      <div className="border rounded p-3 mb-4 bg-light">
+      <div className="border rounded p-3 mb-4 sessions-panel">
         {sessionMeta?.course_name && (
           <div className="mb-1">
-            <span
-              className="text-uppercase font-weight-bold text-muted mr-1"
-              style={{ fontSize: '0.7rem', letterSpacing: '0.06em' }}
-            >
-              Course
-            </span>
-            <span className="text-muted" style={{ fontSize: '0.875rem' }}>
-              {sessionMeta.course_name}
-            </span>
+            <span className="sessions-eyebrow text-muted mr-1">Course</span>
+            <span className="attendance-meta text-muted">{sessionMeta.course_name}</span>
           </div>
         )}
         {sessionMeta?.title && (
           <h4 className="mb-0">
-            <span
-              className="text-uppercase font-weight-bold text-muted mr-2"
-              style={{ fontSize: '0.7rem', letterSpacing: '0.06em', verticalAlign: 'middle' }}
-            >
-              Session
-            </span>
+            <span className="sessions-eyebrow text-muted mr-2 align-middle">Session</span>
             {sessionMeta.title}
           </h4>
         )}
         {sessionMeta?.scheduled_start_time && (
-          <div className="text-muted mt-1" style={{ fontSize: '0.875rem' }}>
+          <div className="attendance-meta text-muted mt-1">
             {formatDateTime(sessionMeta.scheduled_start_time)}
           </div>
         )}
-        <div className="d-flex justify-content-between align-items-center mt-2">
-          <div>
+        <div className="d-flex flex-column flex-sm-row justify-content-sm-between align-items-start align-items-sm-center mt-2">
+          <div className="mb-2 mb-sm-0">
             {windowOpen ? (
-              <strong style={{ fontSize: '0.875rem', color: '#16a34a' }}>
+              <strong className="attendance-meta text-success">
                 Marking window open
                 {markingWindowRemainingDays != null && (
                   <> · {markingWindowRemainingDays} {markingWindowRemainingDays === 1 ? 'day' : 'days'} remaining</>
                 )}
               </strong>
             ) : (
-              <strong style={{ fontSize: '0.875rem', color: '#6c757d' }}>Marking window closed</strong>
+              <strong className="attendance-meta text-muted">Marking window closed</strong>
             )}
           </div>
-          <div className="d-flex" style={{ gap: 6 }}>
+          <Stack direction="horizontal" gap={2} className="flex-wrap">
             <Badge variant="success">{counts.present} present</Badge>
             <Badge variant="danger">{counts.absent} absent</Badge>
             <Badge variant="warning">{counts.leave} on leave</Badge>
             <Badge variant="secondary">{counts.pending} pending</Badge>
-          </div>
+          </Stack>
         </div>
       </div>
 
@@ -490,7 +479,7 @@ const AttendanceRosterPage = () => {
         onClose={() => { setReasonModal(null); setReasonText(''); }}
         hasCloseButton
         footerNode={(
-          <div className="d-flex justify-content-end" style={{ gap: 8 }}>
+          <Stack direction="horizontal" gap={2} className="justify-content-end">
             <Button variant="tertiary" onClick={() => { setReasonModal(null); setReasonText(''); }}>
               Cancel
             </Button>
@@ -501,7 +490,7 @@ const AttendanceRosterPage = () => {
             >
               Confirm
             </Button>
-          </div>
+          </Stack>
         )}
       >
         <p className="mb-2">
@@ -524,7 +513,7 @@ const AttendanceRosterPage = () => {
         onClose={() => { setNoteModal(null); setNoteText(''); setNoteError(''); }}
         hasCloseButton
         footerNode={(
-          <div className="d-flex justify-content-end" style={{ gap: 8 }}>
+          <Stack direction="horizontal" gap={2} className="justify-content-end">
             <Button
               variant="tertiary"
               onClick={() => { setNoteModal(null); setNoteText(''); setNoteError(''); }}
@@ -540,7 +529,7 @@ const AttendanceRosterPage = () => {
                 {noteSaving ? 'Saving…' : 'Save note'}
               </Button>
             )}
-          </div>
+          </Stack>
         )}
       >
         {noteError && (
@@ -556,12 +545,7 @@ const AttendanceRosterPage = () => {
         />
       </StandardModal>
 
-      <div
-        style={{
-          position: 'fixed', bottom: '1.5rem', right: '1.5rem', zIndex: 9999,
-        }}
-        aria-live="polite"
-      >
+      <div className="attendance-toast-anchor" aria-live="polite">
         <Toast
           show={showToast}
           onClose={() => setShowToast(false)}

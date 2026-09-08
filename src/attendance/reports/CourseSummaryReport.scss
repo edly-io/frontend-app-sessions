@@ -1,0 +1,91 @@
+.attendance-report {
+  &__learner-cell {
+    display: flex;
+    align-items: center;
+    gap: .375rem;
+  }
+
+  &__risk-badge {
+    font-size: 10px;
+  }
+
+  &__info-tip {
+    cursor: default;
+    line-height: 0;
+  }
+
+  &__info-icon {
+    width: 16px;
+    height: 16px;
+    color: var(--sessions-text-muted);
+  }
+
+  &__setting-row {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+  }
+
+  &__setting-label {
+    display: flex;
+    align-items: center;
+    gap: .3125rem;
+    min-width: 180px;
+    font-weight: 500;
+    font-size: 14px;
+  }
+
+  &__setting-field {
+    display: flex;
+    align-items: center;
+    gap: .25rem;
+    font-size: 14px;
+  }
+
+  &__setting-input {
+    width: 72px;
+  }
+
+  &__course-picker {
+    min-width: 280px;
+    max-width: 400px;
+  }
+
+  &__filters {
+    display: flex;
+    align-items: center;
+    gap: .375rem;
+  }
+
+  &__filter-pill {
+    padding: 5px 14px;
+    border-radius: 20px;
+    border: 1.5px solid var(--sessions-border-strong);
+    background: var(--sessions-surface);
+    color: var(--sessions-text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.4;
+    cursor: pointer;
+
+    &--active {
+      color: #FFFFFF;
+    }
+
+    &--all.attendance-report__filter-pill--active {
+      background: #2563EB;
+      border-color: #2563EB;
+    }
+
+    &--at-risk.attendance-report__filter-pill--active {
+      background: #DC2626;
+      border-color: #DC2626;
+    }
+  }
+
+  &__filter-count {
+    margin-left: 6px;
+    opacity: .85;
+    font-weight: 400;
+  }
+}

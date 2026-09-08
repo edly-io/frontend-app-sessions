@@ -19,15 +19,17 @@ import {
   updateAttendanceSettings,
 } from '../api';
 import { extractApiError } from '../../shared/utils';
+import SectionHeading from '../../shared/SectionHeading';
+import './CourseSummaryReport.scss';
 
 // ─── Cell renderers ──────────────────────────────────────────────────────────
 
 const LearnerCell = ({ row }) => (
   <div>
-    <div className="d-flex align-items-center" style={{ gap: 6 }}>
+    <div className="attendance-report__learner-cell">
       <span>{row.original.full_name || row.original.email}</span>
       {row.original.is_at_risk && (
-        <Badge variant="danger" style={{ fontSize: 10 }}>At Risk</Badge>
+        <Badge variant="danger" className="attendance-report__risk-badge">At Risk</Badge>
       )}
     </div>
     {row.original.full_name && (
@@ -47,9 +49,9 @@ LearnerCell.propTypes = {
 
 const RateCell = ({ row }) => {
   const pct = Math.round(row.original.attendance_rate ?? 0);
-  const color = row.original.is_at_risk ? '#dc2626' : '#16a34a';
+  const tone = row.original.is_at_risk ? 'text-danger' : 'text-success';
   return (
-    <span style={{ color, fontWeight: 600 }}>{pct}%</span>
+    <span className={`font-weight-bold ${tone}`}>{pct}%</span>
   );
 };
 RateCell.propTypes = {
@@ -63,31 +65,14 @@ RateCell.propTypes = {
 
 const CX = { cellClassName: 'text-center', headerClassName: 'justify-content-center' };
 
-const SectionHeading = ({ children }) => (
-  <h3 style={{
-    fontSize: 19,
-    fontWeight: 700,
-    color: '#1e40af',
-    borderBottom: '2px solid #bfdbfe',
-    paddingBottom: 10,
-    marginBottom: 20,
-    marginTop: 0,
-    letterSpacing: '-0.01em',
-  }}
-  >
-    {children}
-  </h3>
-);
-SectionHeading.propTypes = { children: PropTypes.node.isRequired };
-
 const InfoTip = ({ id, text }) => (
   <OverlayTrigger
     trigger={['hover', 'focus']}
     placement="top"
     overlay={<Tooltip id={id}>{text}</Tooltip>}
   >
-    <span style={{ cursor: 'default', lineHeight: 0 }}>
-      <Icon src={InfoOutline} style={{ width: 16, height: 16, color: '#6b7280' }} />
+    <span className="attendance-report__info-tip">
+      <Icon src={InfoOutline} className="attendance-report__info-icon" />
     </span>
   </OverlayTrigger>
 );
@@ -269,14 +254,15 @@ const CourseSummaryReport = () => {
 
   return (
     <Container className="py-3">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h3 className="mb-0">Attendance Dashboard</h3>
+      <div className="d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between mb-4">
+        <h3 className="mb-2 mb-sm-0">Attendance Dashboard</h3>
         <Button
           variant="outline-primary"
           size="sm"
           iconAfter={Download}
           onClick={handleExport}
           disabled={exporting}
+          className="flex-shrink-0"
         >
           {exporting ? <Spinner animation="border" size="sm" /> : 'Export Attendance Report'}
         </Button>
@@ -286,26 +272,26 @@ const CourseSummaryReport = () => {
       <div className="mb-5">
         <SectionHeading>Settings</SectionHeading>
 
-        <div className="d-flex align-items-center mb-2" style={{ gap: 12 }}>
-          <div className="d-flex align-items-center" style={{ gap: 5, minWidth: 180 }}>
-            <span style={{ fontWeight: 500, fontSize: 14 }}>Attendance threshold:</span>
+        <div className="attendance-report__setting-row mb-2">
+          <div className="attendance-report__setting-label">
+            <span>Attendance threshold:</span>
             <InfoTip
               id="tip-threshold"
               text="Learners whose attendance rate falls below this percentage are flagged as at-risk."
             />
           </div>
-          <div className="d-flex align-items-center" style={{ gap: 4 }}>
+          <div className="attendance-report__setting-field">
             <Form.Control
               type="number"
               min={0}
               max={100}
               value={thresholdValue}
               onChange={(e) => { setThresholdSaved(false); setThresholdValue(Number(e.target.value)); }}
-              style={{ width: 72 }}
+              className="attendance-report__setting-input"
               aria-label="Attendance threshold percent"
               disabled={thresholdSaving}
             />
-            <span style={{ fontSize: 14 }}>%</span>
+            <span>%</span>
           </div>
           {thresholdChanged && (
             <Button
@@ -317,29 +303,29 @@ const CourseSummaryReport = () => {
               {thresholdSaving ? <Spinner animation="border" size="sm" /> : 'Save'}
             </Button>
           )}
-          {thresholdSaved && <small style={{ color: '#16a34a' }}>Saved</small>}
-          {thresholdError && <small style={{ color: '#dc2626' }}>{thresholdError}</small>}
+          {thresholdSaved && <Badge variant="success">Saved</Badge>}
+          {thresholdError && <Badge variant="danger">{thresholdError}</Badge>}
         </div>
 
-        <div className="d-flex align-items-center" style={{ gap: 12 }}>
-          <div className="d-flex align-items-center" style={{ gap: 5, minWidth: 180 }}>
-            <span style={{ fontWeight: 500, fontSize: 14 }}>Marking window:</span>
+        <div className="attendance-report__setting-row">
+          <div className="attendance-report__setting-label">
+            <span>Marking window:</span>
             <InfoTip
               id="tip-marking-window"
               text="Number of days after a session ends during which admins can still mark attendance. After this window closes, the roster becomes read-only."
             />
           </div>
-          <div className="d-flex align-items-center" style={{ gap: 4 }}>
+          <div className="attendance-report__setting-field">
             <Form.Control
               type="number"
               min={0}
               value={markingWindowValue}
               onChange={(e) => { setMarkingWindowSaved(false); setMarkingWindowValue(Number(e.target.value)); }}
-              style={{ width: 72 }}
+              className="attendance-report__setting-input"
               aria-label="Marking window days"
               disabled={markingWindowSaving}
             />
-            <span style={{ fontSize: 14 }}>days</span>
+            <span>days</span>
           </div>
           {markingWindowChanged && (
             <Button
@@ -351,15 +337,15 @@ const CourseSummaryReport = () => {
               {markingWindowSaving ? <Spinner animation="border" size="sm" /> : 'Save'}
             </Button>
           )}
-          {markingWindowSaved && <small style={{ color: '#16a34a' }}>Saved</small>}
-          {markingWindowError && <small style={{ color: '#dc2626' }}>{markingWindowError}</small>}
+          {markingWindowSaved && <Badge variant="success">Saved</Badge>}
+          {markingWindowError && <Badge variant="danger">{markingWindowError}</Badge>}
         </div>
       </div>
 
       {/* ── Section 2: Attendance Summary ── */}
       <div>
         <SectionHeading>Attendance Summary</SectionHeading>
-        <p className="text-muted mb-3">
+        <p className="text-muted small mb-3">
           Aggregated attendance per learner for a course — present / absent / leave /
           pending counts and attendance percentage across all completed sessions.
         </p>
@@ -380,7 +366,7 @@ const CourseSummaryReport = () => {
           </Alert>
         )}
 
-        <div className="mb-4" style={{ minWidth: 280, maxWidth: 400 }}>
+        <div className="attendance-report__course-picker mb-4">
           <SearchableSelect
             id="summary-course"
             label="Course"
@@ -409,37 +395,28 @@ const CourseSummaryReport = () => {
 
         {selectedCourseId && !summaryLoading && rows.length > 0 && (
           <>
-            <div className="d-flex align-items-center mb-3" style={{ gap: 6 }}>
+            <div className="attendance-report__filters mb-3">
               {[
                 {
-                  key: 'all', label: 'All', count: rows.length, activeColor: '#2563eb',
+                  key: 'all', tone: 'all', label: 'All', count: rows.length,
                 },
                 {
-                  key: 'is_at_risk', label: 'At Risk', count: atRiskCount, activeColor: '#dc2626',
+                  key: 'is_at_risk', tone: 'at-risk', label: 'At Risk', count: atRiskCount,
                 },
               ].map(({
-                key, label, count, activeColor,
+                key, tone, label, count,
               }) => {
                 const active = filterMode === key;
                 return (
                   <button
                     key={key}
                     type="button"
+                    aria-pressed={active}
                     onClick={() => setFilterMode(key)}
-                    style={{
-                      padding: '5px 14px',
-                      borderRadius: 20,
-                      border: `1.5px solid ${active ? activeColor : '#d1d5db'}`,
-                      background: active ? activeColor : '#fff',
-                      color: active ? '#fff' : '#374151',
-                      fontSize: 13,
-                      fontWeight: 500,
-                      cursor: 'pointer',
-                      lineHeight: 1.4,
-                    }}
+                    className={`attendance-report__filter-pill attendance-report__filter-pill--${tone}${active ? ' attendance-report__filter-pill--active' : ''}`}
                   >
                     {label}
-                    <span style={{ marginLeft: 6, opacity: 0.85, fontWeight: 400 }}>
+                    <span className="attendance-report__filter-count">
                       ({count})
                     </span>
                   </button>
