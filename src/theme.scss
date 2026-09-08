@@ -1,0 +1,140 @@
+// Theme-aware palette for this MFE's own styling.
+//
+// The platform sets `data-paragon-theme-variant="dark"` on `<html>` and reloads
+// to pull in the dark Paragon stylesheet, which flips Paragon's own tokens but
+// knows nothing about the colours we hard-code ourselves. Anything of ours that
+// names a neutral surface, border or text colour therefore has to be declared
+// here, in both variants, or it stays light on a dark page.
+//
+// The light values are the ones the app already shipped, so light mode is
+// unchanged. The dark values are anchored on the platform's dark page
+// background (#0D0D0E) and body text (#CCCCCC), so our surfaces read as
+// sitting just above the page rather than punching holes in it.
+//
+// Brand navy, accent blue and the session/type colours are deliberately absent:
+// they carry meaning, read correctly on both grounds, and must not flip.
+
+:root {
+  --sessions-surface: #FFFFFF;
+  --sessions-surface-muted: #E9ECEF;
+  --sessions-surface-subtle: #F8F9FA;
+  --sessions-border: #DEE2E6;
+  --sessions-border-strong: #C8CFD6;
+  --sessions-divider: #F0F0F0;
+  --sessions-text: #212529;
+  --sessions-text-secondary: #495057;
+  --sessions-text-muted: #6C757D;
+  --sessions-text-subtle: #ADB5BD;
+  --sessions-text-faint: #9CA3AF;
+  // Accent text sitting directly on the page surface. The light values are
+  // the ones already in use; the dark ones are lightened to stay legible on a
+  // near-black ground, where the originals fall under 3:1.
+  --sessions-text-danger: #DC2626;
+  --sessions-text-warning: #D97706;
+  --sessions-text-success: #198754;
+  // Role labels are small uppercase text on the page surface; the light
+  // values are the shipped ones, the dark ones clear 3:1 on a near-black ground.
+  --sessions-role-super-admin: #C53030;
+  --sessions-role-admin: #EA580C;
+  --sessions-role-middle-admin: #D97706;
+  --sessions-role-data-admin: #2563EB;
+  --sessions-role-instructor: #16A34A;
+  --sessions-role-trainee: #6B7280;
+  --sessions-role-default: #4B5563;
+  --sessions-panel-bg: #E1DDDB;
+  --sessions-hover-tint: #F0F4FB;
+  --sessions-hover-tint-strong: #EEF2FB;
+
+  // Brand navy is legible on a white surface but not on a dark one, so the
+  // navy-on-surface uses (outline buttons, links) get their own entry.
+  --sessions-brand-text: #1F3B6E;
+
+  // A card is separated from the page by a shadow in light mode; on a dark
+  // ground a shadow is invisible, so a hairline ring stands in. Composed into
+  // `box-shadow` so neither variant changes the box's size.
+  --sessions-card-ring: 0 0 0 0 rgb(0 0 0 / 0);
+
+  // Status pills: a pale fill carrying dark text.
+  --sessions-status-info-bg: #E8F4FD;
+  --sessions-status-info-text: #0C5460;
+  --sessions-status-warning-bg: #FFF3CD;
+  --sessions-status-warning-text: #664D03;
+  --sessions-status-success-bg: #D1E7DD;
+  --sessions-status-success-text: #0A3622;
+  --sessions-status-neutral-bg: #E9ECEF;
+  --sessions-status-neutral-text: #495057;
+
+  // Calendar-specific fills, same pale-fill/dark-text shape.
+  --sessions-cal-today-bg: #EEF2FF;
+  --sessions-cal-graded-bg: #FFFBEB;
+  --sessions-cal-graded-text: #92400E;
+  --sessions-cal-graded-border: #F59E0B;
+  --sessions-cal-holiday-bg: #FEF3C7;
+  --sessions-cal-holiday-border: #FDE68A;
+  --sessions-cal-leave-bg: #D1FAE5;
+  --sessions-cal-leave-text: #065F46;
+  --sessions-cal-onleave-bg: #E5E7EB;
+  --sessions-cal-onleave-text: #6B7280;
+  --sessions-cal-popover-header-bg: #E7F1FF;
+  --sessions-cal-popover-header-border: #C5D9F2;
+}
+
+[data-paragon-theme-variant="dark"] {
+  --sessions-surface: #17181B;
+  --sessions-surface-muted: #1F2125;
+  --sessions-surface-subtle: #131417;
+  --sessions-border: #33363C;
+  --sessions-border-strong: #42464D;
+  --sessions-divider: #2A2C31;
+  --sessions-text: #E8E8E8;
+  --sessions-text-secondary: #C9CBCF;
+  --sessions-text-muted: #9A9DA3;
+  --sessions-text-subtle: #7A7D83;
+  --sessions-text-faint: #7A7D83;
+  --sessions-text-danger: #F1959B;
+  --sessions-text-warning: #FFB84D;
+  --sessions-text-success: #75B798;
+  --sessions-role-super-admin: #F1959B;
+  --sessions-role-admin: #FFAB70;
+  --sessions-role-middle-admin: #FFB84D;
+  --sessions-role-data-admin: #9EC5FE;
+  --sessions-role-instructor: #75B798;
+  --sessions-role-trainee: #A8ABB0;
+  --sessions-role-default: #A8ABB0;
+  --sessions-panel-bg: #1F2125;
+  --sessions-hover-tint: #22252B;
+  --sessions-hover-tint-strong: #272B32;
+  --sessions-brand-text: #9EC5FE;
+  --sessions-card-ring: 0 0 0 1px #33363C;
+
+  // Dark mode inverts the pill: a translucent wash of the same hue, with the
+  // hue carried by the text instead of the fill.
+  --sessions-status-info-bg: rgb(13 110 253 / .22);
+  --sessions-status-info-text: #9EC5FE;
+  --sessions-status-warning-bg: rgb(255 193 7 / .2);
+  --sessions-status-warning-text: #FFDA6A;
+  --sessions-status-success-bg: rgb(25 135 84 / .25);
+  --sessions-status-success-text: #75B798;
+  --sessions-status-neutral-bg: rgb(255 255 255 / .1);
+  --sessions-status-neutral-text: #C9CBCF;
+  --sessions-cal-today-bg: rgb(79 70 229 / .28);
+  --sessions-cal-graded-bg: rgb(245 158 11 / .18);
+  --sessions-cal-graded-text: #FCD34D;
+  --sessions-cal-graded-border: #B45309;
+  --sessions-cal-holiday-bg: rgb(245 158 11 / .18);
+  --sessions-cal-holiday-border: rgb(245 158 11 / .45);
+  --sessions-cal-leave-bg: rgb(16 185 129 / .22);
+  --sessions-cal-leave-text: #6EE7B7;
+  --sessions-cal-onleave-bg: rgb(255 255 255 / .12);
+  --sessions-cal-onleave-text: #A8ABB0;
+  --sessions-cal-popover-header-bg: rgb(13 110 253 / .2);
+  --sessions-cal-popover-header-border: rgb(13 110 253 / .4);
+}
+
+// Bootstrap's `.bg-light` is a named colour rather than a themed surface: it
+// stays light on a dark page and drags the theme's (by then light) body text
+// along with it. This is the same panel, themed.
+.sessions-panel {
+  background-color: var(--sessions-panel-bg);
+  color: var(--sessions-text);
+}
