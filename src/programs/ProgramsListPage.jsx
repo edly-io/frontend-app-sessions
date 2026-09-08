@@ -39,9 +39,18 @@ const ProgramsListPage = () => {
   const defaultSort = isAdmin ? 'az' : 'enrolled';
   const [search, setSearch] = useState('');
   const [statusFilters, setStatusFilters] = useState(new Set());
-  const [sortOrder, setSortOrder] = useState(defaultSort);
+  const [sortOrder, setSortOrder] = useState('');
   const [refineOpen, setRefineOpen] = useState(false);
   const refineRef = useRef(null);
+
+  // Sync sortOrder to the correct default once the user role is known.
+  // On first render config is undefined, so isAdmin is false and defaultSort
+  // would be 'enrolled'; resetting here avoids a stale value showing as active.
+  useEffect(() => {
+    if (config !== undefined) {
+      setSortOrder((prev) => (prev === '' ? defaultSort : prev));
+    }
+  }, [config]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!refineOpen) { return undefined; }
@@ -74,7 +83,8 @@ const ProgramsListPage = () => {
       list = list.filter((p) => statusFilters.has(p.status ?? 'draft'));
     }
 
-    if (sortOrder === 'enrolled') {
+    const effectiveSort = sortOrder || defaultSort;
+    if (effectiveSort === 'enrolled') {
       list.sort((a, b) => {
         if (!a.enrolledAt && !b.enrolledAt) { return 0; }
         if (!a.enrolledAt) { return 1; }
@@ -83,7 +93,7 @@ const ProgramsListPage = () => {
       });
     } else {
       list.sort((a, b) => (
-        sortOrder === 'az'
+        effectiveSort === 'az'
           ? a.name.localeCompare(b.name)
           : b.name.localeCompare(a.name)
       ));
@@ -93,7 +103,8 @@ const ProgramsListPage = () => {
   }, [programs, search, statusFilters, sortOrder]);
 
   const hasActiveFilter = search.trim() || statusFilters.size > 0;
-  const activeRefineCount = statusFilters.size + (sortOrder !== defaultSort ? 1 : 0);
+  const effectiveSortOrder = sortOrder || defaultSort;
+  const activeRefineCount = statusFilters.size + (effectiveSortOrder !== defaultSort ? 1 : 0);
 
   const renderBody = () => {
     if (loading) {
@@ -212,7 +223,7 @@ const ProgramsListPage = () => {
                             type="radio"
                             className="programs-refine__radio"
                             name="programs-sort"
-                            checked={sortOrder === value}
+                            checked={effectiveSortOrder === value}
                             onChange={() => setSortOrder(value)}
                           />
                           {label}
