@@ -19,6 +19,21 @@ export const markAttendance = async (sessionId, records) => {
 };
 
 /**
+ * Trigger an on-demand Zoom attendance sync for a session. Admin-only.
+ * Fetches the meeting's participants and records attendance. Idempotent.
+ *
+ * POST /fbr/api/attendance/v1/sessions/{session_id}/sync-attendance/
+ * Returns: { present, unmatched, synced, message }
+ */
+export const syncSessionAttendance = async (sessionId) => {
+  const client = getAuthenticatedHttpClient();
+  const { data } = await client.post(
+    `${getBaseUrl()}/sessions/${sessionId}/sync-attendance/`,
+  );
+  return data;
+};
+
+/**
  * Cross-session attendance history for the authenticated learner.
  *
  * GET /fbr/api/attendance/v1/records/me/

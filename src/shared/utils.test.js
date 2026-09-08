@@ -9,6 +9,7 @@ import {
   isLeaveStartDatePast,
   formatLeaveDate,
   formatLeaveRange,
+  toLocalDateStr,
 } from './utils';
 
 describe('formatDateTime', () => {
@@ -255,5 +256,29 @@ describe('formatLeaveRange', () => {
 
   it('returns empty string when there is no start date', () => {
     expect(formatLeaveRange({})).toBe('');
+  });
+});
+
+describe('toLocalDateStr', () => {
+  // Timezone-independent: the CI runner is UTC, so we can't assert a specific
+  // UTC/local divergence. Instead we verify the guarantee that matters — the
+  // returned string tracks the date's LOCAL calendar day — which holds in any
+  // timezone. (The bug being fixed was using toISOString(), which reports the
+  // UTC day and shifts a day in non-zero offsets.)
+  const localDay = (d) => {
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  };
+
+  it('formats a midnight-local date as its local calendar day', () => {
+    const midnightLocal = new Date(2026, 8, 11); // Sept 11 2026, 00:00 local
+    expect(toLocalDateStr(midnightLocal)).toBe('2026-09-11');
+  });
+
+  it('tracks the local day, not the UTC day', () => {
+    // An instant a couple of hours into UTC Sept 11; toLocalDateStr must equal
+    // the date's own local components in whatever zone the test runs.
+    const d = new Date('2026-09-11T02:00:00Z');
+    expect(toLocalDateStr(d)).toBe(localDay(d));
   });
 });

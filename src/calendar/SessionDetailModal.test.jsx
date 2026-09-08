@@ -69,14 +69,52 @@ it('renders "Join meeting" button when join URL is set', () => {
   expect(screen.getByRole('button', { name: /join meeting/i })).toBeInTheDocument();
 });
 
-it('renders "Start as host" button when start URL is set', () => {
+it('renders "Join meeting" when only the trainee\'s own my_join_url is set', () => {
   wrap({
     ...BASE_SESSION,
     meeting_id: 'mid',
-    meeting_start_url: 'https://zoom.us/s/123',
+    my_join_url: 'https://zoom.us/w/mine',
+  });
+  expect(screen.getByRole('button', { name: /join meeting/i })).toBeInTheDocument();
+});
+
+it('joins via the trainee\'s own my_join_url, not the shared link', () => {
+  const openSpy = jest.spyOn(window, 'open').mockImplementation(() => {});
+  wrap({
+    ...BASE_SESSION,
+    meeting_id: 'mid',
+    my_join_url: 'https://zoom.us/w/mine',
+    meeting_join_url: 'https://zoom.us/j/shared',
+  });
+  fireEvent.click(screen.getByRole('button', { name: /join meeting/i }));
+  expect(openSpy.mock.calls[0][0]).toBe('https://zoom.us/w/mine');
+  openSpy.mockRestore();
+});
+
+it('renders "Start as host" for an admin on an upcoming Zoom session', () => {
+  // The host start link is fetched on demand, so it is no longer on the session;
+  // the button is gated on the viewer being a host (admin/instructor) of an
+  // upcoming Zoom meeting.
+  wrap({
+    ...BASE_SESSION,
+    scheduled_start_time: '2999-06-01T10:00:00.000Z',
+    scheduled_end_time: '2999-06-01T11:00:00.000Z',
+    meeting_id: 'mid',
+    meeting_join_url: 'https://zoom.us/j/123',
+  }, { canManageSessions: true });
+  expect(screen.getByRole('button', { name: /start as host/i })).toBeInTheDocument();
+});
+
+it('shows "Join meeting" (not Start) for a non-host viewer', () => {
+  wrap({
+    ...BASE_SESSION,
+    scheduled_start_time: '2999-06-01T10:00:00.000Z',
+    scheduled_end_time: '2999-06-01T11:00:00.000Z',
+    meeting_id: 'mid',
     meeting_join_url: 'https://zoom.us/j/123',
   });
-  expect(screen.getByRole('button', { name: /start as host/i })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /start as host/i })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /join meeting/i })).toBeInTheDocument();
 });
 
 it('renders meeting password when provided', () => {
