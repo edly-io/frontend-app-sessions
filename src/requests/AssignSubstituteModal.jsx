@@ -100,6 +100,7 @@ const AssignSubstituteModal = ({
       isOpen={isOpen}
       onClose={onClose}
       title="Assign Substitute"
+      isFullscreenOnMobile
       footerNode={(
         <>
           <Button variant="tertiary" onClick={onClose} disabled={submitting}>

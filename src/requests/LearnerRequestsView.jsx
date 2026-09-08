@@ -4,7 +4,7 @@ import React, {
 import PropTypes from 'prop-types';
 import { useParams } from 'react-router-dom';
 import {
-  Alert, Badge, Button, Container, DataTable, Form, Spinner,
+  Alert, Badge, Button, Col, Container, DataTable, Form, Row, Spinner,
 } from '@openedx/paragon';
 import { Add } from '@openedx/paragon/icons';
 
@@ -18,6 +18,8 @@ import {
   REQUEST_TYPE_VARIANTS,
 } from '../shared/constants';
 import { extractApiError, formatDateTime } from '../shared/utils';
+import SectionHeading from '../shared/SectionHeading';
+import './requests.scss';
 import CreateRequestModal from './CreateRequestModal';
 import RequestDetailCell from './RequestDetailCell';
 import LeaveUsageSummary from './LeaveUsageSummary';
@@ -27,35 +29,15 @@ const PAGE_SIZE = 15;
 
 const TRUNCATE_AT = 40;
 
-const SectionHeading = ({ children }) => (
-  <h3 style={{
-    fontSize: 19,
-    fontWeight: 700,
-    color: '#1e40af',
-    borderBottom: '2px solid #bfdbfe',
-    paddingBottom: 10,
-    marginBottom: 20,
-    marginTop: 0,
-    letterSpacing: '-0.01em',
-  }}
-  >
-    {children}
-  </h3>
-);
-
-SectionHeading.propTypes = {
-  children: PropTypes.node.isRequired,
-};
-
 const CollapsibleText = ({ text, muted }) => {
   const [expanded, setExpanded] = useState(false);
   const cls = muted ? 'text-muted' : 'text-break';
-  const sz = muted ? '0.875rem' : undefined;
+  const sz = muted ? ' requests-view__collapsible--muted' : '';
   if (!text || text.length <= TRUNCATE_AT) {
-    return <span className={cls} style={{ fontSize: sz }}>{text}</span>;
+    return <span className={`${cls}${sz}`}>{text}</span>;
   }
   return (
-    <span style={{ fontSize: sz }}>
+    <span className={sz.trim()}>
       <span className={cls}>
         {expanded ? text : `${text.slice(0, TRUNCATE_AT)}…`}
       </span>
@@ -63,15 +45,7 @@ const CollapsibleText = ({ text, muted }) => {
       <button
         type="button"
         onClick={() => setExpanded((p) => !p)}
-        style={{
-          background: 'none',
-          border: 'none',
-          padding: 0,
-          fontSize: 'inherit',
-          color: '#374151',
-          cursor: 'pointer',
-          textDecoration: 'underline',
-        }}
+        className="requests-view__collapsible-toggle"
       >
         {expanded ? 'less' : 'more'}
       </button>
@@ -176,7 +150,7 @@ const LearnerRequestsView = ({ lockedType }) => {
         if (!attachment) { return <span className="text-muted">—</span>; }
         const filename = decodeURIComponent(attachment.split('/').pop() || 'file');
         return (
-          <a href={attachment} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.875rem' }}>
+          <a href={attachment} target="_blank" rel="noopener noreferrer" className="requests-view__attachment-link">
             {filename}
           </a>
         );
@@ -193,7 +167,7 @@ const LearnerRequestsView = ({ lockedType }) => {
         if (confirmAction?.id === req.id) {
           const btnVariant = confirmAction.kind === 'delete' ? 'danger' : 'warning';
           return (
-            <span style={{ display: 'flex', gap: 4 }}>
+            <span className="requests-view__row-actions">
               <Button
                 variant={btnVariant}
                 size="sm"
@@ -308,57 +282,84 @@ const LearnerRequestsView = ({ lockedType }) => {
         <SectionHeading>Requests</SectionHeading>
       </div>
 
-      <div className="d-flex align-items-center flex-wrap mb-3" style={{ gap: 8 }}>
-        <Form.Control
-          type="text"
-          value={filterQ}
-          onChange={(e) => setFilterQ(e.target.value)}
-          placeholder="Search..."
-          style={{ width: 180 }}
-        />
-        <div className="d-flex align-items-center flex-wrap ml-auto" style={{ gap: 8 }}>
+      <Row className="requests-filters align-items-end">
+        <Col xs={12} sm={6} lg={3} className="mb-2">
+          <Form.Label htmlFor="my-requests-search" className="requests-filters__label">
+            Search
+          </Form.Label>
           <Form.Control
+            id="my-requests-search"
+            type="text"
+            value={filterQ}
+            onChange={(e) => setFilterQ(e.target.value)}
+            placeholder="Search..."
+          />
+        </Col>
+
+        <Col xs={12} sm={6} md={3} lg={2} className="mb-2">
+          <Form.Label htmlFor="my-requests-status" className="requests-filters__label">
+            Status
+          </Form.Label>
+          <Form.Control
+            id="my-requests-status"
             as="select"
             value={filterState}
             onChange={(e) => setFilterState(e.target.value)}
-            style={{ width: 'auto' }}
           >
             <option value="">All statuses</option>
             {Object.entries(REQUEST_STATUS_LABELS).map(([value, label]) => (
               <option key={value} value={value}>{label}</option>
             ))}
           </Form.Control>
-          {!lockedType && (
+        </Col>
+
+        {!lockedType && (
+          <Col xs={12} sm={6} md={3} lg={2} className="mb-2">
+            <Form.Label htmlFor="my-requests-type" className="requests-filters__label">
+              Type
+            </Form.Label>
             <Form.Control
+              id="my-requests-type"
               as="select"
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
-              style={{ width: 'auto' }}
             >
               <option value="">All types</option>
               {Object.entries(REQUEST_TYPE_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>
               ))}
             </Form.Control>
-          )}
-          <div className="d-flex align-items-center" style={{ gap: 4 }}>
-            <small className="text-muted text-nowrap">Submission date:</small>
-            <Form.Control
-              type="date"
-              value={filterStartDate}
-              onChange={(e) => setFilterStartDate(e.target.value)}
-              style={{ width: 'auto' }}
-              aria-label="From date"
-            />
-            <span className="text-muted">–</span>
-            <Form.Control
-              type="date"
-              value={filterEndDate}
-              min={filterStartDate || undefined}
-              onChange={(e) => setFilterEndDate(e.target.value)}
-              style={{ width: 'auto' }}
-              aria-label="To date"
-            />
+          </Col>
+        )}
+
+        <Col xs={12} sm="auto" className="mb-2">
+          <span className="requests-filters__label">Submission date</span>
+          <div className="requests-filters__dates">
+            <div className="requests-filters__date-field">
+              <Form.Label htmlFor="my-requests-date-from" className="requests-filters__date-label">
+                From
+              </Form.Label>
+              <Form.Control
+                id="my-requests-date-from"
+                type="date"
+                value={filterStartDate}
+                onChange={(e) => setFilterStartDate(e.target.value)}
+                className="requests-filters__date"
+              />
+            </div>
+            <div className="requests-filters__date-field">
+              <Form.Label htmlFor="my-requests-date-to" className="requests-filters__date-label">
+                To
+              </Form.Label>
+              <Form.Control
+                id="my-requests-date-to"
+                type="date"
+                value={filterEndDate}
+                min={filterStartDate || undefined}
+                onChange={(e) => setFilterEndDate(e.target.value)}
+                className="requests-filters__date"
+              />
+            </div>
             {(filterStartDate || filterEndDate) && (
               <Button
                 variant="tertiary"
@@ -369,21 +370,25 @@ const LearnerRequestsView = ({ lockedType }) => {
               </Button>
             )}
           </div>
-          <Button
-            variant="primary"
-            size="sm"
-            iconBefore={Add}
-            onClick={() => openModal('new-request')}
-          >
-            New request
-          </Button>
-        </div>
+        </Col>
+      </Row>
+
+      <div className="d-flex mb-3">
+        <Button
+          variant="primary"
+          size="sm"
+          iconBefore={Add}
+          className="ml-auto flex-shrink-0"
+          onClick={() => openModal('new-request')}
+        >
+          New request
+        </Button>
       </div>
 
       {count === 0 ? (
         <Alert variant="info">No requests yet. Use &quot;New request&quot; to get started.</Alert>
       ) : (
-        <div className="sticky-header-table">
+        <div className="sticky-header-table sessions-table-scroll">
           <DataTable
             key={`${filterState}-${filterType}-${filterQ}-${filterStartDate}-${filterEndDate}`}
             isPaginated

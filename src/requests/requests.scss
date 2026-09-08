@@ -1,0 +1,198 @@
+@use "@openedx/paragon/styles/css/core/custom-media-breakpoints" as paragonCustomMediaBreakpoints;
+
+.requests-view {
+  &__collapsible--muted {
+    font-size: .875rem;
+  }
+
+  &__collapsible-toggle {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: inherit;
+    color: var(--sessions-text-secondary);
+    cursor: pointer;
+    text-decoration: underline;
+  }
+
+  &__attachment-link {
+    font-size: .875rem;
+  }
+
+  &__row-actions {
+    display: flex;
+    gap: .4rem;
+  }
+
+  &__inline-status {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+  }
+
+  &__leave-list {
+    padding-left: 20px;
+    margin: 0;
+  }
+
+  &__leave-item {
+    margin-bottom: 10px;
+  }
+
+  // Paragon's `text-warning` is a pure yellow that fails on white, so the
+  // original amber is kept here.
+  &__leave-count--some {
+    color: var(--sessions-text-warning);
+  }
+
+  &__leave-count--none {
+    color: var(--sessions-text-muted);
+  }
+
+  &__usage-meter {
+    width: 100%;
+    max-width: 120px;
+    height: 6px;
+    background: var(--sessions-surface-muted);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  &__usage-meter-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: #3B82F6;
+
+    &--over {
+      background: #EF4444;
+    }
+  }
+
+  &__usage-count {
+    font-weight: 600;
+    margin-bottom: 4px;
+
+    &--over {
+      color: var(--sessions-text-danger);
+    }
+  }
+
+  &__cell-text {
+    font-size: 13px;
+  }
+
+  &__cell-meta {
+    font-size: 12px;
+  }
+
+  &__confirm-text {
+    color: var(--sessions-text-secondary);
+  }
+
+  &__usage-card {
+    border: 1px solid var(--sessions-border);
+    border-radius: 6px;
+    padding: 12px 16px;
+  }
+
+  &__usage-card-title {
+    font-weight: 600;
+    font-size: 14px;
+  }
+
+  &__usage-card-value {
+    font-size: 13px;
+
+    &--over {
+      color: var(--sessions-text-danger);
+      font-weight: 600;
+    }
+  }
+
+  &__usage-card-meter {
+    height: 8px;
+    background: var(--sessions-surface-muted);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 6px;
+  }
+
+  &__usage-card-warning {
+    color: var(--sessions-text-danger);
+    font-size: 13px;
+    margin-top: 6px;
+  }
+
+  &__subheading {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+}
+
+// Filter rows are laid out with Paragon's grid (`Row`/`Col`), so each control's
+// width comes from its column rather than from a width override. Only what the
+// grid cannot express lives here: the label type scale and the intrinsic widths
+// of the date and number inputs.
+.requests-filters {
+  // A native date input will not shrink below the intrinsic width of its own
+  // fields, so two of them side by side overflow a phone-width column. Below
+  // `sm` the pair stacks; from `sm` it is a row of two intrinsic-width inputs.
+  &__dates {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: .375rem;
+
+    @media (--pgn-size-breakpoint-min-width-sm) {
+      flex-direction: row;
+      align-items: center;
+    }
+  }
+
+  &__date-field {
+    display: flex;
+    align-items: center;
+    gap: .375rem;
+    min-width: 0;
+  }
+
+  // A date needs about ten characters and no more.
+  &__date.form-control {
+    min-width: 0;
+
+    @media (--pgn-size-breakpoint-min-width-sm) {
+      flex: 0 0 auto;
+      width: 10.25rem;
+    }
+  }
+
+  &__number.form-control {
+    width: 5.5rem;
+  }
+}
+
+// Element-qualified so the field labels' type scale wins over Paragon's own
+// `.pgn__form-label`, whichever order the two stylesheets land in.
+label.requests-filters__label,
+span.requests-filters__label {
+  display: block;
+  margin-bottom: .25rem;
+  font-size: .8rem;
+  line-height: 1.4;
+  color: var(--sessions-text-muted);
+  white-space: nowrap;
+}
+
+// The From/To labels sit beside their input rather than above it, so that the
+// stacked pair still reads as one range.
+label.requests-filters__date-label {
+  flex: 0 0 auto;
+  // A shared floor lines the two inputs up with each other once stacked.
+  min-width: 2.5rem;
+  margin-bottom: 0;
+  font-size: .8rem;
+  line-height: 1.4;
+  color: var(--sessions-text-muted);
+  white-space: nowrap;
+}

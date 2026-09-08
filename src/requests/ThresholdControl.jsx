@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
-import { Button, Form, Spinner } from '@openedx/paragon';
+import {
+  Badge, Button, Col, Form, Row, Spinner,
+} from '@openedx/paragon';
 import { updateProgram } from '../app/api';
+import './requests.scss';
 
 const ThresholdControl = ({ programKey, initialThreshold, onUpdate }) => {
   const [value, setValue] = useState(initialThreshold);
@@ -30,28 +33,38 @@ const ThresholdControl = ({ programKey, initialThreshold, onUpdate }) => {
   };
 
   return (
-    <div className="d-flex align-items-center flex-wrap" style={{ gap: 8 }}>
-      <span style={{ fontWeight: 500, fontSize: 14 }}>Leave threshold:</span>
-      <Form.Control
-        type="number"
-        min={0}
-        value={value}
-        onChange={(e) => setValue(Number(e.target.value))}
-        style={{ width: 72 }}
-        aria-label="Leave threshold"
-        disabled={saving}
-      />
-      <Button
-        variant="outline-primary"
-        size="sm"
-        onClick={handleSave}
-        disabled={saving || value === initialThreshold}
-      >
-        {saving ? <Spinner animation="border" size="sm" /> : 'Save'}
-      </Button>
-      {saved && <small style={{ color: '#16a34a' }}>Saved</small>}
-      {error && <small style={{ color: '#dc2626' }}>{error}</small>}
-    </div>
+    <Row className="requests-filters align-items-end">
+      <Col xs="auto" className="mb-2">
+        <Form.Label htmlFor="leave-threshold" className="requests-filters__label">
+          Leave threshold
+        </Form.Label>
+        <Form.Control
+          id="leave-threshold"
+          type="number"
+          min={0}
+          value={value}
+          onChange={(e) => setValue(Number(e.target.value))}
+          className="requests-filters__number"
+          disabled={saving}
+        />
+      </Col>
+      <Col xs="auto" className="mb-2">
+        <Button
+          variant="outline-primary"
+          size="sm"
+          onClick={handleSave}
+          disabled={saving || value === initialThreshold}
+        >
+          {saving ? <Spinner animation="border" size="sm" /> : 'Save'}
+        </Button>
+      </Col>
+      {(saved || error) && (
+        <Col xs="auto" className="mb-2">
+          {saved && <Badge variant="success">Saved</Badge>}
+          {error && <Badge variant="danger">{error}</Badge>}
+        </Col>
+      )}
+    </Row>
   );
 };
 
