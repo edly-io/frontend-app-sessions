@@ -2,62 +2,606 @@
 
 $month-gap: 4px;
 
+// ─── Month grid ───────────────────────────────────────────────────────────────
+
 .calendar-month {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   border: 1px solid var(--sessions-border);
   border-radius: 4px;
-}
 
-// Below `md` seven columns cannot hold a session chip, so the month keeps a
-// legible column width and this wrapper scrolls sideways instead of crushing
-// them. The day-name row scrolls with the grid because both sit inside it.
-.calendar-month__inner {
-  min-width: 44rem;
+  // Below `md` seven columns cannot hold a session chip, so the month keeps a
+  // legible column width and the wrapper scrolls sideways instead of crushing
+  // them. The day-name row scrolls with the grid because both sit inside it.
+  &__inner {
+    min-width: 44rem;
 
-  @media (--pgn-size-breakpoint-min-width-md) {
+    @media (--pgn-size-breakpoint-min-width-md) {
+      min-width: 0;
+    }
+  }
+
+  // One geometry for both rows: same padding, same gap, same column basis. Any
+  // divergence and the day numbers stop sitting under the weekday names.
+  &__head,
+  &__grid {
+    display: flex;
+    gap: $month-gap;
+    padding: $month-gap;
+  }
+
+  &__head {
+    flex-wrap: nowrap;
+    background: var(--sessions-surface);
+    border-bottom: 2px solid var(--sessions-border);
+  }
+
+  &__grid {
+    flex-wrap: wrap;
+  }
+
+  // `min-width: 0` is what keeps a long event chip from widening its own
+  // column: the default `auto` minimum floors the column at the chip's
+  // min-content width, which is how the columns drifted out from under the
+  // header.
+  &__col {
+    flex: 0 0 calc((100% - #{$month-gap * 6}) / 7);
     min-width: 0;
   }
+
+  &__day-name {
+    padding: 8px 4px;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+
+    &--weekend {
+      color: var(--sessions-text-subtle);
+    }
+
+    &--weekday {
+      color: var(--sessions-text-muted);
+    }
+  }
 }
 
-// One geometry for both rows: same padding, same gap, same column basis. Any
-// divergence and the day numbers stop sitting under the weekday names.
-.calendar-month__head,
-.calendar-month__grid {
-  display: flex;
-  gap: $month-gap;
-  padding: $month-gap;
-}
+// ─── Month day cell ───────────────────────────────────────────────────────────
 
-.calendar-month__head {
-  flex-wrap: nowrap;
-  background: var(--sessions-surface);
-  border-bottom: 2px solid var(--sessions-border);
-}
-
-.calendar-month__grid {
-  flex-wrap: wrap;
-}
-
-// `min-width: 0` is what keeps a long event chip from widening its own column:
-// the default `auto` minimum floors the column at the chip's min-content width,
-// which is how the columns drifted out from under the header.
-.calendar-month__col {
-  flex: 0 0 calc((100% - #{$month-gap * 6}) / 7);
+// A day is today, a weekend, or neither. These modifiers carry what used to be
+// computed in JS and handed to `style`.
+.calendar-day-cell {
   min-width: 0;
-}
+  border: 1px solid var(--sessions-border);
+  border-radius: 4px;
+  padding: 4px 6px;
 
-.calendar-month__day-name {
-  padding: 8px 4px;
-  font-size: 12px;
-  font-weight: 600;
-  text-align: center;
+  &--plain {
+    background: var(--sessions-surface);
+  }
 
   &--weekend {
-    color: var(--sessions-text-subtle);
+    background: var(--sessions-surface-subtle);
   }
 
-  &--weekday {
+  &--today {
+    background: var(--sessions-cal-today-bg);
+  }
+
+  &--clickable {
+    cursor: pointer;
+  }
+
+  &--outside {
+    opacity: .4;
+  }
+}
+
+.calendar-day-number {
+  width: 24px;
+  height: 24px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--sessions-text);
+  background: transparent;
+
+  &--today {
+    font-weight: 700;
+    color: #FFFFFF;
+    background: #0D6EFD;
+  }
+}
+
+// ─── Chips (month cells) ──────────────────────────────────────────────────────
+
+.calendar-chip {
+  border-radius: 3px;
+
+  &--holiday,
+  &--leave {
+    font-size: 10px;
+    padding: 1px 4px;
+    margin-bottom: 3px;
+  }
+
+  &--holiday {
+    color: var(--sessions-cal-graded-text);
+    background: var(--sessions-cal-holiday-bg);
+  }
+
+  &--leave {
+    color: var(--sessions-cal-leave-text);
+    background: var(--sessions-cal-leave-bg);
+  }
+
+  &--graded,
+  &--onleave,
+  &--session {
+    font-size: 11px;
+    padding: 1px 5px;
+    margin-bottom: 2px;
+  }
+
+  &--graded {
+    color: var(--sessions-cal-graded-text);
+    background: var(--sessions-cal-graded-bg);
+    border: 1px solid var(--sessions-cal-graded-border);
+    cursor: pointer;
+  }
+
+  // The same chip at the size the day popover uses.
+  &--graded-lg {
+    color: var(--sessions-cal-graded-text);
+    background: var(--sessions-cal-graded-bg);
+    border: 1px solid var(--sessions-cal-graded-border);
+    font-size: 12px;
+    padding: 4px 8px;
+    cursor: pointer;
+  }
+
+  &--onleave {
+    color: var(--sessions-cal-onleave-text);
+    background: var(--sessions-cal-onleave-bg);
+    text-decoration: line-through;
+  }
+
+  &--session {
+    color: #FFFFFF;
+    cursor: pointer;
+  }
+
+  &__inner {
+    gap: 2px;
+  }
+}
+
+// ─── Tags (time-grid holiday and leave markers) ───────────────────────────────
+
+.calendar-tag {
+  font-size: 9px;
+  border-radius: 2px;
+  padding: 0 3px;
+  margin-top: 2px;
+  line-height: 1.4;
+
+  &--holiday {
+    color: var(--sessions-cal-graded-text);
+    background: var(--sessions-cal-holiday-bg);
+  }
+
+  &--leave {
+    color: var(--sessions-cal-leave-text);
+    background: var(--sessions-cal-leave-bg);
+  }
+}
+
+// ─── Status dots ──────────────────────────────────────────────────────────────
+
+.calendar-dot {
+  &--sm {
+    width: 6px;
+    height: 6px;
+    min-width: 6px;
+  }
+
+  &--md {
+    width: 7px;
+    height: 7px;
+    min-width: 7px;
+    margin-top: 2px;
+  }
+
+  &--lg {
+    width: 8px;
+    height: 8px;
+    margin-top: 6px;
+  }
+
+  &--onleave {
+    background: #9CA3AF;
+  }
+}
+
+// ─── Popovers ─────────────────────────────────────────────────────────────────
+
+.calendar-popover {
+  box-shadow: 0 4px 16px rgb(0 0 0 / .18);
+  border: 1px solid var(--sessions-border-strong);
+  border-radius: 6px;
+
+  &--session {
+    max-width: 320px;
+  }
+
+  &--day {
+    max-width: 380px;
+    min-width: 260px;
+  }
+
+  &--graded {
+    max-width: 300px;
+    border-color: var(--sessions-cal-graded-border);
+  }
+
+  &__title {
+    padding: 8px 12px;
+    background: var(--sessions-cal-popover-header-bg);
+    border-bottom: 1px solid var(--sessions-cal-popover-header-border);
+
+    &--session {
+      font-size: 14px;
+    }
+
+    &--day {
+      font-size: 13px;
+    }
+
+    &--graded {
+      font-size: 13px;
+      color: var(--sessions-cal-graded-text);
+      background: var(--sessions-cal-graded-bg);
+      border-bottom-color: var(--sessions-cal-holiday-border);
+    }
+  }
+
+  &__title-count {
+    font-weight: 400;
+  }
+
+  &__content {
+    font-size: 13px;
+  }
+
+  &__scroll {
+    font-size: 13px;
+    max-height: 360px;
+  }
+
+  &__badges {
+    gap: 8px;
+  }
+
+  &__meta {
+    gap: 4px;
+  }
+
+  &__actions {
+    gap: 6px;
+  }
+}
+
+// ─── One session inside the day popover ───────────────────────────────────────
+
+.calendar-day-session {
+  gap: 8px;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--sessions-divider);
+
+  &__body {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__title {
+    font-weight: 600;
+  }
+
+  &__meta {
+    font-size: 12px;
+  }
+
+  &__note {
+    font-size: 12px;
     color: var(--sessions-text-muted);
   }
+
+  &__badges,
+  &__actions {
+    gap: 4px;
+  }
+}
+
+// ─── Graded (due) dates ───────────────────────────────────────────────────────
+
+.calendar-graded {
+  &__group--divided {
+    margin-top: 4px;
+    border-top: 1px solid var(--sessions-divider);
+  }
+
+  &__heading {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--sessions-cal-graded-text);
+    margin: 8px 4px 4px;
+    letter-spacing: .05em;
+  }
+
+  &__title {
+    font-weight: 600;
+    text-overflow: ellipsis;
+  }
+
+  &__meta {
+    font-size: 10px;
+    opacity: .75;
+    text-overflow: ellipsis;
+  }
+
+  &__more {
+    font-size: 10px;
+    color: var(--sessions-cal-graded-text);
+    margin-bottom: 2px;
+    line-height: 1.4;
+  }
+
+  &__badge {
+    font-size: 10px;
+    color: var(--sessions-cal-graded-text);
+    border: 1px solid var(--sessions-cal-graded-border);
+  }
+}
+
+// ─── Time grid (week and day views) ───────────────────────────────────────────
+
+.calendar-timegrid {
+  border: 1px solid var(--sessions-border);
+  border-radius: 4px;
+
+  &__head {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--sessions-surface);
+    border-bottom: 2px solid var(--sessions-border);
+  }
+
+  &__time-col {
+    width: 52px;
+  }
+
+  &__day {
+    flex: 1;
+    padding: 8px 4px;
+    font-size: 12px;
+    font-weight: 600;
+    border-left: 1px solid var(--sessions-border);
+
+    &--plain {
+      color: var(--sessions-text-muted);
+    }
+
+    &--weekend {
+      color: var(--sessions-text-subtle);
+    }
+
+    &--today {
+      color: #4F46E5;
+    }
+  }
+
+  &__body {
+    max-height: 580px;
+  }
+
+  &__canvas {
+    padding-top: 14px;
+  }
+
+  &__col {
+    flex: 1;
+    border-left: 1px solid var(--sessions-border);
+
+    &--plain {
+      background: var(--sessions-surface);
+    }
+
+    &--weekend {
+      background: var(--sessions-surface-subtle);
+    }
+
+    &--today {
+      background: var(--sessions-cal-today-bg);
+    }
+  }
+}
+
+.calendar-hour-label {
+  right: 6px;
+  font-size: 10px;
+  color: var(--sessions-text-faint);
+  line-height: 1;
+}
+
+.calendar-hour-line {
+  left: 0;
+  right: 0;
+  border-top: 1px solid var(--sessions-divider);
+}
+
+// ─── Positioned event blocks (time grid) ──────────────────────────────────────
+
+.calendar-event {
+  border-radius: 3px;
+  line-height: 1.25;
+
+  &--graded {
+    left: 2px;
+    right: 2px;
+    height: 22px;
+    z-index: 0;
+    font-size: 10px;
+    padding: 1px 4px;
+    color: var(--sessions-cal-graded-text);
+    background: var(--sessions-cal-graded-bg);
+    border: 1px solid var(--sessions-cal-graded-border);
+    cursor: pointer;
+  }
+
+  &--onleave,
+  &--session {
+    z-index: 1;
+    padding: 2px 6px;
+  }
+
+  &--onleave {
+    color: var(--sessions-cal-onleave-text);
+    background: var(--sessions-cal-onleave-bg);
+  }
+
+  &--session {
+    color: #FFFFFF;
+    cursor: pointer;
+  }
+
+  &__row {
+    gap: 3px;
+  }
+
+  // The title is clamped to whole lines by height. `-webkit-line-clamp` would
+  // need `display: -webkit-box`, a value stylelint's `value-no-vendor-prefix`
+  // rewrites to the inert `display: box`; a max-height in `em` against this
+  // line-height clamps the same way without it.
+  &__title {
+    display: block;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  &__time {
+    opacity: .85;
+    font-size: 10px;
+
+    &--xs {
+      opacity: .8;
+      font-size: 9px;
+    }
+  }
+}
+
+// ─── Toolbar ──────────────────────────────────────────────────────────────────
+
+.calendar-toolbar {
+  gap: 8px;
+
+  &__label {
+    font-weight: 600;
+    font-size: 16px;
+    min-width: 180px;
+  }
+
+  &__actions {
+    gap: 4px;
+  }
+
+  &__divider {
+    width: 1px;
+    height: 24px;
+    background: var(--sessions-border);
+    margin: 0 4px;
+  }
+}
+
+// ─── Odds and ends ────────────────────────────────────────────────────────────
+
+.calendar-view {
+  transition: opacity 120ms ease-out;
+
+  // Dimmed while a navigation re-fetch is in flight.
+  &--loading {
+    opacity: .6;
+  }
+}
+
+.calendar-link-button {
+  // Paragon's link Button, restyled as an inline hyperlink: always underlined,
+  // darkening on hover and focus. Compounded with .btn so the reset outranks
+  // Paragon's own button rules whichever order the two stylesheets land in.
+  &.btn {
+    // Back to a run of text: .btn is a centring flex box, which would pull the
+    // label off the left edge and shift it against the line box.
+    display: inline-block;
+    font: inherit;
+    color: #0D6EFD;
+    background: none;
+    text-decoration: underline;
+    border-radius: 0;
+    cursor: pointer;
+
+    &:hover,
+    &:focus {
+      color: #0A58CA;
+      text-decoration: underline;
+    }
+  }
+
+  // The "+N more" affordance at the foot of a day cell. display: block undoes
+  // .btn's flex centring, keeping the label left-aligned across the cell.
+  &--chip.btn {
+    display: block;
+    font-size: 11px;
+    margin-top: auto;
+  }
+}
+
+.calendar-action {
+  &--cancel {
+    color: #F0AD4E;
+  }
+
+  &--delete {
+    color: #DC3545;
+  }
+}
+
+.calendar-type-badge {
+  gap: 4px;
+}
+
+.calendar-badge-sm {
+  font-size: 10px;
+}
+
+.calendar-leave-tag {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--sessions-cal-leave-text);
+  background: var(--sessions-cal-leave-bg);
+  border-radius: 3px;
+  padding: 1px 5px;
+  margin-top: 2px;
+}
+
+.calendar-scroll-hint {
+  position: sticky;
+  bottom: 0;
+  pointer-events: none;
+  padding: 12px 0 6px;
+  font-size: 11px;
+  color: var(--sessions-text-muted);
+  letter-spacing: .02em;
+  background: linear-gradient(to bottom, transparent, var(--sessions-surface));
+}
+
+.calendar-strikethrough {
+  text-decoration: line-through;
 }
