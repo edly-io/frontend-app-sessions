@@ -249,6 +249,17 @@ const AttendanceRosterPage = () => {
 
   const windowOpen = sessionMeta?.marking_window_open ?? false;
 
+  // Zoom sync is only useful between the meeting ending (participant data
+  // exists) and the marking window closing (roster still editable). The
+  // backend enforces the same bounds; this just hides a button that would 400.
+  const sessionEnded = sessionMeta?.scheduled_end_time
+    ? new Date(sessionMeta.scheduled_end_time).getTime() < Date.now()
+    : false;
+  const canSyncFromZoom = isAdmin
+    && Boolean(sessionMeta?.meeting_id)
+    && sessionEnded
+    && windowOpen;
+
   // Remaining days: prefer nav state (set by PerCourseView), else compute from
   // scheduled_end_time (in roster response) + config marking_window_days.
   const markingWindowRemainingDays = useMemo(() => {
@@ -456,7 +467,7 @@ const AttendanceRosterPage = () => {
         </div>
       </div>
 
-      {isAdmin && sessionMeta?.meeting_id && (
+      {canSyncFromZoom && (
         <div className="d-flex align-items-center mb-3">
           <Button
             variant="outline-primary"
