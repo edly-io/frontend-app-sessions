@@ -1,0 +1,23 @@
+// Only what Paragon's components and utilities cannot express: the pill shape
+// and equal hit-area of the status toggle, the anchoring of the toast, and one
+// absolute type size.
+
+// Paragon's `.small` is percentage-based, so inside this card's 18px context it
+// resolves to 15.75px rather than the 14px these lines have always been. The
+// colour still comes from Paragon's `text-muted` / `text-success` utilities, so
+// only the size is pinned here.
+.attendance-meta {
+  font-size: .875rem;
+}
+
+.attendance-status-btn.btn {
+  min-width: 4.75rem;
+  border-radius: 20px;
+}
+
+.attendance-toast-anchor {
+  position: fixed;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  z-index: 9999;
+}

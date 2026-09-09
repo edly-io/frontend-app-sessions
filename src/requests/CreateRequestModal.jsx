@@ -478,6 +478,7 @@ const CreateRequestModal = ({
       isOpen={isOpen}
       onClose={handleClose}
       title="New Request"
+      isFullscreenOnMobile
       footerNode={footerNode}
     >
       <div ref={topRef} />

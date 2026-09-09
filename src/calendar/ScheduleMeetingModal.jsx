@@ -792,6 +792,9 @@ const ScheduleMeetingModal = ({
       isOpen={isOpen}
       onClose={handleClose}
       title={modalTitle}
+      hasCloseButton
+      isFullscreenOnMobile
+      isOverflowVisible={false}
       footerNode={(
         <>
           <Button variant="tertiary" onClick={handleClose}>

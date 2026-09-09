@@ -176,15 +176,15 @@ const HolidaysPage = () => {
 
   return (
     <Container className="py-3">
-      <div className="d-flex align-items-center justify-content-between mb-3">
-        <div>
+      <div className="d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between mb-3">
+        <div className="mb-2 mb-sm-0">
           <h2 className="mb-1">Public Holidays</h2>
           <p className="text-muted mb-0" style={{ fontSize: 13 }}>
             Holidays are shown as banners on the calendar. A soft reminder
             appears when scheduling a session on a holiday or weekend.
           </p>
         </div>
-        <Button variant="primary" iconBefore={Add} onClick={() => openModal('new-holiday')}>
+        <Button variant="primary" size="sm" iconBefore={Add} className="flex-shrink-0" onClick={() => openModal('new-holiday')}>
           New holiday
         </Button>
       </div>
@@ -206,6 +206,7 @@ const HolidaysPage = () => {
         </div>
       ) : (
         <DataTable
+          className="sessions-table-scroll"
           key={debouncedSearch}
           isPaginated
           manualPagination

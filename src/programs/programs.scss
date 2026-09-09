@@ -1,25 +1,49 @@
+// Mobile-first: bare declarations are the phone layout, `min-width` queries
+// layer wider ones on top. The `--pgn-size-breakpoint-*` names come from
+// `src/index.scss`, which `@import`s this file so the two compile together
+// and `postcss-custom-media` can resolve them; a stylesheet loaded on its own
+// must `@use` the breakpoints itself.
+
 // ─── Program List Page ────────────────────────────────────────────────────────
 
 .programs-page {
-  padding: 2.5rem 1.5rem;
+  padding: 1.5rem .5rem;
+
+  @media (--pgn-size-breakpoint-min-width-md) {
+    padding: 2.5rem .5rem;
+  }
 }
 
 .programs-page__title {
-  font-size: 1.875rem;
+  font-size: 1.5rem;
   font-weight: 700;
   margin-bottom: 1.25rem;
+  overflow-wrap: break-word;
+
+  @media (--pgn-size-breakpoint-min-width-md) {
+    font-size: 1.875rem;
+  }
 }
 
 .programs-filter-bar {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   gap: .75rem;
   margin-bottom: 1.75rem;
   width: 100%;
 
+  @media (--pgn-size-breakpoint-min-width-sm) {
+    flex-direction: row;
+    align-items: center;
+  }
+
   &__search {
-    flex: 1;
     min-width: 0;
+
+    @media (--pgn-size-breakpoint-min-width-sm) {
+      flex: 1;
+    }
   }
 }
 
@@ -27,29 +51,39 @@
 
 .programs-refine {
   position: relative;
-  flex-shrink: 0;
+
+  @media (--pgn-size-breakpoint-min-width-sm) {
+    flex-shrink: 0;
+  }
 
   &__btn {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: .4rem;
+    width: 100%;
     padding: .4375rem 1rem;
     font-size: .9375rem;
     font-weight: 500;
-    color: #1F3B6E;
-    background: #FFFFFF;
-    border: 2px solid #1F3B6E;
+    color: var(--sessions-brand-text);
+    background: var(--sessions-surface);
+    border: 2px solid var(--sessions-brand-text);
     border-radius: 6px;
     cursor: pointer;
     white-space: nowrap;
     transition: background 120ms, color 120ms;
 
+    @media (--pgn-size-breakpoint-min-width-sm) {
+      width: auto;
+      justify-content: flex-start;
+    }
+
     &:hover {
-      background: #F0F4FB;
+      background: var(--sessions-hover-tint);
     }
 
     &--active {
-      background: #EEF2FB;
+      background: var(--sessions-hover-tint-strong);
     }
   }
 
@@ -77,15 +111,22 @@
   &__panel {
     position: absolute;
     top: calc(100% + 8px);
+    left: 0;
     right: 0;
     z-index: 200;
     display: flex;
+    flex-direction: column;
     gap: 0;
-    background: #FFFFFF;
+    background: var(--sessions-surface);
     border-radius: 10px;
-    box-shadow: 0 4px 24px rgb(0 0 0 / .13);
-    min-width: 380px;
+    box-shadow: var(--sessions-card-ring), 0 4px 24px rgb(0 0 0 / .13);
     padding: 1.25rem 0;
+
+    @media (--pgn-size-breakpoint-min-width-sm) {
+      left: auto;
+      flex-direction: row;
+      min-width: 380px;
+    }
   }
 
   &__col {
@@ -94,16 +135,22 @@
   }
 
   &__divider {
-    width: 1px;
-    background: #E9ECEF;
-    margin: .25rem 0;
+    height: 1px;
+    background: var(--sessions-border);
+    margin: .875rem 1.5rem;
     flex-shrink: 0;
+
+    @media (--pgn-size-breakpoint-min-width-sm) {
+      width: 1px;
+      height: auto;
+      margin: .25rem 0;
+    }
   }
 
   &__heading {
     font-size: .9375rem;
     font-weight: 700;
-    color: #212529;
+    color: var(--sessions-text);
     margin-bottom: .875rem;
   }
 
@@ -112,7 +159,7 @@
     align-items: center;
     gap: .65rem;
     font-size: .9375rem;
-    color: #212529;
+    color: var(--sessions-text);
     cursor: pointer;
     margin-bottom: .625rem;
     user-select: none;
@@ -132,36 +179,70 @@
   }
 }
 
+// Counts match the previous max-width queries: 3 across tablet, 4 from `xl`.
+// Each basis subtracts the row's gaps before dividing, so the columns stay
+// exactly as wide as the grid version's. `flex-grow` stays 0 so a short last
+// row keeps the column width instead of stretching across it.
+$programs-grid-gap: 1.5rem;
+
 .programs-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: $programs-grid-gap;
 
-  @media (width <= 1199px) {
-    grid-template-columns: repeat(3, 1fr);
+  > * {
+    flex: 0 0 100%;
+    min-width: 0;
   }
 
-  @media (width <= 767px) {
-    grid-template-columns: repeat(2, 1fr);
+  // `.program-card` sets `height: 100%`, which resolved against the grid area
+  // before. Against a flex container's indefinite height it does not, and an
+  // explicit cross-size also opts the card out of `align-items: stretch`,
+  // leaving a row of ragged cards. Naming the card outranks that rule and
+  // hands the row height back to stretch.
+  > .program-card {
+    height: auto;
   }
 
-  @media (width <= 479px) {
-    grid-template-columns: 1fr;
+  @media (--pgn-size-breakpoint-min-width-sm) {
+    > * {
+      flex-basis: calc((100% - #{$programs-grid-gap}) / 2);
+    }
+  }
+
+  @media (--pgn-size-breakpoint-min-width-md) {
+    > * {
+      flex-basis: calc((100% - #{$programs-grid-gap * 2}) / 3);
+    }
+  }
+
+  @media (--pgn-size-breakpoint-min-width-xl) {
+    > * {
+      flex-basis: calc((100% - #{$programs-grid-gap * 3}) / 4);
+    }
   }
 }
 
 .programs-empty {
   display: flex;
   justify-content: center;
-  padding: 4rem 1rem;
+  padding: 2.5rem 1rem;
+
+  @media (--pgn-size-breakpoint-min-width-md) {
+    padding: 4rem 1rem;
+  }
 }
 
 .programs-empty__card {
   max-width: 420px;
   text-align: center;
-  padding: 2.5rem;
-  border: 1px solid #DEE2E6;
+  padding: 1.75rem 1.25rem;
+  border: 1px solid var(--sessions-border);
   border-radius: 8px;
+
+  @media (--pgn-size-breakpoint-min-width-md) {
+    padding: 2.5rem;
+  }
 }
 
 .programs-empty__title {
@@ -176,17 +257,18 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-width: 0;
   border: none;
   border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgb(0 0 0 / .1);
+  box-shadow: var(--sessions-card-ring), 0 2px 8px rgb(0 0 0 / .1);
   transition: box-shadow 150ms ease, transform 150ms ease;
   text-decoration: none;
-  color: inherit;
-  background: #FFFFFF;
+  color: var(--sessions-text);
+  background: var(--sessions-surface);
 
   &:hover {
-    box-shadow: 0 4px 16px rgb(0 0 0 / .15);
+    box-shadow: var(--sessions-card-ring), 0 4px 16px rgb(0 0 0 / .15);
     transform: translateY(-2px);
     text-decoration: none;
     color: inherit;
@@ -202,6 +284,7 @@
   display: flex;
   flex-direction: column;
   flex: 1;
+  min-width: 0;
   text-decoration: none;
   color: inherit;
 
@@ -214,11 +297,15 @@
 
 .program-card__banner {
   position: relative;
-  height: 200px;
+  height: 160px;
   background: linear-gradient(135deg, #1A3A6B 0%, #0D2249 100%);
   background-size: cover;
   background-position: center;
   flex-shrink: 0;
+
+  @media (--pgn-size-breakpoint-min-width-sm) {
+    height: 200px;
+  }
 }
 
 .program-card__banner-placeholder {
@@ -239,6 +326,7 @@
   position: absolute;
   top: 12px;
   left: 12px;
+  right: 12px;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -266,6 +354,7 @@
   gap: 8px;
   padding: 1.125rem;
   flex: 1;
+  min-width: 0;
 }
 
 .program-card__title {
@@ -273,25 +362,22 @@
   font-weight: 700;
   line-height: 1.3;
   margin-bottom: 0;
+  overflow-wrap: break-word;
 }
 
 .program-card__meta {
   font-size: .875rem;
-  color: #6C757D;
+  color: var(--sessions-text-muted);
   margin-bottom: 0;
-}
-
-.program-card__stats {
-  font-size: .8125rem;
-  color: #495057;
-  margin-bottom: .25rem;
+  overflow-wrap: break-word;
 }
 
 .program-card__description {
   font-size: .875rem;
-  color: #6C757D;
+  color: var(--sessions-text-muted);
   margin-bottom: 0;
   overflow: hidden;
+  overflow-wrap: break-word;
   display: -webkit-box; // stylelint-disable-line value-no-vendor-prefix
   -webkit-line-clamp: 3; // stylelint-disable-line property-no-vendor-prefix
   -webkit-box-orient: vertical; // stylelint-disable-line property-no-vendor-prefix
@@ -311,18 +397,26 @@
 .sessions-program-header {
   background: linear-gradient(135deg, #1A3A6B 0%, #0D2249 100%);
   color: #FFFFFF;
-  padding: 1.75rem 2rem 0;
+  padding: 1.25rem 1rem 0;
+
+  @media (--pgn-size-breakpoint-min-width-md) {
+    padding: 1.75rem 2rem 0;
+  }
 }
 
 .sessions-program-header__back {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
   font-size: .9375rem;
   color: rgb(255 255 255 / .75);
   text-decoration: none;
   transition: color 120ms;
+
+  @media (--pgn-size-breakpoint-min-width-md) {
+    margin-bottom: 1.5rem;
+  }
 
   &:hover,
   &:focus {
@@ -351,8 +445,12 @@
 .sessions-program-header__top-right {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
-  flex-shrink: 0;
+
+  @media (--pgn-size-breakpoint-min-width-sm) {
+    flex-shrink: 0;
+  }
 }
 
 .sessions-program-header__studio-link {
@@ -374,69 +472,154 @@
 }
 
 .sessions-program-header__title {
-  font-size: 2rem;
+  font-size: 1.5rem;
   font-weight: 700;
   margin: 0;
+  min-width: 0;
   line-height: 1.2;
   color: #FFFFFF;
+  overflow-wrap: break-word;
+
+  @media (--pgn-size-breakpoint-min-width-md) {
+    font-size: 2rem;
+  }
 }
 
 .sessions-program-header__meta {
   margin: 10px 0 0;
   color: rgb(255 255 255 / .7);
   font-size: .9375rem;
+  overflow-wrap: break-word;
 }
 
 .sessions-program-header__nav {
-  margin-top: 2rem;
+  margin-top: 1.25rem;
+
+  @media (--pgn-size-breakpoint-min-width-md) {
+    margin-top: 2rem;
+  }
 }
 
 // ─── Section Nav (on dark header) ────────────────────────────────────────────
 
-.section-nav {
-  display: flex;
-  gap: 0;
-}
+// Paragon's `inverse-tabs` already supplies this header's white active
+// underline, dark-surface focus ring and matching "More..." padding. Below is
+// only where its palette differs: dimmed inactive labels, no filled hover.
+.section-nav.nav-inverse-tabs {
+  // Tabs are childless, so these panels are empty and must not take space.
+  width: 100%;
 
-.section-nav__link {
-  padding: .625rem 1rem;
-  font-size: .9375rem;
-  letter-spacing: .01em;
-  color: rgb(255 255 255 / .65);
-  text-decoration: none;
-  border-bottom: 3px solid transparent;
-  transition: color 120ms, border-color 120ms;
-
-  &:hover {
-    color: #FFFFFF;
-    text-decoration: none;
+  + .tab-content {
+    display: none;
   }
 
-  &.active {
+  .nav-link {
+    padding: .625rem 1rem;
+    font-size: .9375rem;
+    font-weight: 400;
+    letter-spacing: .01em;
+    color: rgb(255 255 255 / .65);
+    // Matches the active underline's width so all labels share a baseline.
+    border-bottom: .188rem solid transparent;
+    // Keeps a label's measured width whole, so Paragon overflows it rather
+    // than letting it squeeze.
+    white-space: nowrap;
+
+    // Paragon puts this tab's padding on the toggle inside; re-asserted so
+    // the rule above cannot undo it by winning on source order.
+    &.pgn__tab_more {
+      padding: 0;
+    }
+
+    &:hover {
+      color: #FFFFFF;
+      background-color: transparent;
+    }
+
+    &.active {
+      color: #FFFFFF;
+      font-weight: 600;
+      background-color: transparent;
+
+      &:hover {
+        background-color: transparent;
+      }
+    }
+  }
+
+  // The toggle is a `Button` nested in the tab, so it needs styling directly.
+  .pgn__tab_more .dropdown-toggle.btn {
+    font-size: .9375rem;
+    font-weight: 400;
+    letter-spacing: .01em;
+    color: rgb(255 255 255 / .65);
+    text-decoration: none;
+
+    &:hover,
+    &:focus {
+      color: #FFFFFF;
+      text-decoration: none;
+    }
+  }
+
+  .pgn__tab_more.active .dropdown-toggle.btn {
     color: #FFFFFF;
     font-weight: 600;
-    border-bottom-color: #FFFFFF;
+  }
+
+  // Paragon flags that tab active from a MutationObserver on `aria-selected`,
+  // so a direct load into an already-overflowed section fires nothing and
+  // leaves "More..." unmarked. Restored here from state already in the DOM.
+  &:has(.pgn__tab_invisible.active) .pgn__tab_more {
+    border-bottom: .188rem solid #FFFFFF;
+
+    .dropdown-toggle.btn {
+      color: #FFFFFF;
+      font-weight: 600;
+    }
   }
 }
 
 // ─── Sessions Page Content ────────────────────────────────────────────────────
 
 .sessions-page-content {
-  padding: 2rem;
+  padding: 1.25rem 1rem;
+
+  @media (--pgn-size-breakpoint-min-width-md) {
+    padding: 2rem;
+  }
+}
+
+// Both wrappers hold a Paragon `Container size="xl"` for its max-width
+// centring. Its half-gutter would stack on the padding above and shift the
+// desktop layout, so it is dropped and the padding above stays authoritative.
+.sessions-program-header > .container-fluid,
+.sessions-page-content > .container-fluid {
+  padding-right: 0;
+  padding-left: 0;
 }
 
 // ─── Course Card ──────────────────────────────────────────────────────────────
 
 .course-card {
   display: flex;
+  flex-direction: column;
   align-items: stretch;
-  gap: 1.25rem;
-  padding: 1.25rem;
-  border: 1px solid #C8CFD6;
+  gap: 1rem;
+  padding: 1rem;
+  min-width: 0;
+  border: 1px solid var(--sessions-border-strong);
   border-radius: 8px;
   margin-bottom: 1rem;
-  background: #FFFFFF;
+  color: var(--sessions-text);
+  background: var(--sessions-surface);
   box-shadow: 0 1px 3px rgb(0 0 0 / .06);
+
+  @media (--pgn-size-breakpoint-min-width-md) {
+    flex-direction: row;
+    gap: 1.25rem;
+    padding: 1.25rem;
+  }
 
   &:last-child {
     margin-bottom: 0;
@@ -444,16 +627,22 @@
 }
 
 .course-card__thumbnail {
-  width: 220px;
-  min-width: 220px;
-  max-width: 220px;
+  width: 100%;
   height: 160px;
-  max-height: 160px;
   border-radius: 6px;
   overflow: hidden;
-  flex-shrink: 0;
   background: linear-gradient(135deg, #1A3A6B 0%, #0D2249 100%);
-  align-self: flex-start;
+
+  // Only once the card is a row again: below `md` a fixed width would stop
+  // the card from shrinking.
+  @media (--pgn-size-breakpoint-min-width-md) {
+    width: 220px;
+    min-width: 220px;
+    max-width: 220px;
+    max-height: 160px;
+    flex-shrink: 0;
+    align-self: flex-start;
+  }
 }
 
 .course-card__thumbnail-img {
@@ -487,6 +676,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
+  min-width: 0;
   margin-bottom: .375rem;
 }
 
@@ -495,6 +685,8 @@
   font-weight: 700;
   line-height: 1.3;
   margin-bottom: 0;
+  min-width: 0;
+  overflow-wrap: break-word;
 }
 
 .course-card__badge {
@@ -505,15 +697,17 @@
 
 .course-card__meta {
   font-size: .875rem;
-  color: #6C757D;
+  color: var(--sessions-text-muted);
   margin-bottom: .375rem;
+  overflow-wrap: break-word;
 }
 
 .course-card__description {
   font-size: .875rem;
-  color: #495057;
+  color: var(--sessions-text-secondary);
   margin-bottom: .375rem;
   overflow: hidden;
+  overflow-wrap: break-word;
   display: -webkit-box; // stylelint-disable-line value-no-vendor-prefix
   -webkit-line-clamp: 2; // stylelint-disable-line property-no-vendor-prefix
   -webkit-box-orient: vertical; // stylelint-disable-line property-no-vendor-prefix
@@ -521,13 +715,13 @@
 
 .course-card__dates {
   font-size: .875rem;
-  color: #6C757D;
+  color: var(--sessions-text-muted);
   margin-bottom: .5rem;
 }
 
 .course-card__progress-bar {
   height: 6px;
-  background: #E9ECEF;
+  background: var(--sessions-surface-muted);
   border-radius: 3px;
   margin-bottom: 5px;
   overflow: hidden;
@@ -542,52 +736,66 @@
 
 .course-card__progress-pct {
   font-size: .8125rem;
-  color: #6C757D;
+  color: var(--sessions-text-muted);
   margin-bottom: 0;
 }
 
 .course-card__footer {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: stretch;
   gap: .75rem;
   margin-top: .625rem;
+
+  @media (--pgn-size-breakpoint-min-width-sm) {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
 }
 
 .course-card__banners {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 5px;
-  flex: 1;
+  min-width: 0;
+
+  @media (--pgn-size-breakpoint-min-width-sm) {
+    flex: 1;
+  }
 }
 
 .course-card__banner {
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 4px;
+  max-width: 100%;
   padding: 4px 10px;
   border-radius: 4px;
   font-size: .8125rem;
   font-weight: 500;
+  overflow-wrap: break-word;
 
   &--info {
-    background: #E8F4FD;
-    color: #0C5460;
+    background: var(--sessions-status-info-bg);
+    color: var(--sessions-status-info-text);
   }
 
   &--warning {
-    background: #FFF3CD;
-    color: #664D03;
+    background: var(--sessions-status-warning-bg);
+    color: var(--sessions-status-warning-text);
   }
 
   &--success {
-    background: #D1E7DD;
-    color: #0A3622;
+    background: var(--sessions-status-success-bg);
+    color: var(--sessions-status-success-text);
   }
 
   &--secondary {
-    background: #E9ECEF;
-    color: #495057;
+    background: var(--sessions-status-neutral-bg);
+    color: var(--sessions-status-neutral-text);
   }
 }
 
@@ -603,7 +811,24 @@
 }
 
 .course-card__actions {
-  flex-shrink: 0;
+  width: 100%;
+
+  .btn {
+    display: block;
+    width: 100%;
+    white-space: normal;
+  }
+
+  @media (--pgn-size-breakpoint-min-width-sm) {
+    width: auto;
+    flex-shrink: 0;
+
+    .btn {
+      display: inline-block;
+      width: auto;
+      white-space: nowrap;
+    }
+  }
 }
 
 // ─── Program Courses Page ─────────────────────────────────────────────────────
@@ -619,9 +844,10 @@
 
 .program-courses__description {
   font-size: .9375rem;
-  color: #6C757D;
+  color: var(--sessions-text-muted);
   margin-bottom: 1.25rem;
   max-width: 640px;
+  overflow-wrap: break-word;
 }
 
 .program-courses__heading {
@@ -632,19 +858,23 @@
 
 .program-courses__count {
   font-weight: 400;
-  color: #6C757D;
+  color: var(--sessions-text-muted);
   margin-left: .5rem;
 }
 
 .program-courses__instructor-note {
   font-size: .875rem;
-  color: #6C757D;
+  color: var(--sessions-text-muted);
   margin-bottom: 1rem;
 }
 
 .program-courses__empty {
   text-align: center;
-  padding: 3.5rem 1rem;
-  color: #6C757D;
+  padding: 2.5rem 1rem;
+  color: var(--sessions-text-muted);
   font-size: .9375rem;
+
+  @media (--pgn-size-breakpoint-min-width-md) {
+    padding: 3.5rem 1rem;
+  }
 }

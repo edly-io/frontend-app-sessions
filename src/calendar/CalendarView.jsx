@@ -18,6 +18,7 @@ import { SESSION_STATUS_LABELS, USER_ROLE, REQUEST_STATUS } from '../shared/cons
 import RequestStatusBadge from '../shared/RequestStatusBadge';
 import ScopeBadge from '../shared/ScopeBadge';
 import InstructingBadge from '../shared/InstructingBadge';
+import './calendar.scss';
 import { getSessionStartLink } from './api';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -135,23 +136,23 @@ const getChipBg = (session, sessionTypeColors) => (
   || '#6c757d'
 );
 
-const GRADED_DATE_BORDER = '#f59e0b';
-const GRADED_DATE_BG = '#fffbeb';
-const GRADED_DATE_TEXT = '#92400e';
+const GRADED_DATE_BORDER = 'var(--sessions-cal-graded-border)';
+const GRADED_DATE_BG = 'var(--sessions-cal-graded-bg)';
+const GRADED_DATE_TEXT = 'var(--sessions-cal-graded-text)';
 
 const getDayHeaderColor = (isToday, isWeekend) => {
   if (isToday) { return '#4f46e5'; }
-  if (isWeekend) { return '#adb5bd'; }
-  return '#6c757d';
+  if (isWeekend) { return 'var(--sessions-text-subtle)'; }
+  return 'var(--sessions-text-muted)';
 };
 
 // Weekend = Saturday (6) or Sunday (0) in JS getDay()
 const isWeekendDay = (date) => date.getDay() === 0 || date.getDay() === 6;
 
 const getCellBackground = (isToday, isWeekend) => {
-  if (isToday) { return '#eef2ff'; } // soft indigo tint
-  if (isWeekend) { return '#f8f8f8'; } // subtle grey for non-working days
-  return '#fff';
+  if (isToday) { return 'var(--sessions-cal-today-bg)'; }
+  if (isWeekend) { return 'var(--sessions-surface-subtle)'; }
+  return 'var(--sessions-surface)';
 };
 
 const getSessionTypeLabel = (session, sessionTypeLabels = {}) => {
@@ -331,7 +332,7 @@ const SessionPopover = ({
       style={{
         maxWidth: 320,
         boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
-        border: '1px solid #adb5bd',
+        border: '1px solid var(--sessions-border-strong)',
         borderRadius: 6,
       }}
     >
@@ -340,8 +341,8 @@ const SessionPopover = ({
         style={{
           fontSize: 14,
           margin: 0,
-          background: '#e7f1ff',
-          borderBottom: '1px solid #c5d9f2',
+          background: 'var(--sessions-cal-popover-header-bg)',
+          borderBottom: '1px solid var(--sessions-cal-popover-header-border)',
           padding: '8px 12px',
         }}
       >
@@ -553,7 +554,7 @@ const DayPopover = ({
         maxWidth: 380,
         minWidth: 260,
         boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
-        border: '1px solid #adb5bd',
+        border: '1px solid var(--sessions-border-strong)',
         borderRadius: 6,
       }}
     >
@@ -562,8 +563,8 @@ const DayPopover = ({
         style={{
           fontSize: 13,
           margin: 0,
-          background: '#e7f1ff',
-          borderBottom: '1px solid #c5d9f2',
+          background: 'var(--sessions-cal-popover-header-bg)',
+          borderBottom: '1px solid var(--sessions-cal-popover-header-border)',
           padding: '8px 12px',
         }}
       >
@@ -597,7 +598,7 @@ const DayPopover = ({
               <div
                 key={session.id}
                 className="d-flex align-items-start"
-                style={{ gap: 8, padding: '8px 4px', borderBottom: '1px solid #f0f0f0' }}
+                style={{ gap: 8, padding: '8px 4px', borderBottom: '1px solid var(--sessions-divider)' }}
               >
                 <span
                   style={{
@@ -624,15 +625,15 @@ const DayPopover = ({
                   {instructorDisplay && (
                   <div className="text-muted" style={{ fontSize: 12 }}>Instructor: {instructorDisplay}</div>
                   )}
-                  <div style={{ fontSize: 12, color: '#6c757d' }}>{formatTimeRange(session)}</div>
+                  <div style={{ fontSize: 12, color: 'var(--sessions-text-muted)' }}>{formatTimeRange(session)}</div>
                   {/* On Leave indicator for learner-approved leaves */}
                   {studentRequestMap?.get(session.id) && (
                     <div
                       style={{
                         display: 'inline-block',
                         fontSize: 10,
-                        color: '#065f46',
-                        background: '#d1fae5',
+                        color: 'var(--sessions-cal-leave-text)',
+                        background: 'var(--sessions-cal-leave-bg)',
                         borderRadius: 3,
                         padding: '1px 5px',
                         marginTop: 2,
@@ -739,11 +740,11 @@ const DayPopover = ({
             );
           })}
           {gradedDates.length > 0 && (
-            <div style={{ borderTop: sessions.length > 0 ? '1px solid #f0f0f0' : 'none', marginTop: sessions.length > 0 ? 4 : 0 }}>
+            <div style={{ borderTop: sessions.length > 0 ? '1px solid var(--sessions-divider)' : 'none', marginTop: sessions.length > 0 ? 4 : 0 }}>
               <div style={{
                 fontSize: 11,
                 fontWeight: 600,
-                color: '#92400e',
+                color: 'var(--sessions-cal-graded-text)',
                 margin: '8px 4px 4px',
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
@@ -802,11 +803,11 @@ const DayPopover = ({
               position: 'sticky',
               bottom: 0,
               pointerEvents: 'none',
-              background: 'linear-gradient(to bottom, transparent, rgba(255,255,255,0.95))',
+              background: 'linear-gradient(to bottom, transparent, var(--sessions-surface))',
               textAlign: 'center',
               padding: '12px 0 6px',
               fontSize: 11,
-              color: '#6c757d',
+              color: 'var(--sessions-text-muted)',
               letterSpacing: '0.02em',
             }}
           >
@@ -864,7 +865,7 @@ const GradedDatePopover = ({
           fontSize: 13,
           margin: 0,
           background: GRADED_DATE_BG,
-          borderBottom: '1px solid #fde68a',
+          borderBottom: '1px solid var(--sessions-cal-holiday-border)',
           padding: '8px 12px',
           color: GRADED_DATE_TEXT,
         }}
@@ -964,7 +965,8 @@ const DayCell = ({
         flexDirection: 'column',
         alignItems: 'stretch',
         minHeight: cellMinHeight,
-        border: '1px solid #dee2e6',
+        minWidth: 0,
+        border: '1px solid var(--sessions-border)',
         borderRadius: 4,
         padding: '4px 6px',
         background: getCellBackground(isToday, isWeekend),
@@ -987,7 +989,7 @@ const DayCell = ({
           fontSize: 13,
           fontWeight: isToday ? 700 : 400,
           background: isToday ? '#0d6efd' : 'transparent',
-          color: isToday ? '#fff' : 'inherit',
+          color: isToday ? '#FFFFFF' : 'var(--sessions-text)',
           marginBottom: 4,
           flexShrink: 0,
         }}
@@ -1001,8 +1003,8 @@ const DayCell = ({
           key={h.id}
           style={{
             fontSize: 10,
-            color: '#92400e',
-            background: '#fef3c7',
+            color: 'var(--sessions-cal-graded-text)',
+            background: 'var(--sessions-cal-holiday-bg)',
             borderRadius: 3,
             padding: '1px 4px',
             marginBottom: 3,
@@ -1020,8 +1022,8 @@ const DayCell = ({
         <div
           style={{
             fontSize: 10,
-            color: '#065f46',
-            background: '#d1fae5',
+            color: 'var(--sessions-cal-leave-text)',
+            background: 'var(--sessions-cal-leave-bg)',
             borderRadius: 3,
             padding: '1px 4px',
             marginBottom: 3,
@@ -1091,8 +1093,8 @@ const DayCell = ({
               title={`${session.title} — On Leave`}
               style={{
                 display: 'block',
-                background: '#e5e7eb',
-                color: '#6b7280',
+                background: 'var(--sessions-cal-onleave-bg)',
+                color: 'var(--sessions-cal-onleave-text)',
                 borderRadius: 3,
                 fontSize: 11,
                 padding: '1px 5px',
@@ -1239,66 +1241,53 @@ const MonthGrid = ({
   const currentMonth = currentDate.getMonth();
 
   return (
-    <div style={{ border: '1px solid #dee2e6', borderRadius: 4, overflow: 'hidden' }}>
-      {/* Day-name header row — matches week/day view style */}
-      <div style={{
-        display: 'flex',
-        borderBottom: '2px solid #dee2e6',
-        background: '#fff',
-      }}
-      >
-        {WEEK_DAY_NAMES.map((name, idx) => {
-          const isWeekend = idx === 0 || idx === 6; // Sun=0, Sat=6
-          return (
-            <div
-              key={name}
-              style={{
-                flex: 1,
-                textAlign: 'center',
-                padding: '8px 4px',
-                fontSize: 12,
-                fontWeight: 600,
-                color: isWeekend ? '#adb5bd' : '#6c757d',
-                borderLeft: idx === 0 ? 'none' : '1px solid #dee2e6',
-              }}
-            >
-              {name}
-            </div>
-          );
-        })}
-      </div>
+    <div className="calendar-month">
+      <div className="calendar-month__inner">
+        {/* Day-name header row. It shares `calendar-month__col` with the grid
+            below so the two stay in the same columns. */}
+        <div className="calendar-month__head">
+          {WEEK_DAY_NAMES.map((name, idx) => {
+            const isWeekend = idx === 0 || idx === 6; // Sun=0, Sat=6
+            return (
+              <div
+                key={name}
+                className={`calendar-month__col calendar-month__day-name calendar-month__day-name--${isWeekend ? 'weekend' : 'weekday'}`}
+              >
+                {name}
+              </div>
+            );
+          })}
+        </div>
 
-      {/* Day cells grid */}
-      <div style={{
-        display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, padding: 4,
-      }}
-      >
-        {days.map((day) => (
-          <DayCell
-            key={toDateKey(day)}
-            date={day}
-            sessions={sessionMap.get(toDateKey(day)) || []}
-            onEditSession={onEditSession}
-            onDeleteSession={onDeleteSession}
-            onCancelSession={onCancelSession}
-            onSessionDetail={onSessionDetail}
-            openPopoverId={openPopoverId}
-            setOpenPopoverId={setOpenPopoverId}
-            openDayKey={openDayKey}
-            setOpenDayKey={setOpenDayKey}
-            isOutsideMonth={day.getMonth() !== currentMonth}
-            cellMinHeight={110}
-            canManageSessions={canManageSessions}
-            isInstructor={isInstructor}
-            isLearner={isLearner}
-            studentRequestMap={studentRequestMap}
-            leaveDateMap={leaveDateMap}
-            holidays={holidayMap.get(toDateKey(day)) || []}
-            gradedDates={gradedDatesMap.get(toDateKey(day)) || []}
-            sessionTypeColors={sessionTypeColors}
-            sessionTypeLabels={sessionTypeLabels}
-          />
-        ))}
+        <div className="calendar-month__grid">
+          {days.map((day) => (
+            <div className="calendar-month__col" key={toDateKey(day)}>
+              <DayCell
+                date={day}
+                sessions={sessionMap.get(toDateKey(day)) || []}
+                onEditSession={onEditSession}
+                onDeleteSession={onDeleteSession}
+                onCancelSession={onCancelSession}
+                onSessionDetail={onSessionDetail}
+                openPopoverId={openPopoverId}
+                setOpenPopoverId={setOpenPopoverId}
+                openDayKey={openDayKey}
+                setOpenDayKey={setOpenDayKey}
+                isOutsideMonth={day.getMonth() !== currentMonth}
+                cellMinHeight={110}
+                canManageSessions={canManageSessions}
+                isInstructor={isInstructor}
+                isLearner={isLearner}
+                studentRequestMap={studentRequestMap}
+                leaveDateMap={leaveDateMap}
+                holidays={holidayMap.get(toDateKey(day)) || []}
+                gradedDates={gradedDatesMap.get(toDateKey(day)) || []}
+                sessionTypeColors={sessionTypeColors}
+                sessionTypeLabels={sessionTypeLabels}
+              />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -1392,12 +1381,12 @@ const TimeGrid = ({
   const todayKey = toDateKey(new Date());
 
   return (
-    <div style={{ border: '1px solid #dee2e6', borderRadius: 4, overflow: 'hidden' }}>
+    <div style={{ border: '1px solid var(--sessions-border)', borderRadius: 4, overflow: 'hidden' }}>
       {/* Day header row */}
       <div style={{
         display: 'flex',
-        borderBottom: '2px solid #dee2e6',
-        background: '#fff',
+        borderBottom: '2px solid var(--sessions-border)',
+        background: 'var(--sessions-surface)',
         position: 'sticky',
         top: 0,
         zIndex: 2,
@@ -1418,7 +1407,7 @@ const TimeGrid = ({
                 fontSize: 12,
                 fontWeight: 600,
                 color: getDayHeaderColor(isToday, isWeekend),
-                borderLeft: '1px solid #dee2e6',
+                borderLeft: '1px solid var(--sessions-border)',
               }}
             >
               {day.toLocaleDateString('en-US', { weekday: 'short' })} {day.getDate()}
@@ -1427,8 +1416,8 @@ const TimeGrid = ({
                   key={h.id}
                   style={{
                     fontSize: 9,
-                    color: '#92400e',
-                    background: '#fef3c7',
+                    color: 'var(--sessions-cal-graded-text)',
+                    background: 'var(--sessions-cal-holiday-bg)',
                     borderRadius: 2,
                     padding: '0 3px',
                     marginTop: 2,
@@ -1445,8 +1434,8 @@ const TimeGrid = ({
                 <div
                   style={{
                     fontSize: 9,
-                    color: '#065f46',
-                    background: '#d1fae5',
+                    color: 'var(--sessions-cal-leave-text)',
+                    background: 'var(--sessions-cal-leave-bg)',
                     borderRadius: 2,
                     padding: '0 3px',
                     marginTop: 2,
@@ -1478,7 +1467,7 @@ const TimeGrid = ({
                   top: (hour - START_HOUR) * HOUR_HEIGHT - 7,
                   right: 6,
                   fontSize: 10,
-                  color: '#9ca3af',
+                  color: 'var(--sessions-text-faint)',
                   userSelect: 'none',
                   lineHeight: 1,
                 }}
@@ -1502,7 +1491,7 @@ const TimeGrid = ({
                 style={{
                   flex: 1,
                   position: 'relative',
-                  borderLeft: '1px solid #dee2e6',
+                  borderLeft: '1px solid var(--sessions-border)',
                   background: getCellBackground(isToday, isWeekend),
                 }}
               >
@@ -1515,7 +1504,7 @@ const TimeGrid = ({
                       top: (hour - START_HOUR) * HOUR_HEIGHT,
                       left: 0,
                       right: 0,
-                      borderTop: '1px solid #e5e7eb',
+                      borderTop: '1px solid var(--sessions-divider)',
                     }}
                   />
                 ))}
@@ -1588,8 +1577,8 @@ const TimeGrid = ({
                           left: `calc(${colLeftPct}% + 2px)`,
                           width: `calc(${colWidthPct}% - 4px)`,
                           height,
-                          background: '#e5e7eb',
-                          color: '#6b7280',
+                          background: 'var(--sessions-cal-onleave-bg)',
+                          color: 'var(--sessions-cal-onleave-text)',
                           borderRadius: 3,
                           padding: '2px 6px',
                           textAlign: 'left',
@@ -1920,7 +1909,7 @@ const CalendarView = ({
           {canManageSessions && (
             <>
               <span style={{
-                width: 1, height: 24, background: '#dee2e6', margin: '0 4px',
+                width: 1, height: 24, background: 'var(--sessions-border)', margin: '0 4px',
               }}
               />
               <Button

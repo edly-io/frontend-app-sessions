@@ -7,7 +7,7 @@ import {
   Link,
 } from 'react-router-dom';
 import { FooterSlot } from '@edx/frontend-component-footer';
-import { Badge } from '@openedx/paragon';
+import { Badge, Container } from '@openedx/paragon';
 import { getConfig } from '@edx/frontend-platform';
 import HeaderSlot from '../plugin-slots/HeaderSlot';
 import SectionNav from './SectionNav';
@@ -70,46 +70,51 @@ const SessionsAdminLayout = ({ children = null }) => {
       <HeaderSlot />
       <main id="main-content" className="d-flex flex-column flex-grow-1">
         <div className="sessions-program-header">
-          <Link to="/" className="sessions-program-header__back">
-            <span className="sessions-program-header__back-arrow">&#8592;</span>
-            Programs
-          </Link>
+          <Container size="xl">
 
-          {program && (
-            <div className="sessions-program-header__info">
-              <div className="sessions-program-header__top-row">
-                <h1 className="sessions-program-header__title">{program.name}</h1>
-                <div className="sessions-program-header__top-right">
-                  {statusKey && (
-                    <Badge variant={STATUS_VARIANTS[statusKey] || 'light'}>
-                      {STATUS_LABELS[statusKey] || program.status}
-                    </Badge>
-                  )}
-                  {studioUrl && (
-                    <a
-                      href={studioUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="sessions-program-header__studio-link"
-                    >
-                      Manage in Studio ↗
-                    </a>
-                  )}
+            <Link to="/" className="sessions-program-header__back">
+              <span className="sessions-program-header__back-arrow">&#8592;</span>
+              Programs
+            </Link>
+
+            {program && (
+              <div className="sessions-program-header__info">
+                <div className="sessions-program-header__top-row">
+                  <h1 className="sessions-program-header__title">{program.name}</h1>
+                  <div className="sessions-program-header__top-right">
+                    {statusKey && (
+                      <Badge variant={STATUS_VARIANTS[statusKey] || 'light'}>
+                        {STATUS_LABELS[statusKey] || program.status}
+                      </Badge>
+                    )}
+                    {studioUrl && (
+                      <a
+                        href={studioUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="sessions-program-header__studio-link"
+                      >
+                        Manage in Studio ↗
+                      </a>
+                    )}
+                  </div>
                 </div>
+                {metaLine && (
+                  <p className="sessions-program-header__meta">{metaLine}</p>
+                )}
               </div>
-              {metaLine && (
-                <p className="sessions-program-header__meta">{metaLine}</p>
-              )}
-            </div>
-          )}
+            )}
 
-          <div className="sessions-program-header__nav">
-            <SectionNav />
-          </div>
+            <div className="sessions-program-header__nav">
+              <SectionNav />
+            </div>
+          </Container>
         </div>
 
         <div className="sessions-page-content">
-          {renderContent()}
+          <Container size="xl">
+            {renderContent()}
+          </Container>
         </div>
       </main>
       <FooterSlot />

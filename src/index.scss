@@ -1,27 +1,110 @@
 @use "@openedx/paragon/styles/css/core/custom-media-breakpoints" as paragonCustomMediaBreakpoints;
 
+@import "./theme";
 @import "~@edx/frontend-component-header/dist/index";
 @import "~@edx/frontend-component-footer/dist/footer";
 @import "./programs/programs";
+
+body {
+  min-width: 320px;
+}
+
+// Compact form fields below `lg`. Paragon's `size="sm"` is a single static
+// value with no responsive variant, so applying it per field would shrink the
+// desktop too. This reuses Paragon's own `-sm` tokens for the small state and
+// restores the `-base` tokens from `lg` up, in one place rather than per field.
+// Controls given an explicit size are excluded, so `size="sm"`/`"lg"` keeps
+// meaning what it says at every width.
+.form-control:not(.form-control-sm, .form-control-lg),
+.custom-select:not(.custom-select-sm, .custom-select-lg) {
+  height: var(--pgn-size-form-input-height-sm);
+  padding: var(--pgn-spacing-form-input-padding-y-sm) var(--pgn-spacing-form-input-padding-x-sm);
+  font-size: var(--pgn-typography-form-input-font-size-sm);
+  line-height: var(--pgn-typography-form-input-line-height-sm);
+  border-radius: var(--pgn-size-form-input-radius-border-sm);
+
+  @media (--pgn-size-breakpoint-min-width-lg) {
+    height: var(--pgn-size-form-input-height-base);
+    padding: var(--pgn-spacing-form-input-padding-y-base) var(--pgn-spacing-form-input-padding-x-base);
+    font-size: var(--pgn-typography-form-input-font-size-base);
+    line-height: var(--pgn-typography-form-input-line-height-base);
+    border-radius: var(--pgn-size-form-input-radius-border-base);
+  }
+}
+
+// Paragon reserves inline-end padding on a select for its dropdown arrow; the
+// padding shorthand above would drop it at every width.
+select.form-control:not(.form-control-sm, .form-control-lg) {
+  padding-inline-end: calc(var(--pgn-spacing-form-control-select-icon-padding) + 2rem);
+}
+
+textarea.form-control:not(.form-control-sm, .form-control-lg) {
+  height: auto;
+  min-height: var(--pgn-size-form-input-height-sm);
+
+  @media (--pgn-size-breakpoint-min-width-lg) {
+    min-height: var(--pgn-size-form-input-height-base);
+  }
+}
+
+.pgn__form-control-decorator-group:not(.pgn__form-control-decorator-group-sm, .pgn__form-control-decorator-group-lg) {
+  font-size: var(--pgn-typography-form-input-font-size-sm);
+  line-height: var(--pgn-typography-form-input-line-height-sm);
+
+  @media (--pgn-size-breakpoint-min-width-lg) {
+    font-size: var(--pgn-typography-form-input-font-size-base);
+    line-height: var(--pgn-typography-form-input-line-height-base);
+  }
+}
+
+// The uppercase micro-label that prefixes a value ("COURSE Income Tax Law").
+// Paragon has no utility for this size/tracking pair, so it lives here rather
+// than inline.
+.sessions-eyebrow {
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.sessions-section-heading {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--pgn-color-body-base);
+  border-bottom: 2px solid #BFDBFE;
+  padding-bottom: 10px;
+  margin: 0 0 20px;
+  letter-spacing: -.01em;
+}
 
 .audit-log-view {
   padding: 0 1rem 1rem;
 }
 
-.page-view-toggle {
+// Page-level view switchers ("Calendar | Audit Log"), now Paragon `Tabs`.
+// These rules only restore the look they had as styled buttons; the
+// `.nav-tabs` qualifier makes them outrank Paragon's light-theme tab styling
+// regardless of stylesheet order.
+.page-view-toggle.nav-tabs {
   display: flex;
   border-bottom: 2px solid var(--pgn-color-border);
   margin-bottom: 1.25rem;
 
-  &--inset {
+  &.page-view-toggle--inset {
     padding: 0 1rem;
   }
 
-  &__tab {
+  // Tabs are childless, so these panels are empty and must not take space.
+  + .tab-content {
+    display: none;
+  }
+
+  .nav-link {
     padding: 8px 16px;
     margin-bottom: -2px;
     border: none;
     border-bottom: 2px solid transparent;
+    border-radius: 0;
     background: transparent;
     color: var(--pgn-color-text-light);
     font-size: 13.5px;
@@ -29,11 +112,57 @@
     white-space: nowrap;
     cursor: pointer;
 
-    &--active {
+    // Paragon puts this tab's padding on the toggle inside.
+    &.pgn__tab_more {
+      padding: 0;
+    }
+
+    &:hover {
+      background: transparent;
+    }
+
+    &.active {
       color: var(--pgn-color-primary-base);
       font-weight: 600;
+      background: transparent;
       border-bottom-color: var(--pgn-color-primary-base);
     }
+  }
+
+  // The toggle is a `Button` nested in the tab, so it needs styling directly.
+  .pgn__tab_more .dropdown-toggle.btn {
+    padding: 8px 16px;
+    font-size: 13.5px;
+    font-weight: 400;
+    color: var(--pgn-color-text-light);
+    text-decoration: none;
+  }
+
+  .pgn__tab_more.active .dropdown-toggle.btn {
+    color: var(--pgn-color-primary-base);
+    font-weight: 600;
+  }
+
+  // See the matching note on `.section-nav` in programs.scss: Paragon only
+  // marks this tab active on an `aria-selected` change, so a direct load into
+  // an already-overflowed view needs the marker restored from the DOM.
+  &:has(.pgn__tab_invisible.active) .pgn__tab_more {
+    border-bottom-color: var(--pgn-color-primary-base);
+
+    .dropdown-toggle.btn {
+      color: var(--pgn-color-primary-base);
+      font-weight: 600;
+    }
+  }
+}
+
+// Tables carry the most columns of anything here, so they read smaller on
+// phones. From `sm` up Paragon's own DataTable size is restored by name.
+.pgn__data-table-wrapper {
+  font-size: .75rem;
+
+  @media (--pgn-size-breakpoint-min-width-sm) {
+    font-size: var(--pgn-typography-font-size-sm);
   }
 }
 
@@ -46,8 +175,22 @@
   position: sticky;
   top: 0;
   z-index: 1;
-  background: #FFFFFF;
-  box-shadow: 0 1px 0 #DEE2E6;
+}
+
+// Listings keep their columns legible and let Paragon's own
+// `.pgn__data-table-container` scroll horizontally instead of squeezing five to
+// ten columns into a narrow viewport. The floor is per column rather than per
+// table, so a four-column listing still fits a phone while a ten-column one
+// scrolls; on a desktop the floor is below what the columns take anyway.
+.sessions-table-scroll .pgn__data-table {
+  th,
+  td {
+    min-width: 7rem;
+  }
+
+  th {
+    white-space: nowrap;
+  }
 }
 
 .user-identity {
@@ -291,4 +434,18 @@
 
 .user-identity__corner-badge--default {
   background: #4B5563;
+}
+
+// Role labels sit directly on the page surface. The palette above is tuned for
+// white; on the dark theme's near-black ground those same colours fall below
+// 3:1, so the labels (and only the labels, not the avatar badges) are lightened.
+[data-paragon-theme-variant="dark"] {
+  .user-identity__role-label--super-admin { color: var(--sessions-role-super-admin); }
+  .user-identity__role-label--admin { color: var(--sessions-role-admin); }
+  .user-identity__role-label--middle-admin { color: var(--sessions-role-middle-admin); }
+  .user-identity__role-label--data-admin { color: var(--sessions-role-data-admin); }
+  .user-identity__role-label--instructor { color: var(--sessions-role-instructor); }
+  .user-identity__role-label--trainee { color: var(--sessions-role-trainee); }
+  .user-identity__role-label--pending-approval { color: var(--sessions-text-warning); }
+  .user-identity__role-label--default { color: var(--sessions-role-default); }
 }

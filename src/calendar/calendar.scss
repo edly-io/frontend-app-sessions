@@ -1,0 +1,63 @@
+@use "@openedx/paragon/styles/css/core/custom-media-breakpoints" as paragonCustomMediaBreakpoints;
+
+$month-gap: 4px;
+
+.calendar-month {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--sessions-border);
+  border-radius: 4px;
+}
+
+// Below `md` seven columns cannot hold a session chip, so the month keeps a
+// legible column width and this wrapper scrolls sideways instead of crushing
+// them. The day-name row scrolls with the grid because both sit inside it.
+.calendar-month__inner {
+  min-width: 44rem;
+
+  @media (--pgn-size-breakpoint-min-width-md) {
+    min-width: 0;
+  }
+}
+
+// One geometry for both rows: same padding, same gap, same column basis. Any
+// divergence and the day numbers stop sitting under the weekday names.
+.calendar-month__head,
+.calendar-month__grid {
+  display: flex;
+  gap: $month-gap;
+  padding: $month-gap;
+}
+
+.calendar-month__head {
+  flex-wrap: nowrap;
+  background: var(--sessions-surface);
+  border-bottom: 2px solid var(--sessions-border);
+}
+
+.calendar-month__grid {
+  flex-wrap: wrap;
+}
+
+// `min-width: 0` is what keeps a long event chip from widening its own column:
+// the default `auto` minimum floors the column at the chip's min-content width,
+// which is how the columns drifted out from under the header.
+.calendar-month__col {
+  flex: 0 0 calc((100% - #{$month-gap * 6}) / 7);
+  min-width: 0;
+}
+
+.calendar-month__day-name {
+  padding: 8px 4px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+
+  &--weekend {
+    color: var(--sessions-text-subtle);
+  }
+
+  &--weekday {
+    color: var(--sessions-text-muted);
+  }
+}

@@ -6,7 +6,7 @@ import React, {
 } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import {
-  Alert, Button, Container, DataTable, Form, Spinner, StandardModal, Toast,
+  Alert, Button, Container, DataTable, Form, Spinner, StandardModal, Tab, Tabs, Toast,
 } from '@openedx/paragon';
 import { Add, DeleteOutline, EditOutline } from '@openedx/paragon/icons';
 import PropTypes from 'prop-types';
@@ -222,18 +222,16 @@ const LocationsPage = () => {
 
   return (
     <Container className="py-3">
-      <div className="page-view-toggle">
-        {['list', 'audit-log'].map(view => (
-          <Button
-            key={view}
-            variant="tertiary"
-            onClick={() => handleViewChange(view)}
-            className={`page-view-toggle__tab${activeView === view ? ' page-view-toggle__tab--active' : ''}`}
-          >
-            {view === 'list' ? 'Locations' : 'Audit Log'}
-          </Button>
-        ))}
-      </div>
+      <Tabs
+        id="locations-view-tabs"
+        variant="tabs"
+        activeKey={activeView}
+        onSelect={handleViewChange}
+        className="page-view-toggle"
+      >
+        <Tab eventKey="list" title="Locations" />
+        <Tab eventKey="audit-log" title="Audit Log" />
+      </Tabs>
 
       {activeView === 'audit-log' ? (
         <AuditLogTable
@@ -244,15 +242,15 @@ const LocationsPage = () => {
         />
       ) : (
         <>
-          <div className="d-flex align-items-center justify-content-between mb-3">
-            <div>
+          <div className="d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between mb-3">
+            <div className="mb-2 mb-sm-0">
               <h2 className="mb-1">Locations</h2>
               <p className="text-muted mb-0" style={{ fontSize: 13 }}>
                 Physical venues where in-person sessions are held. Create them once
                 here, then pick one when scheduling a meeting.
               </p>
             </div>
-            <Button variant="primary" iconBefore={Add} onClick={() => openModal('new-location')}>
+            <Button variant="primary" size="sm" iconBefore={Add} className="flex-shrink-0" onClick={() => openModal('new-location')}>
               New location
             </Button>
           </div>
@@ -274,6 +272,7 @@ const LocationsPage = () => {
             </div>
           ) : (
             <DataTable
+              className="sessions-table-scroll"
               key={debouncedSearch}
               isPaginated
               manualPagination

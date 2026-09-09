@@ -3,7 +3,7 @@ import React, {
 } from 'react';
 import { useParams } from 'react-router-dom';
 import {
-  Alert, Badge, Button, Container, DataTable, Form, Spinner,
+  Alert, Badge, Button, Col, Container, DataTable, Form, Row, Spinner,
 } from '@openedx/paragon';
 
 import { useConfig } from '../app/useConfig';
@@ -16,6 +16,7 @@ import {
   USER_ROLE,
 } from '../shared/constants';
 import { extractApiError, formatDateTime } from '../shared/utils';
+import './requests.scss';
 import { cancelSession } from '../calendar/api';
 import { getSubstituteRequests, closeSubstituteRequest, getSubstituteRequest } from './api';
 import AssignSubstituteModal from './AssignSubstituteModal';
@@ -128,11 +129,11 @@ const SubstituteRequestsView = () => {
                 <Badge variant="light" className="ml-2">{SESSION_STATUS_LABELS.cancelled}</Badge>
               )}
             </div>
-            <div className="text-muted" style={{ fontSize: 12 }}>
+            <div className="text-muted requests-view__cell-meta">
               {formatDateTime(session.scheduled_start_time)}
             </div>
             {session.location?.name && (
-              <div className="text-muted" style={{ fontSize: 12 }}>{session.location.name}</div>
+              <div className="text-muted requests-view__cell-meta">{session.location.name}</div>
             )}
           </div>
         );
@@ -145,8 +146,8 @@ const SubstituteRequestsView = () => {
         const { leave_request: lr } = row.original;
         return (
           <div>
-            <div style={{ fontSize: 13 }}>{lr.submitter_email}</div>
-            <div className="text-muted" style={{ fontSize: 12 }}>
+            <div className="requests-view__cell-text">{lr.submitter_email}</div>
+            <div className="text-muted requests-view__cell-meta">
               {lr.leave_start_date} – {lr.leave_end_date}
             </div>
           </div>
@@ -166,7 +167,7 @@ const SubstituteRequestsView = () => {
       Header: 'Substitute',
       accessor: 'substitute_instructor_email',
       Cell: ({ value }) => (value
-        ? <span style={{ fontSize: 13 }}>{value}</span>
+        ? <span className="requests-view__cell-text">{value}</span>
         : <span className="text-muted">—</span>),
     },
     {
@@ -178,11 +179,11 @@ const SubstituteRequestsView = () => {
 
         if (cancellingId === req.id) {
           return (
-            <div style={{ fontSize: 12 }}>
-              <p className="mb-2" style={{ color: '#374151' }}>
+            <div className="requests-view__cell-meta">
+              <p className="mb-2 requests-view__confirm-text">
                 Cancel this session and close the substitute request?
               </p>
-              <span style={{ display: 'flex', gap: 4 }}>
+              <span className="requests-view__row-actions">
                 <Button
                   variant="danger"
                   size="sm"
@@ -222,7 +223,7 @@ const SubstituteRequestsView = () => {
         }
 
         return (
-          <span style={{ display: 'flex', gap: 4 }}>
+          <span className="requests-view__row-actions">
             <Button
               variant="outline-primary"
               size="sm"
@@ -264,53 +265,69 @@ const SubstituteRequestsView = () => {
         </Alert>
       )}
 
-      <div className="d-flex align-items-center flex-wrap mb-3" style={{ gap: 8 }}>
-        <Form.Control
-          as="select"
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          style={{ width: 'auto' }}
-        >
-          <option value="">All statuses</option>
-          {Object.entries(SUBSTITUTE_REQUEST_STATUS_LABELS).map(([value, label]) => (
-            <option key={value} value={value}>{label}</option>
-          ))}
-        </Form.Control>
+      <Row className="requests-filters align-items-end">
+        <Col xs={12} sm={6} md={4} lg={3} className="mb-2">
+          <Form.Label htmlFor="substitute-requests-status" className="requests-filters__label">
+            Status
+          </Form.Label>
+          <Form.Control
+            id="substitute-requests-status"
+            as="select"
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+          >
+            <option value="">All statuses</option>
+            {Object.entries(SUBSTITUTE_REQUEST_STATUS_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </Form.Control>
+        </Col>
 
-        <div className="d-flex align-items-center ml-auto" style={{ gap: 4 }}>
-          <small className="text-muted text-nowrap">Session date:</small>
-          <Form.Control
-            type="date"
-            value={filterDateFrom}
-            onChange={(e) => setFilterDateFrom(e.target.value)}
-            style={{ width: 'auto' }}
-            aria-label="From date"
-          />
-          <span className="text-muted">–</span>
-          <Form.Control
-            type="date"
-            value={filterDateTo}
-            min={filterDateFrom || undefined}
-            onChange={(e) => setFilterDateTo(e.target.value)}
-            style={{ width: 'auto' }}
-            aria-label="To date"
-          />
-          {(filterDateFrom || filterDateTo) && (
-            <Button
-              variant="tertiary"
-              size="sm"
-              onClick={() => { setFilterDateFrom(''); setFilterDateTo(''); }}
-            >
-              Clear
-            </Button>
-          )}
-        </div>
-      </div>
+        <Col xs={12} sm="auto" className="mb-2">
+          <span className="requests-filters__label">Session date</span>
+          <div className="requests-filters__dates">
+            <div className="requests-filters__date-field">
+              <Form.Label htmlFor="substitute-date-from" className="requests-filters__date-label">
+                From
+              </Form.Label>
+              <Form.Control
+                id="substitute-date-from"
+                type="date"
+                value={filterDateFrom}
+                onChange={(e) => setFilterDateFrom(e.target.value)}
+                className="requests-filters__date"
+              />
+            </div>
+            <div className="requests-filters__date-field">
+              <Form.Label htmlFor="substitute-date-to" className="requests-filters__date-label">
+                To
+              </Form.Label>
+              <Form.Control
+                id="substitute-date-to"
+                type="date"
+                value={filterDateTo}
+                min={filterDateFrom || undefined}
+                onChange={(e) => setFilterDateTo(e.target.value)}
+                className="requests-filters__date"
+              />
+            </div>
+            {(filterDateFrom || filterDateTo) && (
+              <Button
+                variant="tertiary"
+                size="sm"
+                onClick={() => { setFilterDateFrom(''); setFilterDateTo(''); }}
+              >
+                Clear
+              </Button>
+            )}
+          </div>
+        </Col>
+      </Row>
 
       {count === 0 ? (
         <Alert variant="info">No substitute requests found for this program.</Alert>
       ) : (
-        <div className="sticky-header-table">
+        <div className="sticky-header-table sessions-table-scroll">
           <DataTable
             key={`${filterStatus}-${filterDateFrom}-${filterDateTo}`}
             isPaginated

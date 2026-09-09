@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import {
-  Alert, Badge, Button, DataTable, Pagination, Spinner,
+  Alert, Badge, Button, DataTable, Form, Pagination, Spinner,
 } from '@openedx/paragon';
 import { getAuditLogs } from './auditLogApi';
 import './AuditLogTable.scss';
@@ -529,41 +529,48 @@ const AuditLogTable = ({
         </div>
       )}
 
-      <div className="audit-log__filters">
-        <input
+      <div className="audit-log__filters d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center flex-sm-wrap">
+        <Form.Control
           type="text"
           value={searchText}
           onChange={handleSearchChange}
           placeholder="Search by record name…"
+          aria-label="Search audit log by record name"
           className="audit-log__search-input"
         />
-        <select
+        <Form.Control
+          as="select"
           value={actionFilter}
           onChange={handleActionChange}
+          aria-label="Filter by action"
           className="audit-log__action-select"
         >
           {ACTION_OPTIONS.map(opt => (
             <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}
-        </select>
-        <div className="audit-log__date-range">
-          <label htmlFor="audit-date-from-sessions" className="audit-log__date-label">From</label>
-          <input
-            id="audit-date-from-sessions"
-            type="date"
-            value={dateFrom}
-            onChange={handleDateFromChange}
-            className="audit-log__date-input"
-          />
-          <label htmlFor="audit-date-to-sessions" className="audit-log__date-label">To</label>
-          <input
-            id="audit-date-to-sessions"
-            type="date"
-            value={dateTo}
-            min={dateFrom || undefined}
-            onChange={handleDateToChange}
-            className="audit-log__date-input"
-          />
+        </Form.Control>
+        <div className="audit-log__date-range d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center">
+          <div className="audit-log__date-field d-flex align-items-center">
+            <Form.Label htmlFor="audit-date-from-sessions" className="audit-log__date-label">From</Form.Label>
+            <Form.Control
+              id="audit-date-from-sessions"
+              type="date"
+              value={dateFrom}
+              onChange={handleDateFromChange}
+              className="audit-log__date-input"
+            />
+          </div>
+          <div className="audit-log__date-field d-flex align-items-center">
+            <Form.Label htmlFor="audit-date-to-sessions" className="audit-log__date-label">To</Form.Label>
+            <Form.Control
+              id="audit-date-to-sessions"
+              type="date"
+              value={dateTo}
+              min={dateFrom || undefined}
+              onChange={handleDateToChange}
+              className="audit-log__date-input"
+            />
+          </div>
         </div>
         <span className="audit-log__count">
           {count} result{count !== 1 ? 's' : ''}
@@ -578,7 +585,13 @@ const AuditLogTable = ({
       {!loading && error && <Alert variant="danger">{error}</Alert>}
       {!loading && !error && (
         <>
-          <DataTable isSortable data={logs} columns={columns} itemCount={count}>
+          <DataTable
+            className="sessions-table-scroll"
+            isSortable
+            data={logs}
+            columns={columns}
+            itemCount={count}
+          >
             <DataTable.Table />
             <DataTable.EmptyTable content="No activity recorded yet." />
           </DataTable>
