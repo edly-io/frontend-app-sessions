@@ -831,8 +831,9 @@ const ScheduleMeetingModal = ({
                 <li key={i}>
                   {entity.type === 'instructor' && (
                     <>
-                      <strong>{entity.email}</strong>
-                      {' → '}
+                      <strong>{entity.full_name || entity.email}</strong>
+                      {entity.full_name && entity.email && ` (${entity.email})`}
+                      {' is teaching '}
                       &ldquo;{entity.conflicting_session_name}&rdquo;
                       {entity.program_name && ` (${entity.program_name})`}
                       {entity.scheduled_start_time && (
