@@ -1,5 +1,6 @@
 import React, { useState, useRef, useMemo } from 'react';
 import PropTypes from 'prop-types';
+import classNames from 'classnames';
 import { Link, useParams } from 'react-router-dom';
 import {
   Button,
@@ -136,24 +137,16 @@ const getChipBg = (session, sessionTypeColors) => (
   || '#6c757d'
 );
 
-const GRADED_DATE_BORDER = 'var(--sessions-cal-graded-border)';
-const GRADED_DATE_BG = 'var(--sessions-cal-graded-bg)';
-const GRADED_DATE_TEXT = 'var(--sessions-cal-graded-text)';
-
-const getDayHeaderColor = (isToday, isWeekend) => {
-  if (isToday) { return '#4f46e5'; }
-  if (isWeekend) { return 'var(--sessions-text-subtle)'; }
-  return 'var(--sessions-text-muted)';
+// A day is today, a weekend, or neither. Both the cell's ground and the
+// day-name colour follow from that, so it is a modifier rather than a value.
+const dayVariant = (isToday, isWeekend) => {
+  if (isToday) { return 'today'; }
+  if (isWeekend) { return 'weekend'; }
+  return 'plain';
 };
 
 // Weekend = Saturday (6) or Sunday (0) in JS getDay()
 const isWeekendDay = (date) => date.getDay() === 0 || date.getDay() === 6;
-
-const getCellBackground = (isToday, isWeekend) => {
-  if (isToday) { return 'var(--sessions-cal-today-bg)'; }
-  if (isWeekend) { return 'var(--sessions-surface-subtle)'; }
-  return 'var(--sessions-surface)';
-};
 
 const getSessionTypeLabel = (session, sessionTypeLabels = {}) => {
   const rawType = session?.session_type;
@@ -171,20 +164,20 @@ const SessionTypeBadge = ({ session, sessionTypeLabels }) => {
   if (!label) { return null; }
   const tooltip = 'Session type.';
   return (
-    <span className="d-inline-flex align-items-center" style={{ gap: 4 }}>
+    <span className="d-inline-flex align-items-center calendar-type-badge">
       <Badge variant="secondary">{label}</Badge>
       <OverlayTrigger
         trigger={['hover', 'focus']}
         placement="top"
         overlay={<Tooltip id={`session-type-tip-${session.session_type || 'unknown'}`}>{tooltip}</Tooltip>}
       >
-        <button
-          type="button"
+        <Button
+          variant="link"
           aria-label={tooltip}
-          className="btn btn-link d-inline-flex align-items-center p-0 border-0 text-muted"
+          className="d-inline-flex align-items-center p-0 border-0 text-muted"
         >
           <Icon src={InfoOutline} className="text-muted" />
-        </button>
+        </Button>
       </OverlayTrigger>
     </span>
   );
@@ -224,49 +217,30 @@ const formatInstructors = (session) => {
   return session.instructor_name || '';
 };
 
-// Inline button styled as a hyperlink — blue + always-underlined, with a
-// hover/focus state that darkens the colour. Used by both popovers for the
-// session-title click target. Inline styles can't express :hover, so hover
-// state is tracked via React.
+// Paragon's link Button, restyled by .calendar-link-button as an always-underlined
+// hyperlink that darkens on hover/focus. Used by both popovers for the
+// session-title click target.
 const TitleLink = ({
-  title, onClick, ariaLabel, textStyle,
-}) => {
-  const [active, setActive] = useState(false);
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      onMouseEnter={() => setActive(true)}
-      onMouseLeave={() => setActive(false)}
-      onFocus={() => setActive(true)}
-      onBlur={() => setActive(false)}
-      aria-label={ariaLabel}
-      style={{
-        background: 'none',
-        border: 'none',
-        padding: 0,
-        font: 'inherit',
-        cursor: 'pointer',
-        color: active ? '#0a58ca' : '#0d6efd',
-        textDecoration: 'underline',
-        textAlign: 'left',
-      }}
-    >
-      <span style={textStyle}>{title}</span>
-    </button>
-  );
-};
+  title, onClick, ariaLabel, isCancelled,
+}) => (
+  <Button
+    variant="link"
+    onClick={onClick}
+    aria-label={ariaLabel}
+    className="calendar-link-button border-0 p-0 text-left"
+  >
+    <span className={isCancelled ? 'calendar-strikethrough' : undefined}>{title}</span>
+  </Button>
+);
 TitleLink.propTypes = {
   title: PropTypes.string.isRequired,
   onClick: PropTypes.func.isRequired,
   ariaLabel: PropTypes.string,
-  textStyle: PropTypes.objectOf(
-    PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
-  ),
+  isCancelled: PropTypes.bool,
 };
 TitleLink.defaultProps = {
   ariaLabel: undefined,
-  textStyle: undefined,
+  isCancelled: false,
 };
 
 // Controlled popover — only one popover can be open across the whole calendar at
@@ -329,31 +303,20 @@ const SessionPopover = ({
   const popover = (
     <Popover
       id={`session-popover-${session.id}`}
-      style={{
-        maxWidth: 320,
-        boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
-        border: '1px solid var(--sessions-border-strong)',
-        borderRadius: 6,
-      }}
+      className="calendar-popover calendar-popover--session"
     >
       <Popover.Title
         as="h5"
-        style={{
-          fontSize: 14,
-          margin: 0,
-          background: 'var(--sessions-cal-popover-header-bg)',
-          borderBottom: '1px solid var(--sessions-cal-popover-header-border)',
-          padding: '8px 12px',
-        }}
+        className="calendar-popover__title calendar-popover__title--session m-0"
       >
         <TitleLink
           title={session.title}
           onClick={handleViewDetail}
           ariaLabel={`Show details for ${session.title}`}
-          textStyle={displayStatus === 'cancelled' ? { textDecoration: 'line-through' } : undefined}
+          isCancelled={displayStatus === 'cancelled'}
         />
       </Popover.Title>
-      <Popover.Content style={{ fontSize: 13 }}>
+      <Popover.Content className="calendar-popover__content">
         {session.course_name && (
           <div className="text-muted mb-1">Course: {session.course_name}</div>
         )}
@@ -361,10 +324,10 @@ const SessionPopover = ({
           <div className="text-muted mb-1">Instructor: {instructorDisplay}</div>
         )}
         {/* Time + status badge on the same row */}
-        <div className="d-flex align-items-center mb-2" style={{ gap: 8, flexWrap: 'wrap' }}>
+        <div className="d-flex align-items-center mb-2 calendar-popover__badges flex-wrap">
           <span>{formatTimeRange(session)}</span>
         </div>
-        <div className="mb-2 d-flex" style={{ gap: 4, flexWrap: 'wrap' }}>
+        <div className="mb-2 d-flex calendar-popover__meta flex-wrap">
           <Badge variant={getStatusVariant(displayStatus)}>{statusLabel}</Badge>
           {/* Cancelled session = dead end; suppress scope/instructor noise. */}
           {displayStatus !== 'cancelled' && (
@@ -380,7 +343,7 @@ const SessionPopover = ({
           )}
         </div>
         {session.status === 'scheduled' && (
-          <div className="d-flex align-items-center" style={{ gap: 6, flexWrap: 'wrap' }}>
+          <div className="d-flex align-items-center calendar-popover__actions flex-wrap">
             {/* Admin: full edit. Instructor: description-only edit on own future sessions. */}
             {(canManageSessions || (isInstructor
               && session.user_role === USER_ROLE.INSTRUCTOR
@@ -397,7 +360,7 @@ const SessionPopover = ({
                   size="sm"
                   iconBefore={EventBusy}
                   onClick={handleCancel}
-                  style={{ color: '#f0ad4e' }}
+                  className="calendar-action--cancel"
                 >
                   Cancel
                 </Button>
@@ -406,7 +369,7 @@ const SessionPopover = ({
                   size="sm"
                   iconBefore={DeleteOutline}
                   onClick={handleDelete}
-                  style={{ color: '#dc3545' }}
+                  className="calendar-action--delete"
                 >
                   Delete
                 </Button>
@@ -550,37 +513,23 @@ const DayPopover = ({
   const popover = (
     <Popover
       id={`day-popover-${toDateKey(date)}`}
-      style={{
-        maxWidth: 380,
-        minWidth: 260,
-        boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
-        border: '1px solid var(--sessions-border-strong)',
-        borderRadius: 6,
-      }}
+      className="calendar-popover calendar-popover--day"
     >
       <Popover.Title
         as="h5"
-        style={{
-          fontSize: 13,
-          margin: 0,
-          background: 'var(--sessions-cal-popover-header-bg)',
-          borderBottom: '1px solid var(--sessions-cal-popover-header-border)',
-          padding: '8px 12px',
-        }}
+        className="calendar-popover__title calendar-popover__title--day m-0"
       >
         {dateLabel}
-        <span className="text-muted ml-1" style={{ fontWeight: 400 }}>
+        <span className="text-muted ml-1 calendar-popover__title-count">
           ({sessions.length} session{sessions.length !== 1 ? 's' : ''}
           {gradedDates.length > 0 && `, ${gradedDates.length} due date${gradedDates.length !== 1 ? 's' : ''}`})
         </span>
       </Popover.Title>
-      <Popover.Content style={{ padding: 0 }}>
+      <Popover.Content className="p-0">
         <div
           ref={scrollRef}
           onScroll={handleScroll}
-          style={{
-            fontSize: 13, maxHeight: 360, overflowY: 'auto', padding: 8,
-          }}
+          className="calendar-popover__scroll overflow-auto p-2"
         >
           {sessions.map((session) => {
             const instructorDisplay = formatInstructors(session);
@@ -597,53 +546,38 @@ const DayPopover = ({
             return (
               <div
                 key={session.id}
-                className="d-flex align-items-start"
-                style={{ gap: 8, padding: '8px 4px', borderBottom: '1px solid var(--sessions-divider)' }}
+                className="d-flex align-items-start calendar-day-session"
+
               >
                 <span
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: '50%',
-                    background: statusColors[displayStatus] || '#6c757d',
-                    marginTop: 6,
-                    flexShrink: 0,
-                  }}
+                  className="calendar-dot calendar-dot--lg rounded-circle flex-shrink-0"
+                  style={{ background: statusColors[displayStatus] || '#6c757d' }}
                 />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600 }}>
+                <div className="calendar-day-session__body">
+                  <div className="calendar-day-session__title">
                     <TitleLink
                       title={session.title}
                       onClick={(e) => handleViewDetail(e, session)}
                       ariaLabel={`Show details for ${session.title}`}
-                      textStyle={displayStatus === 'cancelled' ? { textDecoration: 'line-through' } : undefined}
+                      isCancelled={displayStatus === 'cancelled'}
                     />
                   </div>
                   {session.course_name && (
-                  <div className="text-muted" style={{ fontSize: 12 }}>{session.course_name}</div>
+                  <div className="text-muted calendar-day-session__meta">{session.course_name}</div>
                   )}
                   {instructorDisplay && (
-                  <div className="text-muted" style={{ fontSize: 12 }}>Instructor: {instructorDisplay}</div>
+                  <div className="text-muted calendar-day-session__meta">Instructor: {instructorDisplay}</div>
                   )}
-                  <div style={{ fontSize: 12, color: 'var(--sessions-text-muted)' }}>{formatTimeRange(session)}</div>
+                  <div className="calendar-day-session__note">{formatTimeRange(session)}</div>
                   {/* On Leave indicator for learner-approved leaves */}
                   {studentRequestMap?.get(session.id) && (
                     <div
-                      style={{
-                        display: 'inline-block',
-                        fontSize: 10,
-                        color: 'var(--sessions-cal-leave-text)',
-                        background: 'var(--sessions-cal-leave-bg)',
-                        borderRadius: 3,
-                        padding: '1px 5px',
-                        marginTop: 2,
-                        fontWeight: 500,
-                      }}
+                      className="calendar-leave-tag d-inline-block"
                     >
                       On Leave
                     </div>
                   )}
-                  <div className="mt-1 d-flex" style={{ gap: 4, flexWrap: 'wrap' }}>
+                  <div className="mt-1 d-flex calendar-day-session__badges flex-wrap">
                     <Badge variant={getStatusVariant(displayStatus)}>
                       {SESSION_STATUS_LABELS[displayStatus] || displayStatus}
                     </Badge>
@@ -663,7 +597,7 @@ const DayPopover = ({
                     <div className="mt-1"><InstructingBadge /></div>
                   )}
                   {session.status === 'scheduled' && (
-                  <div className="mt-1 d-flex align-items-center" style={{ gap: 4, flexWrap: 'wrap' }}>
+                  <div className="mt-1 d-flex align-items-center calendar-day-session__actions flex-wrap">
                     {/* Admin: full edit. Instructor: description-only edit on own future sessions. */}
                     {(canManageSessions || (isInstructor
                       && session.user_role === USER_ROLE.INSTRUCTOR
@@ -684,7 +618,7 @@ const DayPopover = ({
                           variant="tertiary"
                           size="sm"
                           iconBefore={EventBusy}
-                          style={{ color: '#f0ad4e' }}
+                          className="calendar-action--cancel"
                           onClick={(e) => handleCancel(e, session)}
                         >
                           Cancel
@@ -693,7 +627,7 @@ const DayPopover = ({
                           variant="tertiary"
                           size="sm"
                           iconBefore={DeleteOutline}
-                          style={{ color: '#dc3545' }}
+                          className="calendar-action--delete"
                           onClick={(e) => handleDelete(e, session)}
                         >
                           Delete
@@ -740,16 +674,8 @@ const DayPopover = ({
             );
           })}
           {gradedDates.length > 0 && (
-            <div style={{ borderTop: sessions.length > 0 ? '1px solid var(--sessions-divider)' : 'none', marginTop: sessions.length > 0 ? 4 : 0 }}>
-              <div style={{
-                fontSize: 11,
-                fontWeight: 600,
-                color: 'var(--sessions-cal-graded-text)',
-                margin: '8px 4px 4px',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-              }}
-              >
+            <div className={classNames('calendar-graded__group', { 'calendar-graded__group--divided': sessions.length > 0 })}>
+              <div className="calendar-graded__heading text-uppercase">
                 Due Dates
               </div>
               {gradedDates.map((event) => (
@@ -763,33 +689,12 @@ const DayPopover = ({
                   <button
                     type="button"
                     onClick={(e) => e.stopPropagation()}
-                    style={{
-                      display: 'block',
-                      width: '100%',
-                      background: GRADED_DATE_BG,
-                      color: GRADED_DATE_TEXT,
-                      border: `1px solid ${GRADED_DATE_BORDER}`,
-                      borderRadius: 3,
-                      fontSize: 12,
-                      padding: '4px 8px',
-                      marginBottom: 4,
-                      textAlign: 'left',
-                      cursor: 'pointer',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                    }}
+                    className="calendar-chip calendar-chip--graded-lg text-truncate d-block w-100 mb-1 text-left"
                     title={`Due: ${event.title} (${event.courseName})`}
                   >
-                    <div style={{
-                      fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis',
-                    }}
-                    >{event.title}
+                    <div className="calendar-graded__title overflow-hidden">{event.title}
                     </div>
-                    <div style={{
-                      fontSize: 10, opacity: 0.75, overflow: 'hidden', textOverflow: 'ellipsis',
-                    }}
-                    >{event.courseName}
+                    <div className="calendar-graded__meta overflow-hidden">{event.courseName}
                     </div>
                   </button>
                 </GradedDatePopover>
@@ -799,17 +704,7 @@ const DayPopover = ({
         </div>
         {showScrollHint && (
           <div
-            style={{
-              position: 'sticky',
-              bottom: 0,
-              pointerEvents: 'none',
-              background: 'linear-gradient(to bottom, transparent, var(--sessions-surface))',
-              textAlign: 'center',
-              padding: '12px 0 6px',
-              fontSize: 11,
-              color: 'var(--sessions-text-muted)',
-              letterSpacing: '0.02em',
-            }}
+            className="calendar-scroll-hint text-center"
           >
             ↓ scroll for more
           </div>
@@ -852,40 +747,28 @@ const GradedDatePopover = ({
   const popover = (
     <Popover
       id={`graded-date-popover-${CSS.escape(event.id)}`}
-      style={{
-        maxWidth: 300,
-        boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
-        border: `1px solid ${GRADED_DATE_BORDER}`,
-        borderRadius: 6,
-      }}
+      className="calendar-popover calendar-popover--graded"
     >
       <Popover.Title
         as="h5"
-        style={{
-          fontSize: 13,
-          margin: 0,
-          background: GRADED_DATE_BG,
-          borderBottom: '1px solid var(--sessions-cal-holiday-border)',
-          padding: '8px 12px',
-          color: GRADED_DATE_TEXT,
-        }}
+        className="calendar-popover__title calendar-popover__title--graded m-0"
       >
         {event.courseName}
       </Popover.Title>
-      <Popover.Content style={{ fontSize: 13 }}>
+      <Popover.Content className="calendar-popover__content">
         <div className="font-weight-bold mb-1">{event.title}</div>
         <div className="text-muted mb-2">Due: {dueDateLabel}</div>
-        <div className="mb-2 d-flex" style={{ gap: 4, flexWrap: 'wrap' }}>
+        <div className="mb-2 d-flex calendar-popover__meta flex-wrap">
           {event.assignmentType && (
             <Badge
               variant="light"
-              style={{ fontSize: 10, border: `1px solid ${GRADED_DATE_BORDER}`, color: GRADED_DATE_TEXT }}
+              className="calendar-graded__badge"
             >
               {event.assignmentType}
             </Badge>
           )}
           {event.complete && (
-            <Badge variant="success" style={{ fontSize: 10 }}>Completed</Badge>
+            <Badge variant="success" className="calendar-badge-sm">Completed</Badge>
           )}
         </div>
         {event.link && (
@@ -960,39 +843,20 @@ const DayCell = ({
           setDayOpen(!isDayOpen);
         }
       } : undefined}
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'stretch',
-        minHeight: cellMinHeight,
-        minWidth: 0,
-        border: '1px solid var(--sessions-border)',
-        borderRadius: 4,
-        padding: '4px 6px',
-        background: getCellBackground(isToday, isWeekend),
-        cursor: hasSessions ? 'pointer' : 'default',
-        textAlign: 'left',
-        opacity: isOutsideMonth ? 0.4 : 1,
-        width: '100%',
-      }}
+      className={classNames(
+        'calendar-day-cell d-flex flex-column align-items-stretch text-left w-100',
+        `calendar-day-cell--${dayVariant(isToday, isWeekend)}`,
+        { 'calendar-day-cell--clickable': hasSessions, 'calendar-day-cell--outside': isOutsideMonth },
+      )}
+      style={{ minHeight: cellMinHeight }}
       aria-label={`${date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}, ${sessions.length} session${sessions.length !== 1 ? 's' : ''}`}
     >
       {/* Day number */}
       <span
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: 24,
-          height: 24,
-          borderRadius: '50%',
-          fontSize: 13,
-          fontWeight: isToday ? 700 : 400,
-          background: isToday ? '#0d6efd' : 'transparent',
-          color: isToday ? '#FFFFFF' : 'var(--sessions-text)',
-          marginBottom: 4,
-          flexShrink: 0,
-        }}
+        className={classNames(
+          'calendar-day-number d-inline-flex align-items-center justify-content-center rounded-circle mb-1 flex-shrink-0',
+          { 'calendar-day-number--today': isToday },
+        )}
       >
         {date.getDate()}
       </span>
@@ -1001,17 +865,7 @@ const DayCell = ({
       {holidays.map((h) => (
         <div
           key={h.id}
-          style={{
-            fontSize: 10,
-            color: 'var(--sessions-cal-graded-text)',
-            background: 'var(--sessions-cal-holiday-bg)',
-            borderRadius: 3,
-            padding: '1px 4px',
-            marginBottom: 3,
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
+          className="calendar-chip calendar-chip--holiday text-truncate"
         >
           {h.name}
         </div>
@@ -1020,17 +874,7 @@ const DayCell = ({
       {/* Leave banner — shown when at least one session on this day has an approved leave */}
       {(isLearner || isInstructor) && leaveDateMap?.get(dateKey) && (
         <div
-          style={{
-            fontSize: 10,
-            color: 'var(--sessions-cal-leave-text)',
-            background: 'var(--sessions-cal-leave-bg)',
-            borderRadius: 3,
-            padding: '1px 4px',
-            marginBottom: 3,
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
+          className="calendar-chip calendar-chip--leave text-truncate"
         >
           On Leave
         </div>
@@ -1052,32 +896,14 @@ const DayCell = ({
             onClick={(e) => { e.stopPropagation(); setOpenDayKey(null); }}
             onKeyDown={(e) => e.stopPropagation()}
             title={`Due: ${event.title} (${event.courseName})`}
-            style={{
-              display: 'block',
-              background: GRADED_DATE_BG,
-              color: GRADED_DATE_TEXT,
-              border: `1px solid ${GRADED_DATE_BORDER}`,
-              borderRadius: 3,
-              fontSize: 11,
-              padding: '1px 5px',
-              marginBottom: 2,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              textAlign: 'left',
-              cursor: 'pointer',
-              width: '100%',
-            }}
+            className="calendar-chip calendar-chip--graded text-truncate d-block text-left w-100"
           >
             {event.title}
           </button>
         </GradedDatePopover>
       ))}
       {gradedDates.length > MAX_CHIPS && (
-        <div style={{
-          fontSize: 10, color: GRADED_DATE_TEXT, marginBottom: 2, lineHeight: 1.4,
-        }}
-        >
+        <div className="calendar-graded__more">
           +{gradedDates.length - MAX_CHIPS} due date{gradedDates.length - MAX_CHIPS > 1 ? 's' : ''}
         </div>
       )}
@@ -1091,21 +917,7 @@ const DayCell = ({
             <div
               key={session.id}
               title={`${session.title} — On Leave`}
-              style={{
-                display: 'block',
-                background: 'var(--sessions-cal-onleave-bg)',
-                color: 'var(--sessions-cal-onleave-text)',
-                borderRadius: 3,
-                fontSize: 11,
-                padding: '1px 5px',
-                marginBottom: 2,
-                width: '100%',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                textDecoration: 'line-through',
-                userSelect: 'none',
-              }}
+              className="calendar-chip calendar-chip--onleave text-truncate d-block w-100 user-select-none"
             >
               {session.title}
             </div>
@@ -1135,43 +947,16 @@ const DayCell = ({
               onClick={(e) => { e.stopPropagation(); setOpenDayKey(null); }}
               onKeyDown={(e) => e.stopPropagation()}
               title={session.title}
-              style={{
-                display: 'block',
-                background: getChipBg(session, sessionTypeColors),
-                color: '#fff',
-                border: 'none',
-                borderRadius: 3,
-                fontSize: 11,
-                padding: '1px 5px',
-                marginBottom: 2,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                cursor: 'pointer',
-                width: '100%',
-              }}
+              className="calendar-chip calendar-chip--session text-truncate d-block border-0 w-100"
+              style={{ background: getChipBg(session, sessionTypeColors) }}
             >
               {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
-              <span style={{
-                display: 'flex', alignItems: 'center', gap: 2, overflow: 'hidden',
-              }}
-              >
-                <span style={{
-                  width: 6,
-                  height: 6,
-                  minWidth: 6,
-                  borderRadius: '50%',
-                  background: statusDotColors[session.status] || '#e5e7eb',
-                  flexShrink: 0,
-                }}
+              <span className="calendar-chip__inner d-flex align-items-center overflow-hidden">
+                <span
+                  className="calendar-dot calendar-dot--sm rounded-circle flex-shrink-0"
+                  style={{ background: statusDotColors[session.status] || '#e5e7eb' }}
                 />
-                <span style={{
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  textDecoration: session.status === 'cancelled' ? 'line-through' : 'none',
-                }}
-                >
+                <span className={classNames('text-truncate', { 'calendar-strikethrough': session.status === 'cancelled' })}>
                   {session.title}
                 </span>
               </span>
@@ -1182,23 +967,13 @@ const DayCell = ({
 
       {/* Overflow — clickable, opens the day popover */}
       {overflow > 0 && (
-        <button
-          type="button"
+        <Button
+          variant="link"
           onClick={(e) => { e.stopPropagation(); setOpenPopoverId(null); setDayOpen(true); }}
-          style={{
-            background: 'none',
-            border: 'none',
-            padding: 0,
-            fontSize: 11,
-            color: '#0d6efd',
-            textDecoration: 'underline',
-            cursor: 'pointer',
-            textAlign: 'left',
-            marginTop: 'auto',
-          }}
+          className="calendar-link-button calendar-link-button--chip border-0 p-0 text-left"
         >
           +{overflow} more
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -1298,7 +1073,6 @@ const MonthGrid = ({
 const START_HOUR = 0; // midnight — full 24-hour calendar
 const END_HOUR = 24; // 12 AM (next day, exclusive)
 const HOUR_HEIGHT = 60; // px per hour
-const TIME_COL_WIDTH = 52; // px — left time axis column
 const HOURS = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i);
 
 const formatHour = (hour) => {
@@ -1381,69 +1155,31 @@ const TimeGrid = ({
   const todayKey = toDateKey(new Date());
 
   return (
-    <div style={{ border: '1px solid var(--sessions-border)', borderRadius: 4, overflow: 'hidden' }}>
+    <div className="calendar-timegrid overflow-hidden">
       {/* Day header row */}
-      <div style={{
-        display: 'flex',
-        borderBottom: '2px solid var(--sessions-border)',
-        background: 'var(--sessions-surface)',
-        position: 'sticky',
-        top: 0,
-        zIndex: 2,
-      }}
-      >
+      <div className="calendar-timegrid__head d-flex">
         {/* Empty corner above time axis */}
-        <div style={{ width: TIME_COL_WIDTH, flexShrink: 0 }} />
+        <div className="calendar-timegrid__time-col flex-shrink-0" />
         {days.map((day) => {
           const isToday = toDateKey(day) === todayKey;
           const isWeekend = isWeekendDay(day);
           return (
             <div
               key={toDateKey(day)}
-              style={{
-                flex: 1,
-                textAlign: 'center',
-                padding: '8px 4px',
-                fontSize: 12,
-                fontWeight: 600,
-                color: getDayHeaderColor(isToday, isWeekend),
-                borderLeft: '1px solid var(--sessions-border)',
-              }}
+              className={classNames('calendar-timegrid__day text-center', `calendar-timegrid__day--${dayVariant(isToday, isWeekend)}`)}
             >
               {day.toLocaleDateString('en-US', { weekday: 'short' })} {day.getDate()}
               {(holidayMap.get(toDateKey(day)) || []).map((h) => (
                 <div
                   key={h.id}
-                  style={{
-                    fontSize: 9,
-                    color: 'var(--sessions-cal-graded-text)',
-                    background: 'var(--sessions-cal-holiday-bg)',
-                    borderRadius: 2,
-                    padding: '0 3px',
-                    marginTop: 2,
-                    lineHeight: 1.4,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}
+                  className="calendar-tag calendar-tag--holiday text-truncate"
                 >
                   {h.name}
                 </div>
               ))}
               {isLearner && leaveDateMap?.get(toDateKey(day)) && (
                 <div
-                  style={{
-                    fontSize: 9,
-                    color: 'var(--sessions-cal-leave-text)',
-                    background: 'var(--sessions-cal-leave-bg)',
-                    borderRadius: 2,
-                    padding: '0 3px',
-                    marginTop: 2,
-                    lineHeight: 1.4,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}
+                  className="calendar-tag calendar-tag--leave text-truncate"
                 >
                   On Leave
                 </div>
@@ -1454,23 +1190,16 @@ const TimeGrid = ({
       </div>
 
       {/* Scrollable body */}
-      <div style={{ overflowY: 'auto', maxHeight: 580 }}>
-        <div style={{ display: 'flex', height: (END_HOUR - START_HOUR) * HOUR_HEIGHT + 14, paddingTop: 14 }}>
+      <div className="calendar-timegrid__body overflow-auto">
+        <div className="calendar-timegrid__canvas d-flex" style={{ height: (END_HOUR - START_HOUR) * HOUR_HEIGHT + 14 }}>
 
           {/* Time axis */}
-          <div style={{ width: TIME_COL_WIDTH, flexShrink: 0, position: 'relative' }}>
+          <div className="calendar-timegrid__time-col flex-shrink-0 position-relative">
             {HOURS.map((hour) => (
               <div
                 key={hour}
-                style={{
-                  position: 'absolute',
-                  top: (hour - START_HOUR) * HOUR_HEIGHT - 7,
-                  right: 6,
-                  fontSize: 10,
-                  color: 'var(--sessions-text-faint)',
-                  userSelect: 'none',
-                  lineHeight: 1,
-                }}
+                className="calendar-hour-label position-absolute user-select-none"
+                style={{ top: (hour - START_HOUR) * HOUR_HEIGHT - 7 }}
               >
                 {formatHour(hour)}
               </div>
@@ -1488,24 +1217,14 @@ const TimeGrid = ({
             return (
               <div
                 key={key}
-                style={{
-                  flex: 1,
-                  position: 'relative',
-                  borderLeft: '1px solid var(--sessions-border)',
-                  background: getCellBackground(isToday, isWeekend),
-                }}
+                className={classNames('calendar-timegrid__col position-relative', `calendar-timegrid__col--${dayVariant(isToday, isWeekend)}`)}
               >
                 {/* Hour grid lines */}
                 {HOURS.map((hour) => (
                   <div
                     key={hour}
-                    style={{
-                      position: 'absolute',
-                      top: (hour - START_HOUR) * HOUR_HEIGHT,
-                      left: 0,
-                      right: 0,
-                      borderTop: '1px solid var(--sessions-divider)',
-                    }}
+                    className="calendar-hour-line position-absolute"
+                    style={{ top: (hour - START_HOUR) * HOUR_HEIGHT }}
                   />
                 ))}
 
@@ -1528,26 +1247,8 @@ const TimeGrid = ({
                       <button
                         type="button"
                         title={`Due: ${event.title} — ${dueTimeLabel}`}
-                        style={{
-                          position: 'absolute',
-                          top,
-                          left: 2,
-                          right: 2,
-                          height: 22,
-                          background: GRADED_DATE_BG,
-                          color: GRADED_DATE_TEXT,
-                          border: `1px solid ${GRADED_DATE_BORDER}`,
-                          borderRadius: 3,
-                          padding: '1px 4px',
-                          cursor: 'pointer',
-                          textAlign: 'left',
-                          overflow: 'hidden',
-                          zIndex: 0,
-                          fontSize: 10,
-                          lineHeight: 1.25,
-                          whiteSpace: 'nowrap',
-                          textOverflow: 'ellipsis',
-                        }}
+                        className="calendar-event calendar-event--graded text-truncate position-absolute text-left"
+                        style={{ top }}
                       >
                         {dueTimeLabel} Due: {event.title}
                       </button>
@@ -1571,50 +1272,22 @@ const TimeGrid = ({
                       <div
                         key={session.id}
                         title={`${session.title} — On Leave`}
+                        className="calendar-event calendar-event--onleave position-absolute text-left overflow-hidden user-select-none"
                         style={{
-                          position: 'absolute',
-                          top,
-                          left: `calc(${colLeftPct}% + 2px)`,
-                          width: `calc(${colWidthPct}% - 4px)`,
-                          height,
-                          background: 'var(--sessions-cal-onleave-bg)',
-                          color: 'var(--sessions-cal-onleave-text)',
-                          borderRadius: 3,
-                          padding: '2px 6px',
-                          textAlign: 'left',
-                          overflow: 'hidden',
-                          zIndex: 1,
-                          fontSize: totalLanes >= 2 ? 10 : 11,
-                          lineHeight: 1.25,
-                          userSelect: 'none',
+                          top, left: `calc(${colLeftPct}% + 2px)`, width: `calc(${colWidthPct}% - 4px)`, height, fontSize: totalLanes >= 2 ? 10 : 11,
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 3 }}>
-                          <span style={{
-                            width: 7,
-                            height: 7,
-                            minWidth: 7,
-                            borderRadius: '50%',
-                            background: '#9ca3af',
-                            marginTop: 2,
-                            flexShrink: 0,
-                          }}
-                          />
-                          <strong style={{
-                            display: '-webkit-box',
-                            WebkitLineClamp: Math.max(1, Math.min(3, Math.floor((height - 4) / 14))),
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden',
-                            overflowWrap: 'anywhere',
-                            wordBreak: 'break-word',
-                            textDecoration: 'line-through',
-                          }}
+                        <div className="calendar-event__row d-flex align-items-start">
+                          <span className="calendar-dot calendar-dot--md calendar-dot--onleave rounded-circle flex-shrink-0" />
+                          <strong
+                            className="calendar-event__title calendar-strikethrough overflow-hidden"
+                            style={{ maxHeight: `${Math.max(1, Math.min(3, Math.floor((height - 4) / 14))) * 1.25}em` }}
                           >
                             {session.title}
                           </strong>
                         </div>
                         {height >= 28 && totalLanes < 3 && (
-                          <span style={{ opacity: 0.8, fontSize: 9 }}>On Leave</span>
+                          <span className="calendar-event__time calendar-event__time--xs">On Leave</span>
                         )}
                       </div>
                     );
@@ -1644,64 +1317,31 @@ const TimeGrid = ({
                       <button
                         type="button"
                         title={`${session.title} — ${startTime}`}
+                        className="calendar-event calendar-event--session position-absolute border-0 text-left overflow-hidden"
                         style={{
-                          position: 'absolute',
-                          top,
-                          left: `calc(${colLeftPct}% + 2px)`,
-                          width: `calc(${colWidthPct}% - 4px)`,
-                          height,
-                          background: bg,
-                          color: '#fff',
-                          borderRadius: 3,
-                          border: 'none',
-                          padding: '2px 6px',
-                          cursor: 'pointer',
-                          textAlign: 'left',
-                          overflow: 'hidden',
-                          zIndex: 1,
-                          fontSize: totalLanes >= 2 ? 10 : 11,
-                          lineHeight: 1.25,
+                          top, left: `calc(${colLeftPct}% + 2px)`, width: `calc(${colWidthPct}% - 4px)`, height, background: bg, fontSize: totalLanes >= 2 ? 10 : 11,
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 3 }}>
-                          <span style={{
-                            width: 7,
-                            height: 7,
-                            minWidth: 7,
-                            borderRadius: '50%',
-                            background: statusDotColors[session.status] || '#e5e7eb',
-                            marginTop: 2,
-                            flexShrink: 0,
-                          }}
+                        <div className="calendar-event__row d-flex align-items-start">
+                          <span
+                            className="calendar-dot calendar-dot--md rounded-circle flex-shrink-0"
+                            style={{ background: statusDotColors[session.status] || '#e5e7eb' }}
                           />
-                          <strong style={{
-                            display: '-webkit-box',
-                            WebkitLineClamp: Math.max(1, Math.min(3, Math.floor((height - 4) / 14))),
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden',
-                            overflowWrap: 'anywhere',
-                            wordBreak: 'break-word',
-                            textDecoration: isStrikethrough ? 'line-through' : 'none',
-                          }}
+                          <strong
+                            className={classNames('calendar-event__title overflow-hidden', { 'calendar-strikethrough': isStrikethrough })}
+                            style={{ maxHeight: `${Math.max(1, Math.min(3, Math.floor((height - 4) / 14))) * 1.25}em` }}
                           >
                             {session.title}
                           </strong>
                         </div>
                         {/* Time label — hidden in narrow (3+ lane) columns; popover has it */}
                         {height >= 30 && totalLanes < 3 && (
-                          <span style={{ opacity: 0.85, fontSize: 10 }}>{startTime}</span>
+                          <span className="calendar-event__time">{startTime}</span>
                         )}
                         {/* Course name — only in full-width columns with enough height */}
                         {height >= 45 && totalLanes < 2 && session.course_name && (
                           <span
-                            style={{
-                              opacity: 0.85,
-                              fontSize: 10,
-                              display: 'block',
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                            }}
+                            className="calendar-event__time text-truncate d-block"
                           >
                             {session.course_name}
                           </span>
@@ -1871,7 +1511,7 @@ const CalendarView = ({
   return (
     <div>
       {/* ── Toolbar ── */}
-      <div className="d-flex align-items-center flex-wrap mb-3" style={{ gap: 8 }}>
+      <div className="d-flex align-items-center flex-wrap mb-3 calendar-toolbar">
         <IconButton
           src={ChevronLeft}
           iconAs={ChevronLeft}
@@ -1890,12 +1530,12 @@ const CalendarView = ({
           size="sm"
         />
 
-        <span style={{ fontWeight: 600, fontSize: 16, minWidth: 180 }}>
+        <span className="calendar-toolbar__label">
           {formatRangeLabel(view, currentDate)}
         </span>
 
         {/* View toggles + New session — pushed to the right */}
-        <div className="ml-auto d-flex align-items-center" style={{ gap: 4 }}>
+        <div className="ml-auto d-flex align-items-center calendar-toolbar__actions">
           {Object.values(VIEWS).map((v) => (
             <Button
               key={v}
@@ -1908,10 +1548,7 @@ const CalendarView = ({
           ))}
           {canManageSessions && (
             <>
-              <span style={{
-                width: 1, height: 24, background: 'var(--sessions-border)', margin: '0 4px',
-              }}
-              />
+              <span className="calendar-toolbar__divider" />
               <Button
                 variant="success"
                 size="sm"
@@ -1926,7 +1563,7 @@ const CalendarView = ({
       </div>
 
       {/* ── Active view — subtle opacity during navigation re-fetches ── */}
-      <div style={{ opacity: loading ? 0.6 : 1, transition: 'opacity 120ms ease-out' }}>
+      <div className={classNames('calendar-view', { 'calendar-view--loading': loading })}>
         {view === VIEWS.MONTH && (
         <MonthGrid
           currentDate={currentDate}
