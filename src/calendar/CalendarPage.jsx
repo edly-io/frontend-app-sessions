@@ -129,6 +129,7 @@ const CalendarPage = () => {
     modal, modalId, openModal, closeModal,
   } = useModalParams();
   const [activeModalSession, setActiveModalSession] = useState(null);
+  const [detailError, setDetailError] = useState('');
   const [deleteError, setDeleteError] = useState('');
   const [cancelError, setCancelError] = useState('');
 
@@ -267,13 +268,17 @@ const CalendarPage = () => {
 
   useEffect(() => {
     const SESSION_MODALS = ['session', 'edit-session', 'delete-session', 'cancel-session'];
-    if (!modal || !SESSION_MODALS.includes(modal)) { setActiveModalSession(null); return; }
+    if (!modal || !SESSION_MODALS.includes(modal)) { setActiveModalSession(null); setDetailError(''); return; }
     if (!modalId) { return; }
     const found = sessions.find((s) => String(s.id) === String(modalId));
-    if (found) { setActiveModalSession(found); return; }
+    if (found) { setActiveModalSession(found); setDetailError(''); return; }
+    // Fetching the session directly must not destroy the ?modal=&id= URL state on
+    // failure: dropping the params here is what previously stopped the detail modal
+    // from ever opening after an in-app navigation (the effect re-runs when sessions
+    // arrive and can then resolve the session via the find branch above).
     getSession(modalId)
-      .then(setActiveModalSession)
-      .catch(() => closeModal());
+      .then((session) => { setActiveModalSession(session); setDetailError(''); })
+      .catch(() => setDetailError('Failed to load session details.'));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modal, modalId, sessions]);
 
@@ -384,6 +389,7 @@ const CalendarPage = () => {
 
     return (
       <Container className="py-4">
+        {detailError && <Alert variant="danger" className="mb-3">{detailError}</Alert>}
         <CalendarView
           sessions={sessions}
           view={view}

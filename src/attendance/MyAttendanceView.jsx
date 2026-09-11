@@ -1,5 +1,5 @@
 import React, {
-  useEffect, useMemo, useState,
+  useCallback, useEffect, useMemo, useState,
 } from 'react';
 import PropTypes from 'prop-types';
 import { useParams } from 'react-router-dom';
@@ -7,7 +7,7 @@ import {
   Alert, Badge, Container, DataTable, Spinner,
 } from '@openedx/paragon';
 
-import { getCourseSessionsList, getMyAttendanceRecords } from './api';
+import { getCourseSessionsList, getMyAttendanceRecords, getNoCourseSessionsList } from './api';
 import { fetchProgramCourses } from '../calendar/api';
 import SearchableSelect from '../shared/SearchableSelect';
 import { ATTENDANCE_STATUS } from '../shared/constants';
@@ -83,6 +83,8 @@ const MyAttendanceView = () => {
   const [sessions, setSessions] = useState([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [sessionsError, setSessionsError] = useState('');
+  const [sessionPageIndex, setSessionPageIndex] = useState(0);
+  const [sessionCount, setSessionCount] = useState(0);
 
   useEffect(() => {
     if (!programId) { return () => {}; }
@@ -108,26 +110,30 @@ const MyAttendanceView = () => {
     return () => { cancelled = true; };
   }, [programId]);
 
-  useEffect(() => {
-    if (!programId || !selectedCourseId || selectedCourseId === NO_COURSE_VALUE) {
-      setSessions([]);
-      return () => {};
-    }
-    let cancelled = false;
+  // Server-paged fetch, for the selected course or for the programme's
+  // course-less events (seminars, workshops, conferences). Both go through the
+  // same view server-side, so both get the same scope (past + in-progress,
+  // cancelled excluded), ordering (newest first) and pagination — and, because
+  // this lists sessions rather than records, a session the learner was never
+  // marked on still appears as "Not marked". Paragon's DataTable calls this on
+  // mount and on every page change (manualPagination); key={selectedCourseId}
+  // remounts the table on selection change, re-firing it for page 1.
+  const fetchSessions = useCallback(async ({ pageIndex: nextIndex = 0 } = {}) => {
     setSessionsLoading(true);
     setSessionsError('');
-    (async () => {
-      try {
-        const data = await getCourseSessionsList(selectedCourseId, programId);
-        if (cancelled) { return; }
-        setSessions(Array.isArray(data) ? data : data.results ?? []);
-      } catch (err) {
-        if (!cancelled) { setSessionsError(extractApiError(err, 'Failed to load sessions')); }
-      } finally {
-        if (!cancelled) { setSessionsLoading(false); }
-      }
-    })();
-    return () => { cancelled = true; };
+    try {
+      const opts = { page: nextIndex + 1, pageSize: PAGE_SIZE };
+      const data = selectedCourseId === NO_COURSE_VALUE
+        ? await getNoCourseSessionsList(programId, opts)
+        : await getCourseSessionsList(selectedCourseId, programId, opts);
+      setSessions(data.results ?? []);
+      setSessionCount(data.count ?? 0);
+      setSessionPageIndex(nextIndex);
+    } catch (err) {
+      setSessionsError(extractApiError(err, 'Failed to load sessions'));
+    } finally {
+      setSessionsLoading(false);
+    }
   }, [programId, selectedCourseId]);
 
   const courseOptions = useMemo(() => {
@@ -149,31 +155,20 @@ const MyAttendanceView = () => {
     return map;
   }, [allRecords]);
 
-  // For no-course selection: build rows directly from records with no course_id
-  // For a real course: merge sessions list with records (shows "Not marked" for unrecorded sessions)
-  const tableRows = useMemo(() => {
-    if (selectedCourseId === NO_COURSE_VALUE) {
-      return allRecords
-        .filter((r) => !r.course_id)
-        .map((r) => ({
-          id: r.session,
-          title: r.session_title,
-          scheduled_start_time: r.session_date,
-          attendance_status: r.status ?? null,
-          override_reason: r.override_reason ?? null,
-          is_overridden: r.is_overridden ?? false,
-        }));
-    }
-    return sessions.map((s) => {
-      const record = recordsBySessionId[s.id];
-      return {
-        ...s,
-        attendance_status: record?.status ?? null,
-        override_reason: record?.override_reason ?? null,
-        is_overridden: record?.is_overridden ?? false,
-      };
-    });
-  }, [selectedCourseId, allRecords, sessions, recordsBySessionId]);
+  // One row per session, with the learner's record merged in where it exists.
+  // A session with no record shows as "Not marked" — previously the no-course
+  // option listed records only, so an unmarked seminar was invisible.
+  const tableRows = useMemo(() => sessions.map((s) => {
+    const record = recordsBySessionId[s.id];
+    return {
+      ...s,
+      attendance_status: record?.status ?? null,
+      override_reason: record?.override_reason ?? null,
+      is_overridden: record?.is_overridden ?? false,
+    };
+  }), [sessions, recordsBySessionId]);
+
+  const pageCount = Math.max(1, Math.ceil(sessionCount / PAGE_SIZE));
 
   const loading = recordsLoading || coursesLoading;
 
@@ -205,7 +200,12 @@ const MyAttendanceView = () => {
           label="Course"
           options={courseOptions}
           value={selectedCourseOption}
-          onChange={(opt) => setSelectedCourseId(opt?.value || '')}
+          onChange={(opt) => {
+            setSelectedCourseId(opt?.value || '');
+            setSessions([]);
+            setSessionCount(0);
+            setSessionPageIndex(0);
+          }}
           loading={coursesLoading}
           placeholder="Select a course…"
         />
@@ -222,26 +222,25 @@ const MyAttendanceView = () => {
         </div>
       )}
 
-      {selectedCourseId && !sessionsLoading && tableRows.length === 0 && (
-        <Alert variant="info">
-          {selectedCourseId === NO_COURSE_VALUE
-            ? 'No attendance records for sessions without a course.'
-            : 'No sessions found for this course yet.'}
-        </Alert>
-      )}
-
-      {selectedCourseId && !sessionsLoading && tableRows.length > 0 && (
+      {/* Server-paged table, for a course or for the programme's course-less
+          events. It stays mounted while loading — unmounting would re-fire
+          Paragon's fetchData effect (see PerSessionReport). The spinner above
+          renders alongside the table, not instead of it. */}
+      {selectedCourseId && (
         <DataTable
           key={selectedCourseId}
-          isPaginated={tableRows.length > PAGE_SIZE}
+          isPaginated
+          manualPagination
+          fetchData={fetchSessions}
+          pageCount={pageCount}
+          itemCount={sessionCount}
           data={tableRows}
           columns={COLUMNS}
-          itemCount={tableRows.length}
-          initialState={{ pageSize: PAGE_SIZE }}
+          initialState={{ pageIndex: sessionPageIndex, pageSize: PAGE_SIZE }}
         >
           <DataTable.Table />
-          <DataTable.EmptyTable content="No records" />
-          {tableRows.length > PAGE_SIZE && <DataTable.TableFooter />}
+          <DataTable.EmptyTable content="No sessions found yet." />
+          <DataTable.TableFooter />
         </DataTable>
       )}
     </Container>

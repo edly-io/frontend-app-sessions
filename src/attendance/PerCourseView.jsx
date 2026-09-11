@@ -1,5 +1,5 @@
 import React, {
-  useEffect, useMemo, useState,
+  useCallback, useEffect, useMemo, useState,
 } from 'react';
 import PropTypes from 'prop-types';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -8,7 +8,7 @@ import {
 } from '@openedx/paragon';
 
 import { fetchProgramCourses } from '../calendar/api';
-import { getCourseSessionsList, getSessionsPage } from './api';
+import { getCourseSessionsList, getNoCourseSessionsList } from './api';
 import SearchableSelect from '../shared/SearchableSelect';
 import { SESSION_STATUS_LABELS } from '../shared/constants';
 import { extractApiError, formatDateTime, getStatusVariant } from '../shared/utils';
@@ -103,6 +103,8 @@ const PerCourseView = () => {
   const [allSessions, setAllSessions] = useState([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [sessionsError, setSessionsError] = useState('');
+  const [sessionPageIndex, setSessionPageIndex] = useState(0);
+  const [sessionCount, setSessionCount] = useState(0);
 
   useEffect(() => {
     if (!programId) { return () => {}; }
@@ -121,33 +123,28 @@ const PerCourseView = () => {
     return () => { cancelled = true; };
   }, [programId]);
 
-  useEffect(() => {
-    if (!programId || !selectedCourseKey) {
-      setAllSessions([]);
-      return () => {};
-    }
-    let cancelled = false;
+  // Server-paged fetch, for a real course or for the programme's course-less
+  // events. Both go through the same view server-side, so both get the same
+  // scope (past + in-progress, cancelled excluded), ordering (newest first) and
+  // pagination. Paragon's DataTable calls this on mount and on every page change
+  // (manualPagination); key={selectedCourseKey} remounts the table on selection
+  // change, re-firing it for page 1.
+  const fetchSessions = useCallback(async ({ pageIndex: nextIndex = 0 } = {}) => {
     setSessionsLoading(true);
     setSessionsError('');
-    (async () => {
-      try {
-        let sessions;
-        if (selectedCourseKey === NO_COURSE_VALUE) {
-          const data = await getSessionsPage({ programKey: programId, pageSize: 200 });
-          sessions = Array.isArray(data) ? data : data.results ?? [];
-        } else {
-          const data = await getCourseSessionsList(selectedCourseKey, programId);
-          sessions = Array.isArray(data) ? data : data.results ?? [];
-        }
-        if (cancelled) { return; }
-        setAllSessions(sessions);
-      } catch (err) {
-        if (!cancelled) { setSessionsError(extractApiError(err, 'Failed to load sessions')); }
-      } finally {
-        if (!cancelled) { setSessionsLoading(false); }
-      }
-    })();
-    return () => { cancelled = true; };
+    try {
+      const opts = { page: nextIndex + 1, pageSize: PAGE_SIZE };
+      const data = selectedCourseKey === NO_COURSE_VALUE
+        ? await getNoCourseSessionsList(programId, opts)
+        : await getCourseSessionsList(selectedCourseKey, programId, opts);
+      setAllSessions(data.results ?? []);
+      setSessionCount(data.count ?? 0);
+      setSessionPageIndex(nextIndex);
+    } catch (err) {
+      setSessionsError(extractApiError(err, 'Failed to load sessions'));
+    } finally {
+      setSessionsLoading(false);
+    }
   }, [programId, selectedCourseKey]);
 
   const courseOptions = useMemo(() => {
@@ -160,16 +157,13 @@ const PerCourseView = () => {
     courseOptions.find((o) => o.value === selectedCourseKey) || null
   ), [courseOptions, selectedCourseKey]);
 
-  const filteredSessions = useMemo(() => {
+  const tableRows = useMemo(() => {
     if (!selectedCourseKey) { return []; }
-    const raw = selectedCourseKey === NO_COURSE_VALUE
-      ? allSessions.filter((s) => !s.course_id)
-      : allSessions;
     const courseName = selectedCourseKey !== NO_COURSE_VALUE
       ? (courses.find((c) => c.id === selectedCourseKey)?.title || null)
       : null;
     const onViewAttendance = (id) => {
-      const session = raw.find((s) => s.id === id);
+      const session = allSessions.find((s) => s.id === id);
       navigate(
         `/${programId}/attendance/sessions/${id}?course_id=${encodeURIComponent(selectedCourseKey)}`,
         {
@@ -182,8 +176,10 @@ const PerCourseView = () => {
         },
       );
     };
-    return raw.map((s) => ({ ...s, onViewAttendance }));
+    return allSessions.map((s) => ({ ...s, onViewAttendance }));
   }, [allSessions, selectedCourseKey, courses, navigate, programId]);
+
+  const pageCount = Math.max(1, Math.ceil(sessionCount / PAGE_SIZE));
 
   const cx = { cellClassName: 'text-center', headerClassName: 'justify-content-center' };
   const columns = useMemo(() => [
@@ -226,7 +222,12 @@ const PerCourseView = () => {
           label="Course"
           options={courseOptions}
           value={selectedCourseOption}
-          onChange={(opt) => setSelectedCourseKey(opt?.value || '')}
+          onChange={(opt) => {
+            setSelectedCourseKey(opt?.value || '');
+            setAllSessions([]);
+            setSessionCount(0);
+            setSessionPageIndex(0);
+          }}
           loading={coursesLoading}
           placeholder="Search courses…"
         />
@@ -243,21 +244,25 @@ const PerCourseView = () => {
         </div>
       )}
 
-      {selectedCourseKey && !sessionsLoading && filteredSessions.length === 0 && (
-        <Alert variant="info">No completed sessions found for this course.</Alert>
-      )}
-
-      {selectedCourseKey && !sessionsLoading && filteredSessions.length > 0 && (
+      {/* Server-paged table, for a course or for the programme's course-less
+          events. It stays mounted while loading — unmounting would re-fire
+          Paragon's fetchData effect (see PerSessionReport). The spinner above
+          renders alongside the table, not instead of it. */}
+      {selectedCourseKey && (
         <DataTable
-          isPaginated={filteredSessions.length > PAGE_SIZE}
-          data={filteredSessions}
+          key={selectedCourseKey}
+          isPaginated
+          manualPagination
+          fetchData={fetchSessions}
+          pageCount={pageCount}
+          itemCount={sessionCount}
+          data={tableRows}
           columns={columns}
-          itemCount={filteredSessions.length}
-          initialState={{ pageSize: PAGE_SIZE }}
+          initialState={{ pageIndex: sessionPageIndex, pageSize: PAGE_SIZE }}
         >
           <DataTable.Table />
-          <DataTable.EmptyTable content="No sessions" />
-          {filteredSessions.length > PAGE_SIZE && <DataTable.TableFooter />}
+          <DataTable.EmptyTable content="No completed sessions found." />
+          <DataTable.TableFooter />
         </DataTable>
       )}
     </Container>

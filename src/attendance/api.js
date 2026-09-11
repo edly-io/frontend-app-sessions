@@ -79,26 +79,26 @@ export const getPastSessionsForAttendance = async ({ daysBack = 30, startDate, e
 };
 
 /**
- * Paginated session list for a program.
+ * Past sessions in a program that belong to no course — programme-level events
+ * such as seminars, workshops and conferences. Same scope, ordering (newest
+ * first) and pagination as getCourseSessionsList.
  *
- * GET /fbr/api/attendance/v1/sessions/?program_key=<key>&status=<status>
+ * GET /fbr/api/attendance/v1/courses/sessions/?program_key=<key>
+ * Returns paginated { count, next, previous, results: [...] }.
  *
- * @param {Object} opts
- * @param {string}  opts.programKey  — required
- * @param {string}  [opts.status]    — e.g. 'completed'
- * @param {number}  [opts.page]
- * @param {number}  [opts.pageSize]
+ * @param {string} programKey
+ * @param {Object} [opts]
+ * @param {number} [opts.page]
+ * @param {number} [opts.pageSize]
  */
-export const getSessionsPage = async ({
-  programKey, status, page, pageSize,
-} = {}) => {
+export const getNoCourseSessionsList = async (programKey, { page, pageSize } = {}) => {
   const client = getAuthenticatedHttpClient();
-  const params = new URLSearchParams();
-  if (programKey) { params.set('program_key', programKey); }
-  if (status) { params.set('status', status); }
+  const params = new URLSearchParams({ program_key: programKey });
   if (page) { params.set('page', String(page)); }
   if (pageSize) { params.set('page_size', String(pageSize)); }
-  const { data } = await client.get(`${getBaseUrl()}/sessions/?${params}`);
+  const { data } = await client.get(
+    `${getBaseUrl()}/courses/sessions/?${params}`,
+  );
   return data;
 };
 
@@ -171,15 +171,24 @@ export const getCourseSummary = async (courseId, programKey) => {
 };
 
 /**
- * All sessions for a specific course within a program.
+ * Past sessions for a specific course within a program, server-paginated.
  *
  * GET /fbr/api/attendance/v1/courses/{courseKey}/sessions/?program_key=<key>
- * Returns { results: [...] } with fields: id, title, session_type,
- * scheduled_start_time, scheduled_end_time, status, marking_window_open.
+ * Returns paginated { count, next, previous, results: [...] } with fields:
+ * id, title, session_type, scheduled_start_time, scheduled_end_time, status,
+ * marking_window_open, marking_window_remaining_days.
+ *
+ * @param {string} courseKey
+ * @param {string} programKey
+ * @param {Object} [opts]
+ * @param {number} [opts.page]
+ * @param {number} [opts.pageSize]
  */
-export const getCourseSessionsList = async (courseKey, programKey) => {
+export const getCourseSessionsList = async (courseKey, programKey, { page, pageSize } = {}) => {
   const client = getAuthenticatedHttpClient();
   const params = new URLSearchParams({ program_key: programKey });
+  if (page) { params.set('page', String(page)); }
+  if (pageSize) { params.set('page_size', String(pageSize)); }
   const { data } = await client.get(
     `${getBaseUrl()}/courses/${encodeURIComponent(courseKey)}/sessions/?${params}`,
   );
