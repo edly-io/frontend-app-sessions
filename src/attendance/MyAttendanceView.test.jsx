@@ -14,13 +14,16 @@ expect.extend(jestDomMatchers);
 jest.mock('./api', () => ({
   getMyAttendanceRecords: jest.fn(),
   getCourseSessionsList: jest.fn(),
+  getNoCourseSessionsList: jest.fn(),
 }));
 
 jest.mock('../calendar/api', () => ({
   fetchProgramCourses: jest.fn(),
 }));
 
-const { getMyAttendanceRecords, getCourseSessionsList } = require('./api');
+const {
+  getMyAttendanceRecords, getCourseSessionsList, getNoCourseSessionsList,
+} = require('./api');
 const { fetchProgramCourses } = require('../calendar/api');
 
 const PROGRAM_ID = 'program-v1:Org+Test+2026';
@@ -52,8 +55,19 @@ beforeEach(() => {
   fetchProgramCourses.mockResolvedValue([
     { course_key: COURSE_KEY, display_name: COURSE_LABEL },
   ]);
-  getCourseSessionsList.mockResolvedValue({ results: [] });
+  getCourseSessionsList.mockResolvedValue({ count: 0, results: [] });
+  getNoCourseSessionsList.mockResolvedValue({ count: 0, results: [] });
 });
+
+// The no-course option sits before the courses in the dropdown.
+const selectNoCourse = async () => {
+  await waitFor(() => expect(screen.getByLabelText('Course')).toBeInTheDocument());
+  fireEvent.focus(screen.getByLabelText('Course'));
+  await waitFor(() => expect(
+    screen.getByRole('option', { name: 'Sessions without a course' }),
+  ).toBeInTheDocument());
+  fireEvent.mouseDown(screen.getByRole('option', { name: 'Sessions without a course' }));
+};
 
 it('shows loading spinner initially', () => {
   getMyAttendanceRecords.mockReturnValue(new Promise(() => {}));
@@ -182,6 +196,80 @@ it('pages course sessions on the server', async () => {
 
   await waitFor(() => expect(screen.getByText('Session 2')).toBeInTheDocument());
   expect(getCourseSessionsList).toHaveBeenLastCalledWith(COURSE_KEY, PROGRAM_ID, { page: 2, pageSize: 25 });
+});
+
+it('lists no-course sessions and marks unrecorded ones as not marked', async () => {
+  // A seminar the learner was never marked on must still appear — previously
+  // the no-course option listed records only, so this row was invisible.
+  getMyAttendanceRecords.mockResolvedValue({ results: [], count: 0 });
+  getNoCourseSessionsList.mockResolvedValue({
+    count: 2,
+    results: [
+      {
+        id: 'seminar-1',
+        title: 'Opening Seminar',
+        scheduled_start_time: '2026-06-01T10:00:00Z',
+        status: 'completed',
+        marking_window_open: false,
+      },
+      {
+        id: 'workshop-1',
+        title: 'Robotics Workshop',
+        scheduled_start_time: '2026-06-02T10:00:00Z',
+        status: 'completed',
+        marking_window_open: false,
+      },
+    ],
+  });
+  wrap();
+  await selectNoCourse();
+
+  await waitFor(() => expect(screen.getByText('Opening Seminar')).toBeInTheDocument());
+  expect(screen.getByText('Robotics Workshop')).toBeInTheDocument();
+  expect(screen.getAllByText('Not marked')).toHaveLength(2);
+  expect(getNoCourseSessionsList).toHaveBeenCalledWith(PROGRAM_ID, { page: 1, pageSize: 25 });
+});
+
+it('merges a record onto a no-course session', async () => {
+  getMyAttendanceRecords.mockResolvedValue({
+    results: [{
+      id: 9,
+      session: 'seminar-1',
+      session_title: 'Opening Seminar',
+      session_date: '2026-06-01T10:00:00Z',
+      course_id: '',
+      status: 'present',
+      is_overridden: false,
+      override_reason: '',
+    }],
+    count: 1,
+  });
+  getNoCourseSessionsList.mockResolvedValue({
+    count: 1,
+    results: [{
+      id: 'seminar-1',
+      title: 'Opening Seminar',
+      scheduled_start_time: '2026-06-01T10:00:00Z',
+      status: 'completed',
+      marking_window_open: false,
+    }],
+  });
+  wrap();
+  await selectNoCourse();
+
+  await waitFor(() => expect(screen.getByText('Opening Seminar')).toBeInTheDocument());
+  expect(screen.getByText('Present')).toBeInTheDocument();
+  expect(screen.queryByText('Not marked')).not.toBeInTheDocument();
+});
+
+it('shows the empty state when the programme has no course-less sessions', async () => {
+  getMyAttendanceRecords.mockResolvedValue({ results: [], count: 0 });
+  getNoCourseSessionsList.mockResolvedValue({ count: 0, results: [] });
+  wrap();
+  await selectNoCourse();
+  await waitFor(() => expect(
+    screen.getByText(/no sessions found yet/i),
+  ).toBeInTheDocument());
 });
 
 it('shows error message when API call fails', async () => {

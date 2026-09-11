@@ -7,7 +7,7 @@ import {
   Alert, Badge, Container, DataTable, Spinner,
 } from '@openedx/paragon';
 
-import { getCourseSessionsList, getMyAttendanceRecords } from './api';
+import { getCourseSessionsList, getMyAttendanceRecords, getNoCourseSessionsList } from './api';
 import { fetchProgramCourses } from '../calendar/api';
 import SearchableSelect from '../shared/SearchableSelect';
 import { ATTENDANCE_STATUS } from '../shared/constants';
@@ -110,17 +110,22 @@ const MyAttendanceView = () => {
     return () => { cancelled = true; };
   }, [programId]);
 
-  // Server-paged fetch for the selected course. Paragon's DataTable calls this
-  // on mount and on every page change (manualPagination); key={selectedCourseId}
-  // remounts the table on course change, re-firing it for page 1.
+  // Server-paged fetch, for the selected course or for the programme's
+  // course-less events (seminars, workshops, conferences). Both go through the
+  // same view server-side, so both get the same scope (past + in-progress,
+  // cancelled excluded), ordering (newest first) and pagination — and, because
+  // this lists sessions rather than records, a session the learner was never
+  // marked on still appears as "Not marked". Paragon's DataTable calls this on
+  // mount and on every page change (manualPagination); key={selectedCourseId}
+  // remounts the table on selection change, re-firing it for page 1.
   const fetchSessions = useCallback(async ({ pageIndex: nextIndex = 0 } = {}) => {
     setSessionsLoading(true);
     setSessionsError('');
     try {
-      const data = await getCourseSessionsList(selectedCourseId, programId, {
-        page: nextIndex + 1,
-        pageSize: PAGE_SIZE,
-      });
+      const opts = { page: nextIndex + 1, pageSize: PAGE_SIZE };
+      const data = selectedCourseId === NO_COURSE_VALUE
+        ? await getNoCourseSessionsList(programId, opts)
+        : await getCourseSessionsList(selectedCourseId, programId, opts);
       setSessions(data.results ?? []);
       setSessionCount(data.count ?? 0);
       setSessionPageIndex(nextIndex);
@@ -150,35 +155,19 @@ const MyAttendanceView = () => {
     return map;
   }, [allRecords]);
 
-  // For no-course selection: build rows directly from records with no course_id
-  // For a real course: merge sessions list with records (shows "Not marked" for unrecorded sessions)
-  const tableRows = useMemo(() => {
-    if (selectedCourseId === NO_COURSE_VALUE) {
-      return allRecords
-        .filter((r) => !r.course_id)
-        .map((r) => ({
-          id: r.session,
-          title: r.session_title,
-          scheduled_start_time: r.session_date,
-          attendance_status: r.status ?? null,
-          override_reason: r.override_reason ?? null,
-          is_overridden: r.is_overridden ?? false,
-        }));
-    }
-    return sessions.map((s) => {
-      const record = recordsBySessionId[s.id];
-      return {
-        ...s,
-        attendance_status: record?.status ?? null,
-        override_reason: record?.override_reason ?? null,
-        is_overridden: record?.is_overridden ?? false,
-      };
-    });
-  }, [selectedCourseId, allRecords, sessions, recordsBySessionId]);
+  // One row per session, with the learner's record merged in where it exists.
+  // A session with no record shows as "Not marked" — previously the no-course
+  // option listed records only, so an unmarked seminar was invisible.
+  const tableRows = useMemo(() => sessions.map((s) => {
+    const record = recordsBySessionId[s.id];
+    return {
+      ...s,
+      attendance_status: record?.status ?? null,
+      override_reason: record?.override_reason ?? null,
+      is_overridden: record?.is_overridden ?? false,
+    };
+  }), [sessions, recordsBySessionId]);
 
-  // A real course is paged by the server; "no course" rows come from the
-  // records list and are still paginated client-side (see bug 3.14).
-  const isServerPaginated = selectedCourseId !== NO_COURSE_VALUE;
   const pageCount = Math.max(1, Math.ceil(sessionCount / PAGE_SIZE));
 
   const loading = recordsLoading || coursesLoading;
@@ -233,16 +222,11 @@ const MyAttendanceView = () => {
         </div>
       )}
 
-      {selectedCourseId && !isServerPaginated && !sessionsLoading && tableRows.length === 0 && (
-        <Alert variant="info">
-          No attendance records for sessions without a course.
-        </Alert>
-      )}
-
-      {/* Server-paged table for a real course. It stays mounted while loading —
-          unmounting would re-fire Paragon's fetchData effect (see PerSessionReport).
-          The spinner above renders alongside the table, not instead of it. */}
-      {selectedCourseId && isServerPaginated && (
+      {/* Server-paged table, for a course or for the programme's course-less
+          events. It stays mounted while loading — unmounting would re-fire
+          Paragon's fetchData effect (see PerSessionReport). The spinner above
+          renders alongside the table, not instead of it. */}
+      {selectedCourseId && (
         <DataTable
           key={selectedCourseId}
           isPaginated
@@ -255,22 +239,8 @@ const MyAttendanceView = () => {
           initialState={{ pageIndex: sessionPageIndex, pageSize: PAGE_SIZE }}
         >
           <DataTable.Table />
-          <DataTable.EmptyTable content="No sessions found for this course yet." />
+          <DataTable.EmptyTable content="No sessions found yet." />
           <DataTable.TableFooter />
-        </DataTable>
-      )}
-
-      {selectedCourseId && !isServerPaginated && !sessionsLoading && tableRows.length > 0 && (
-        <DataTable
-          isPaginated={tableRows.length > PAGE_SIZE}
-          data={tableRows}
-          columns={COLUMNS}
-          itemCount={tableRows.length}
-          initialState={{ pageSize: PAGE_SIZE }}
-        >
-          <DataTable.Table />
-          <DataTable.EmptyTable content="No records" />
-          {tableRows.length > PAGE_SIZE && <DataTable.TableFooter />}
         </DataTable>
       )}
     </Container>

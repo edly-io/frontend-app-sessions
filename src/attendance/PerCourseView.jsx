@@ -8,7 +8,7 @@ import {
 } from '@openedx/paragon';
 
 import { fetchProgramCourses } from '../calendar/api';
-import { getCourseSessionsList, getSessionsPage } from './api';
+import { getCourseSessionsList, getNoCourseSessionsList } from './api';
 import SearchableSelect from '../shared/SearchableSelect';
 import { SESSION_STATUS_LABELS } from '../shared/constants';
 import { extractApiError, formatDateTime, getStatusVariant } from '../shared/utils';
@@ -123,17 +123,20 @@ const PerCourseView = () => {
     return () => { cancelled = true; };
   }, [programId]);
 
-  // Server-paged fetch for a real course. Paragon's DataTable calls this on
-  // mount and on every page change (manualPagination); key={selectedCourseKey}
-  // remounts the table on course change, re-firing it for page 1.
+  // Server-paged fetch, for a real course or for the programme's course-less
+  // events. Both go through the same view server-side, so both get the same
+  // scope (past + in-progress, cancelled excluded), ordering (newest first) and
+  // pagination. Paragon's DataTable calls this on mount and on every page change
+  // (manualPagination); key={selectedCourseKey} remounts the table on selection
+  // change, re-firing it for page 1.
   const fetchSessions = useCallback(async ({ pageIndex: nextIndex = 0 } = {}) => {
     setSessionsLoading(true);
     setSessionsError('');
     try {
-      const data = await getCourseSessionsList(selectedCourseKey, programId, {
-        page: nextIndex + 1,
-        pageSize: PAGE_SIZE,
-      });
+      const opts = { page: nextIndex + 1, pageSize: PAGE_SIZE };
+      const data = selectedCourseKey === NO_COURSE_VALUE
+        ? await getNoCourseSessionsList(programId, opts)
+        : await getCourseSessionsList(selectedCourseKey, programId, opts);
       setAllSessions(data.results ?? []);
       setSessionCount(data.count ?? 0);
       setSessionPageIndex(nextIndex);
@@ -142,31 +145,6 @@ const PerCourseView = () => {
     } finally {
       setSessionsLoading(false);
     }
-  }, [programId, selectedCourseKey]);
-
-  // The "no course" option has no server-side filter yet, so it still fetches
-  // page 1 of /sessions/ and narrows in the browser (see bug 3.14).
-  useEffect(() => {
-    if (!programId || selectedCourseKey !== NO_COURSE_VALUE) {
-      return () => {};
-    }
-    let cancelled = false;
-    setSessionsLoading(true);
-    setSessionsError('');
-    (async () => {
-      try {
-        const data = await getSessionsPage({ programKey: programId, pageSize: 200 });
-        if (cancelled) { return; }
-        const results = Array.isArray(data) ? data : data.results ?? [];
-        setAllSessions(results);
-        setSessionCount(results.length);
-      } catch (err) {
-        if (!cancelled) { setSessionsError(extractApiError(err, 'Failed to load sessions')); }
-      } finally {
-        if (!cancelled) { setSessionsLoading(false); }
-      }
-    })();
-    return () => { cancelled = true; };
   }, [programId, selectedCourseKey]);
 
   const courseOptions = useMemo(() => {
@@ -179,16 +157,13 @@ const PerCourseView = () => {
     courseOptions.find((o) => o.value === selectedCourseKey) || null
   ), [courseOptions, selectedCourseKey]);
 
-  const filteredSessions = useMemo(() => {
+  const tableRows = useMemo(() => {
     if (!selectedCourseKey) { return []; }
-    const raw = selectedCourseKey === NO_COURSE_VALUE
-      ? allSessions.filter((s) => !s.course_id)
-      : allSessions;
     const courseName = selectedCourseKey !== NO_COURSE_VALUE
       ? (courses.find((c) => c.id === selectedCourseKey)?.title || null)
       : null;
     const onViewAttendance = (id) => {
-      const session = raw.find((s) => s.id === id);
+      const session = allSessions.find((s) => s.id === id);
       navigate(
         `/${programId}/attendance/sessions/${id}?course_id=${encodeURIComponent(selectedCourseKey)}`,
         {
@@ -201,11 +176,9 @@ const PerCourseView = () => {
         },
       );
     };
-    return raw.map((s) => ({ ...s, onViewAttendance }));
+    return allSessions.map((s) => ({ ...s, onViewAttendance }));
   }, [allSessions, selectedCourseKey, courses, navigate, programId]);
 
-  // A real course is paged by the server; the "no course" option is not.
-  const isServerPaginated = selectedCourseKey !== NO_COURSE_VALUE;
   const pageCount = Math.max(1, Math.ceil(sessionCount / PAGE_SIZE));
 
   const cx = { cellClassName: 'text-center', headerClassName: 'justify-content-center' };
@@ -271,14 +244,11 @@ const PerCourseView = () => {
         </div>
       )}
 
-      {selectedCourseKey && !isServerPaginated && !sessionsLoading && filteredSessions.length === 0 && (
-        <Alert variant="info">No completed sessions found for this course.</Alert>
-      )}
-
-      {/* Server-paged table for a real course. It stays mounted while loading —
-          unmounting would re-fire Paragon's fetchData effect (see PerSessionReport).
-          The spinner above renders alongside the table, not instead of it. */}
-      {selectedCourseKey && isServerPaginated && (
+      {/* Server-paged table, for a course or for the programme's course-less
+          events. It stays mounted while loading — unmounting would re-fire
+          Paragon's fetchData effect (see PerSessionReport). The spinner above
+          renders alongside the table, not instead of it. */}
+      {selectedCourseKey && (
         <DataTable
           key={selectedCourseKey}
           isPaginated
@@ -286,27 +256,13 @@ const PerCourseView = () => {
           fetchData={fetchSessions}
           pageCount={pageCount}
           itemCount={sessionCount}
-          data={filteredSessions}
+          data={tableRows}
           columns={columns}
           initialState={{ pageIndex: sessionPageIndex, pageSize: PAGE_SIZE }}
         >
           <DataTable.Table />
-          <DataTable.EmptyTable content="No completed sessions found for this course." />
+          <DataTable.EmptyTable content="No completed sessions found." />
           <DataTable.TableFooter />
-        </DataTable>
-      )}
-
-      {selectedCourseKey && !isServerPaginated && !sessionsLoading && filteredSessions.length > 0 && (
-        <DataTable
-          isPaginated={filteredSessions.length > PAGE_SIZE}
-          data={filteredSessions}
-          columns={columns}
-          itemCount={filteredSessions.length}
-          initialState={{ pageSize: PAGE_SIZE }}
-        >
-          <DataTable.Table />
-          <DataTable.EmptyTable content="No sessions" />
-          {filteredSessions.length > PAGE_SIZE && <DataTable.TableFooter />}
         </DataTable>
       )}
     </Container>
