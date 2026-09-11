@@ -1,5 +1,5 @@
 import React, {
-  useEffect, useMemo, useState,
+  useCallback, useEffect, useMemo, useState,
 } from 'react';
 import PropTypes from 'prop-types';
 import { useParams } from 'react-router-dom';
@@ -83,6 +83,8 @@ const MyAttendanceView = () => {
   const [sessions, setSessions] = useState([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [sessionsError, setSessionsError] = useState('');
+  const [sessionPageIndex, setSessionPageIndex] = useState(0);
+  const [sessionCount, setSessionCount] = useState(0);
 
   useEffect(() => {
     if (!programId) { return () => {}; }
@@ -108,26 +110,25 @@ const MyAttendanceView = () => {
     return () => { cancelled = true; };
   }, [programId]);
 
-  useEffect(() => {
-    if (!programId || !selectedCourseId || selectedCourseId === NO_COURSE_VALUE) {
-      setSessions([]);
-      return () => {};
-    }
-    let cancelled = false;
+  // Server-paged fetch for the selected course. Paragon's DataTable calls this
+  // on mount and on every page change (manualPagination); key={selectedCourseId}
+  // remounts the table on course change, re-firing it for page 1.
+  const fetchSessions = useCallback(async ({ pageIndex: nextIndex = 0 } = {}) => {
     setSessionsLoading(true);
     setSessionsError('');
-    (async () => {
-      try {
-        const data = await getCourseSessionsList(selectedCourseId, programId);
-        if (cancelled) { return; }
-        setSessions(Array.isArray(data) ? data : data.results ?? []);
-      } catch (err) {
-        if (!cancelled) { setSessionsError(extractApiError(err, 'Failed to load sessions')); }
-      } finally {
-        if (!cancelled) { setSessionsLoading(false); }
-      }
-    })();
-    return () => { cancelled = true; };
+    try {
+      const data = await getCourseSessionsList(selectedCourseId, programId, {
+        page: nextIndex + 1,
+        pageSize: PAGE_SIZE,
+      });
+      setSessions(data.results ?? []);
+      setSessionCount(data.count ?? 0);
+      setSessionPageIndex(nextIndex);
+    } catch (err) {
+      setSessionsError(extractApiError(err, 'Failed to load sessions'));
+    } finally {
+      setSessionsLoading(false);
+    }
   }, [programId, selectedCourseId]);
 
   const courseOptions = useMemo(() => {
@@ -175,6 +176,11 @@ const MyAttendanceView = () => {
     });
   }, [selectedCourseId, allRecords, sessions, recordsBySessionId]);
 
+  // A real course is paged by the server; "no course" rows come from the
+  // records list and are still paginated client-side (see bug 3.14).
+  const isServerPaginated = selectedCourseId !== NO_COURSE_VALUE;
+  const pageCount = Math.max(1, Math.ceil(sessionCount / PAGE_SIZE));
+
   const loading = recordsLoading || coursesLoading;
 
   if (loading) {
@@ -205,7 +211,12 @@ const MyAttendanceView = () => {
           label="Course"
           options={courseOptions}
           value={selectedCourseOption}
-          onChange={(opt) => setSelectedCourseId(opt?.value || '')}
+          onChange={(opt) => {
+            setSelectedCourseId(opt?.value || '');
+            setSessions([]);
+            setSessionCount(0);
+            setSessionPageIndex(0);
+          }}
           loading={coursesLoading}
           placeholder="Select a course…"
         />
@@ -222,17 +233,35 @@ const MyAttendanceView = () => {
         </div>
       )}
 
-      {selectedCourseId && !sessionsLoading && tableRows.length === 0 && (
+      {selectedCourseId && !isServerPaginated && !sessionsLoading && tableRows.length === 0 && (
         <Alert variant="info">
-          {selectedCourseId === NO_COURSE_VALUE
-            ? 'No attendance records for sessions without a course.'
-            : 'No sessions found for this course yet.'}
+          No attendance records for sessions without a course.
         </Alert>
       )}
 
-      {selectedCourseId && !sessionsLoading && tableRows.length > 0 && (
+      {/* Server-paged table for a real course. It stays mounted while loading —
+          unmounting would re-fire Paragon's fetchData effect (see PerSessionReport).
+          The spinner above renders alongside the table, not instead of it. */}
+      {selectedCourseId && isServerPaginated && (
         <DataTable
           key={selectedCourseId}
+          isPaginated
+          manualPagination
+          fetchData={fetchSessions}
+          pageCount={pageCount}
+          itemCount={sessionCount}
+          data={tableRows}
+          columns={COLUMNS}
+          initialState={{ pageIndex: sessionPageIndex, pageSize: PAGE_SIZE }}
+        >
+          <DataTable.Table />
+          <DataTable.EmptyTable content="No sessions found for this course yet." />
+          <DataTable.TableFooter />
+        </DataTable>
+      )}
+
+      {selectedCourseId && !isServerPaginated && !sessionsLoading && tableRows.length > 0 && (
+        <DataTable
           isPaginated={tableRows.length > PAGE_SIZE}
           data={tableRows}
           columns={COLUMNS}

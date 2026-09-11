@@ -171,15 +171,24 @@ export const getCourseSummary = async (courseId, programKey) => {
 };
 
 /**
- * All sessions for a specific course within a program.
+ * Past sessions for a specific course within a program, server-paginated.
  *
  * GET /fbr/api/attendance/v1/courses/{courseKey}/sessions/?program_key=<key>
- * Returns { results: [...] } with fields: id, title, session_type,
- * scheduled_start_time, scheduled_end_time, status, marking_window_open.
+ * Returns paginated { count, next, previous, results: [...] } with fields:
+ * id, title, session_type, scheduled_start_time, scheduled_end_time, status,
+ * marking_window_open, marking_window_remaining_days.
+ *
+ * @param {string} courseKey
+ * @param {string} programKey
+ * @param {Object} [opts]
+ * @param {number} [opts.page]
+ * @param {number} [opts.pageSize]
  */
-export const getCourseSessionsList = async (courseKey, programKey) => {
+export const getCourseSessionsList = async (courseKey, programKey, { page, pageSize } = {}) => {
   const client = getAuthenticatedHttpClient();
   const params = new URLSearchParams({ program_key: programKey });
+  if (page) { params.set('page', String(page)); }
+  if (pageSize) { params.set('page_size', String(pageSize)); }
   const { data } = await client.get(
     `${getBaseUrl()}/courses/${encodeURIComponent(courseKey)}/sessions/?${params}`,
   );

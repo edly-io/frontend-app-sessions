@@ -1,5 +1,5 @@
 import React, {
-  useEffect, useMemo, useState,
+  useCallback, useEffect, useMemo, useState,
 } from 'react';
 import PropTypes from 'prop-types';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -103,6 +103,8 @@ const PerCourseView = () => {
   const [allSessions, setAllSessions] = useState([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [sessionsError, setSessionsError] = useState('');
+  const [sessionPageIndex, setSessionPageIndex] = useState(0);
+  const [sessionCount, setSessionCount] = useState(0);
 
   useEffect(() => {
     if (!programId) { return () => {}; }
@@ -121,9 +123,31 @@ const PerCourseView = () => {
     return () => { cancelled = true; };
   }, [programId]);
 
+  // Server-paged fetch for a real course. Paragon's DataTable calls this on
+  // mount and on every page change (manualPagination); key={selectedCourseKey}
+  // remounts the table on course change, re-firing it for page 1.
+  const fetchSessions = useCallback(async ({ pageIndex: nextIndex = 0 } = {}) => {
+    setSessionsLoading(true);
+    setSessionsError('');
+    try {
+      const data = await getCourseSessionsList(selectedCourseKey, programId, {
+        page: nextIndex + 1,
+        pageSize: PAGE_SIZE,
+      });
+      setAllSessions(data.results ?? []);
+      setSessionCount(data.count ?? 0);
+      setSessionPageIndex(nextIndex);
+    } catch (err) {
+      setSessionsError(extractApiError(err, 'Failed to load sessions'));
+    } finally {
+      setSessionsLoading(false);
+    }
+  }, [programId, selectedCourseKey]);
+
+  // The "no course" option has no server-side filter yet, so it still fetches
+  // page 1 of /sessions/ and narrows in the browser (see bug 3.14).
   useEffect(() => {
-    if (!programId || !selectedCourseKey) {
-      setAllSessions([]);
+    if (!programId || selectedCourseKey !== NO_COURSE_VALUE) {
       return () => {};
     }
     let cancelled = false;
@@ -131,16 +155,11 @@ const PerCourseView = () => {
     setSessionsError('');
     (async () => {
       try {
-        let sessions;
-        if (selectedCourseKey === NO_COURSE_VALUE) {
-          const data = await getSessionsPage({ programKey: programId, pageSize: 200 });
-          sessions = Array.isArray(data) ? data : data.results ?? [];
-        } else {
-          const data = await getCourseSessionsList(selectedCourseKey, programId);
-          sessions = Array.isArray(data) ? data : data.results ?? [];
-        }
+        const data = await getSessionsPage({ programKey: programId, pageSize: 200 });
         if (cancelled) { return; }
-        setAllSessions(sessions);
+        const results = Array.isArray(data) ? data : data.results ?? [];
+        setAllSessions(results);
+        setSessionCount(results.length);
       } catch (err) {
         if (!cancelled) { setSessionsError(extractApiError(err, 'Failed to load sessions')); }
       } finally {
@@ -185,6 +204,10 @@ const PerCourseView = () => {
     return raw.map((s) => ({ ...s, onViewAttendance }));
   }, [allSessions, selectedCourseKey, courses, navigate, programId]);
 
+  // A real course is paged by the server; the "no course" option is not.
+  const isServerPaginated = selectedCourseKey !== NO_COURSE_VALUE;
+  const pageCount = Math.max(1, Math.ceil(sessionCount / PAGE_SIZE));
+
   const cx = { cellClassName: 'text-center', headerClassName: 'justify-content-center' };
   const columns = useMemo(() => [
     { Header: 'Title', accessor: 'title', Cell: TitleCell },
@@ -226,7 +249,12 @@ const PerCourseView = () => {
           label="Course"
           options={courseOptions}
           value={selectedCourseOption}
-          onChange={(opt) => setSelectedCourseKey(opt?.value || '')}
+          onChange={(opt) => {
+            setSelectedCourseKey(opt?.value || '');
+            setAllSessions([]);
+            setSessionCount(0);
+            setSessionPageIndex(0);
+          }}
           loading={coursesLoading}
           placeholder="Search courses…"
         />
@@ -243,11 +271,32 @@ const PerCourseView = () => {
         </div>
       )}
 
-      {selectedCourseKey && !sessionsLoading && filteredSessions.length === 0 && (
+      {selectedCourseKey && !isServerPaginated && !sessionsLoading && filteredSessions.length === 0 && (
         <Alert variant="info">No completed sessions found for this course.</Alert>
       )}
 
-      {selectedCourseKey && !sessionsLoading && filteredSessions.length > 0 && (
+      {/* Server-paged table for a real course. It stays mounted while loading —
+          unmounting would re-fire Paragon's fetchData effect (see PerSessionReport).
+          The spinner above renders alongside the table, not instead of it. */}
+      {selectedCourseKey && isServerPaginated && (
+        <DataTable
+          key={selectedCourseKey}
+          isPaginated
+          manualPagination
+          fetchData={fetchSessions}
+          pageCount={pageCount}
+          itemCount={sessionCount}
+          data={filteredSessions}
+          columns={columns}
+          initialState={{ pageIndex: sessionPageIndex, pageSize: PAGE_SIZE }}
+        >
+          <DataTable.Table />
+          <DataTable.EmptyTable content="No completed sessions found for this course." />
+          <DataTable.TableFooter />
+        </DataTable>
+      )}
+
+      {selectedCourseKey && !isServerPaginated && !sessionsLoading && filteredSessions.length > 0 && (
         <DataTable
           isPaginated={filteredSessions.length > PAGE_SIZE}
           data={filteredSessions}

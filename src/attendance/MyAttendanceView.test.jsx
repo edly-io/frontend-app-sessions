@@ -157,6 +157,33 @@ it('shows override reason note when record is overridden', async () => {
   ).toBeInTheDocument());
 });
 
+it('pages course sessions on the server', async () => {
+  getMyAttendanceRecords.mockResolvedValue({ results: [], count: 0 });
+  getCourseSessionsList.mockImplementation(
+    (courseKey, programKey, { page } = {}) => Promise.resolve({
+      count: 30,
+      next: null,
+      previous: null,
+      results: [{
+        id: `session-page-${page}`,
+        title: `Session ${page}`,
+        scheduled_start_time: '2026-06-01T10:00:00Z',
+        status: 'completed',
+        marking_window_open: false,
+      }],
+    }),
+  );
+  wrap();
+  await selectCourse();
+  await waitFor(() => expect(screen.getByText('Session 1')).toBeInTheDocument());
+  expect(getCourseSessionsList).toHaveBeenCalledWith(COURSE_KEY, PROGRAM_ID, { page: 1, pageSize: 25 });
+
+  fireEvent.click(screen.getByRole('button', { name: /^next/i }));
+
+  await waitFor(() => expect(screen.getByText('Session 2')).toBeInTheDocument());
+  expect(getCourseSessionsList).toHaveBeenLastCalledWith(COURSE_KEY, PROGRAM_ID, { page: 2, pageSize: 25 });
+});
+
 it('shows error message when API call fails', async () => {
   getMyAttendanceRecords.mockRejectedValue({ message: 'Network error' });
   wrap();
