@@ -6,7 +6,7 @@ import React, {
 } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import {
-  Alert, Button, Container, DataTable, Form, Spinner, StandardModal, Tab, Tabs, Toast,
+  Alert, Button, ButtonGroup, Container, DataTable, Form, Spinner, StandardModal, Toast,
 } from '@openedx/paragon';
 import { Add, DeleteOutline, EditOutline } from '@openedx/paragon/icons';
 import PropTypes from 'prop-types';
@@ -222,16 +222,26 @@ const LocationsPage = () => {
 
   return (
     <Container className="py-3">
-      <Tabs
-        id="locations-view-tabs"
-        variant="tabs"
-        activeKey={activeView}
-        onSelect={handleViewChange}
-        className="page-view-toggle"
-      >
-        <Tab eventKey="list" title="Locations" />
-        <Tab eventKey="audit-log" title="Audit Log" />
-      </Tabs>
+      <div className="d-flex justify-content-end mb-3">
+        <ButtonGroup size="sm">
+          <Button
+            variant={activeView === 'list' ? 'primary' : 'outline-primary'}
+            size="sm"
+            aria-pressed={activeView === 'list'}
+            onClick={() => handleViewChange('list')}
+          >
+            Locations
+          </Button>
+          <Button
+            variant={activeView === 'audit-log' ? 'primary' : 'outline-primary'}
+            size="sm"
+            aria-pressed={activeView === 'audit-log'}
+            onClick={() => handleViewChange('audit-log')}
+          >
+            Audit Log
+          </Button>
+        </ButtonGroup>
+      </div>
 
       {activeView === 'audit-log' ? (
         <AuditLogTable

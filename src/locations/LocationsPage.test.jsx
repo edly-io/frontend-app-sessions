@@ -97,15 +97,15 @@ describe('admin', () => {
     getLocations.mockResolvedValue({ count: 0, results: [] });
     wrap();
     await waitFor(() => expect(screen.getByText(/no locations found/i)).toBeInTheDocument());
-    expect(screen.getByRole('tab', { name: /^locations$/i })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /^audit log$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^locations$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^audit log$/i })).toBeInTheDocument();
   });
 
   it('switches to audit log view when Audit Log tab is clicked', async () => {
     getLocations.mockResolvedValue({ count: 0, results: [] });
     wrap();
     await waitFor(() => expect(screen.getByText(/no locations found/i)).toBeInTheDocument());
-    fireEvent.click(screen.getByRole('tab', { name: /^audit log$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^audit log$/i }));
     await waitFor(() => expect(screen.getByTestId('audit-log-table')).toBeInTheDocument());
     expect(screen.queryByText(/no locations found/i)).not.toBeInTheDocument();
   });

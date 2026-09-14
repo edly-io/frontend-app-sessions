@@ -3,7 +3,7 @@ import React, {
 } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import {
-  Container, Spinner, Alert, Toast, StandardModal, Button, Tab, Tabs,
+  Container, Spinner, Alert, Toast, StandardModal, Button, ButtonGroup,
 } from '@openedx/paragon';
 import AuditLogTable from '../shared/AuditLogTable';
 import {
@@ -420,16 +420,26 @@ const CalendarPage = () => {
   return (
     <>
       {canManageSessions && (
-        <Tabs
-          id="calendar-view-tabs"
-          variant="tabs"
-          activeKey={activeView}
-          onSelect={handleTabChange}
-          className="page-view-toggle page-view-toggle--inset"
-        >
-          <Tab eventKey="calendar" title="Calendar" />
-          <Tab eventKey="audit-log" title="Audit Log" />
-        </Tabs>
+        <div className="d-flex justify-content-end mb-3 px-3">
+          <ButtonGroup size="sm">
+            <Button
+              variant={activeView === 'calendar' ? 'primary' : 'outline-primary'}
+              size="sm"
+              aria-pressed={activeView === 'calendar'}
+              onClick={() => handleTabChange('calendar')}
+            >
+              Calendar
+            </Button>
+            <Button
+              variant={activeView === 'audit-log' ? 'primary' : 'outline-primary'}
+              size="sm"
+              aria-pressed={activeView === 'audit-log'}
+              onClick={() => handleTabChange('audit-log')}
+            >
+              Audit Log
+            </Button>
+          </ButtonGroup>
+        </div>
       )}
 
       {canManageSessions && activeView === 'audit-log' ? (
