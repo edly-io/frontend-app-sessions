@@ -1,5 +1,5 @@
 import React from 'react';
-import { Tab, Tabs } from '@openedx/paragon';
+import { Button, ButtonGroup } from '@openedx/paragon';
 import {
   Navigate, Outlet, useParams, useSearchParams,
 } from 'react-router-dom';
@@ -42,16 +42,26 @@ const AttendancePage = () => {
   return (
     <>
       {isAdmin && (
-        <Tabs
-          id="attendance-view-tabs"
-          variant="tabs"
-          activeKey={activeView}
-          onSelect={handleViewChange}
-          className="page-view-toggle"
-        >
-          <Tab eventKey="list" title="Attendance" />
-          <Tab eventKey="audit-log" title="Audit Log" />
-        </Tabs>
+        <div className="d-flex justify-content-end mb-3">
+          <ButtonGroup size="sm">
+            <Button
+              variant={activeView === 'list' ? 'primary' : 'outline-primary'}
+              size="sm"
+              aria-pressed={activeView === 'list'}
+              onClick={() => handleViewChange('list')}
+            >
+              Attendance
+            </Button>
+            <Button
+              variant={activeView === 'audit-log' ? 'primary' : 'outline-primary'}
+              size="sm"
+              aria-pressed={activeView === 'audit-log'}
+              onClick={() => handleViewChange('audit-log')}
+            >
+              Audit Log
+            </Button>
+          </ButtonGroup>
+        </div>
       )}
 
       {isAdmin && activeView === 'audit-log' ? (

@@ -1,6 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { Tab, Tabs } from '@openedx/paragon';
+import { Button, ButtonGroup } from '@openedx/paragon';
 import { Outlet, useParams, useSearchParams } from 'react-router-dom';
 
 import { useConfig } from '../app/useConfig';
@@ -58,16 +58,26 @@ const RequestsPage = () => {
   return (
     <>
       {isAdmin && (
-        <Tabs
-          id="requests-view-tabs"
-          variant="tabs"
-          activeKey={activeView}
-          onSelect={handleViewChange}
-          className="page-view-toggle"
-        >
-          <Tab eventKey="list" title="Requests" />
-          <Tab eventKey="audit-log" title="Audit Log" />
-        </Tabs>
+        <div className="d-flex justify-content-end mb-3">
+          <ButtonGroup size="sm">
+            <Button
+              variant={activeView === 'list' ? 'primary' : 'outline-primary'}
+              size="sm"
+              aria-pressed={activeView === 'list'}
+              onClick={() => handleViewChange('list')}
+            >
+              Requests
+            </Button>
+            <Button
+              variant={activeView === 'audit-log' ? 'primary' : 'outline-primary'}
+              size="sm"
+              aria-pressed={activeView === 'audit-log'}
+              onClick={() => handleViewChange('audit-log')}
+            >
+              Audit Log
+            </Button>
+          </ButtonGroup>
+        </div>
       )}
 
       {isAdmin && activeView === 'audit-log' ? (

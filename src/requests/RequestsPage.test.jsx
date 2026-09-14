@@ -108,8 +108,8 @@ describe('RequestsPage admin audit log toggle', () => {
 
   it('shows Requests and Audit Log tabs for admin', () => {
     renderLayout();
-    expect(screen.getByRole('tab', { name: /^requests$/i })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /^audit log$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^requests$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^audit log$/i })).toBeInTheDocument();
   });
 
   it('does not show tab toggle for non-admin', () => {
@@ -120,7 +120,7 @@ describe('RequestsPage admin audit log toggle', () => {
 
   it('switches to audit log view when Audit Log tab is clicked', () => {
     renderLayout();
-    fireEvent.click(screen.getByRole('tab', { name: /^audit log$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^audit log$/i }));
     expect(screen.getByTestId('audit-log-table')).toBeInTheDocument();
     // Sub-nav links should no longer be visible
     expect(screen.queryByRole('link', { name: 'Leaves' })).not.toBeInTheDocument();
