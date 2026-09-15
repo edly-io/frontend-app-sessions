@@ -2,16 +2,20 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { getFeedbackDetail, submitFeedback } from '../app/api';
 
-const useInstructorFeedback = requestId => {
+const useFeedback = requestId => {
   const queryClient = useQueryClient();
   const detailQuery = useQuery({
-    queryKey: ['instructor-feedback', requestId],
+    queryKey: ['feedback', requestId],
     queryFn: () => getFeedbackDetail(requestId),
     enabled: requestId !== null,
   });
   const submitMutation = useMutation({
     mutationFn: ({ id, payload }) => submitFeedback(id, payload),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['instructor-dashboard'] }),
+    onSuccess: () => Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['instructor-dashboard'] }),
+      queryClient.invalidateQueries({ queryKey: ['trainee-dashboard'] }),
+      queryClient.invalidateQueries({ queryKey: ['pending-feedback'] }),
+    ]),
   });
 
   return {
@@ -22,4 +26,4 @@ const useInstructorFeedback = requestId => {
   };
 };
 
-export default useInstructorFeedback;
+export default useFeedback;

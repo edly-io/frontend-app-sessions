@@ -1,6 +1,7 @@
 import React, {
   useState, useMemo, useRef, useEffect,
 } from 'react';
+import PropTypes from 'prop-types';
 import {
   Spinner, Alert, SearchField,
 } from '@openedx/paragon';
@@ -8,6 +9,7 @@ import { FooterSlot } from '@edx/frontend-component-footer';
 import { getConfig } from '@edx/frontend-platform';
 import HeaderSlot from '../plugin-slots/HeaderSlot';
 import ProgramCard from './ProgramCard';
+import MyFeedbackSummaryCard from '../feedback/MyFeedbackSummaryCard';
 import { usePrograms } from '../app/hooks';
 import { useConfig } from '../app/useConfig';
 import { USER_ROLE } from '../shared/constants';
@@ -30,7 +32,7 @@ const SORT_OPTIONS_LEARNER = [
   { value: 'za', label: 'Name Z–A' },
 ];
 
-const ProgramsListPage = () => {
+const ProgramsListPage = ({ showFeedback = false }) => {
   const { programs, loading, error } = usePrograms();
   const { data: config } = useConfig();
   const isAdmin = config?.user_role === USER_ROLE.ADMIN;
@@ -169,6 +171,8 @@ const ProgramsListPage = () => {
         <div className="programs-page">
           <h1 className="programs-page__title">{pageTitle}</h1>
 
+          {showFeedback && <MyFeedbackSummaryCard />}
+
           {!loading && !error && (
             <div className="programs-filter-bar">
               <SearchField
@@ -242,6 +246,10 @@ const ProgramsListPage = () => {
       <FooterSlot />
     </>
   );
+};
+
+ProgramsListPage.propTypes = {
+  showFeedback: PropTypes.bool,
 };
 
 export default ProgramsListPage;

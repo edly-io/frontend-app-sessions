@@ -5,10 +5,11 @@ import {
 } from '@openedx/paragon';
 import { useIntl } from '@edx/frontend-platform/i18n';
 import DashboardShell from '../dashboard/DashboardShell';
+import FeedbackFormModal from '../dashboard/FeedbackFormModal';
+import useFeedback from '../dashboard/useFeedback';
 import AttendanceToMarkCard from './components/AttendanceToMarkCard';
 import DeliverySummaryCard from './components/DeliverySummaryCard';
 import FeedbackToSubmitCard from './components/FeedbackToSubmitCard';
-import FeedbackFormModal from './components/FeedbackFormModal';
 import HolidaysCard from './components/HolidaysCard';
 import InstructorCoursesSection from './components/InstructorCoursesSection';
 import InstructorHero from './components/InstructorHero';
@@ -16,7 +17,6 @@ import InstructorStats from './components/InstructorStats';
 import UpcomingSessionsCard from './components/UpcomingSessionsCard';
 import messages from './messages';
 import useInstructorDashboard from './useInstructorDashboard';
-import useInstructorFeedback from './useInstructorFeedback';
 import './instructor-dashboard.scss';
 
 const InstructorDashboardPage = ({ profileSwitcher = null }) => {
@@ -25,7 +25,7 @@ const InstructorDashboardPage = ({ profileSwitcher = null }) => {
   const {
     data, isLoading, isError, error, refetch,
   } = useInstructorDashboard();
-  const feedbackForm = useInstructorFeedback(feedbackRequestId);
+  const feedbackForm = useFeedback(feedbackRequestId);
 
   if (isLoading) {
     return (

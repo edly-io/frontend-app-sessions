@@ -13,7 +13,10 @@ expect.extend(jestDomMatchers);
 
 jest.mock('./useMyFbrRoles', () => ({ useMyFbrRoles: jest.fn() }));
 jest.mock('../programs/ProgramsListPage', () => {
-  const ProgramsListPage = () => <div>Programs list page</div>;
+  // eslint-disable-next-line react/prop-types
+  const ProgramsListPage = ({ showFeedback }) => (
+    <div data-show-feedback={String(showFeedback)}>Programs list page</div>
+  );
   return ProgramsListPage;
 });
 jest.mock('../trainee-dashboard/TraineeDashboardPage', () => {
@@ -180,6 +183,7 @@ it('preserves the programs page for users without a dashboard role', () => {
   renderLanding('/sessions/');
 
   expect(screen.getByText('Programs list page')).toBeInTheDocument();
+  expect(screen.getByText('Programs list page')).toHaveAttribute('data-show-feedback', 'true');
   expect(screen.queryByText('Trainee dashboard page')).not.toBeInTheDocument();
   expect(screen.queryByText('Instructor dashboard page')).not.toBeInTheDocument();
 });

@@ -5,6 +5,7 @@ import {
   getFeedbackDetail,
   getInstructorDashboard,
   getMyFbrRoles,
+  getPendingFeedback,
   getTraineeDashboard,
   submitFeedback,
 } from './api';
@@ -81,6 +82,16 @@ describe('getInstructorDashboard', () => {
 });
 
 describe('instructor feedback', () => {
+  it('loads pending feedback assigned to the current FBR user', async () => {
+    const response = [{ id: 601, feedback_name: 'Course evaluation' }];
+    mockClient.get.mockResolvedValue({ data: response });
+
+    await expect(getPendingFeedback()).resolves.toEqual(response);
+    expect(mockClient.get).toHaveBeenCalledWith(
+      'http://localhost:18000/fbr/api/feedback/pending/',
+    );
+  });
+
   it('loads a feedback request detail from the LMS', async () => {
     const response = { id: 602, feedback_name: 'Faculty evaluation' };
     mockClient.get.mockResolvedValue({ data: response });

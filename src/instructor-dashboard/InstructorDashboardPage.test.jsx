@@ -7,7 +7,7 @@ import { MemoryRouter } from 'react-router-dom';
 
 import InstructorDashboardPage from './InstructorDashboardPage';
 import useInstructorDashboard from './useInstructorDashboard';
-import useInstructorFeedback from './useInstructorFeedback';
+import useFeedback from '../dashboard/useFeedback';
 
 const jestDomMatchers = require('@testing-library/jest-dom/matchers');
 
@@ -16,7 +16,7 @@ expect.extend(jestDomMatchers);
 jest.mock('../plugin-slots/HeaderSlot', () => () => null);
 jest.mock('@edx/frontend-component-footer', () => ({ FooterSlot: () => null }));
 jest.mock('./useInstructorDashboard');
-jest.mock('./useInstructorFeedback');
+jest.mock('../dashboard/useFeedback');
 
 const dashboard = {
   state: 'ready',
@@ -187,7 +187,7 @@ beforeEach(() => {
     error: null,
     refetch,
   });
-  useInstructorFeedback.mockImplementation(requestId => ({
+  useFeedback.mockImplementation(requestId => ({
     feedback: requestId === null ? null : feedbackDetail,
     isLoading: false,
     loadError: null,

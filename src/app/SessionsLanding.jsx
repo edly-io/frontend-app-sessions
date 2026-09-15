@@ -6,7 +6,7 @@ import { useSearchParams } from 'react-router-dom';
 import ProfileSwitcher from '../dashboard/ProfileSwitcher';
 import InstructorDashboardPage from '../instructor-dashboard/InstructorDashboardPage';
 import ProgramsListPage from '../programs/ProgramsListPage';
-import { FBR_ROLE } from '../shared/constants';
+import { FBR_ADMIN_ROLES, FBR_ROLE } from '../shared/constants';
 import TraineeDashboardPage from '../trainee-dashboard/TraineeDashboardPage';
 import { useMyFbrRoles } from './useMyFbrRoles';
 
@@ -29,6 +29,7 @@ const SessionsLanding = () => {
   const { data: fbrRoles = [], isLoading, isError } = useMyFbrRoles();
   const hasTraineeRole = fbrRoles.includes(FBR_ROLE.TRAINEE);
   const hasInstructorRole = fbrRoles.includes(FBR_ROLE.INSTRUCTOR);
+  const hasAdminRole = fbrRoles.some(role => FBR_ADMIN_ROLES.includes(role));
   const requestedProfile = searchParams.get('profile');
   const activeProfile = requestedProfile === FBR_ROLE.INSTRUCTOR
     ? FBR_ROLE.INSTRUCTOR
@@ -102,7 +103,7 @@ const SessionsLanding = () => {
     return <TraineeDashboardPage />;
   }
 
-  return <ProgramsListPage />;
+  return <ProgramsListPage showFeedback={hasAdminRole} />;
 };
 
 export default SessionsLanding;

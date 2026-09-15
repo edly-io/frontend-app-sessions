@@ -47,11 +47,15 @@ it('validates required questions and submits the backend answer shape', async ()
   const onSubmit = jest.fn().mockResolvedValue({});
   renderModal({ onSubmit });
 
+  expect(screen.getByRole('dialog')).toHaveClass('feedback-form-modal');
+
   await user.click(screen.getByRole('button', { name: 'Submit feedback' }));
   expect(screen.getAllByText('This question is required.')).toHaveLength(2);
   expect(onSubmit).not.toHaveBeenCalled();
 
   await user.click(screen.getByRole('radio', { name: '4 stars' }));
+  expect(screen.getByRole('radio', { name: '4 stars' })).toBeChecked();
+  expect(screen.queryByText('4 stars')).not.toBeInTheDocument();
   await user.type(screen.getByRole('textbox', { name: /What could be improved/ }), 'More worked examples.');
   await user.click(screen.getByRole('button', { name: 'Submit feedback' }));
 

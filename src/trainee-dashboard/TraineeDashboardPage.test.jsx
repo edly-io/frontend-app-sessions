@@ -6,10 +6,12 @@ import { IntlProvider } from 'react-intl';
 import { MemoryRouter } from 'react-router-dom';
 
 import TraineeDashboardPage from './TraineeDashboardPage';
+import useFeedback from '../dashboard/useFeedback';
 import useTraineeDashboard from './useTraineeDashboard';
 
 jest.mock('../plugin-slots/HeaderSlot', () => () => null);
 jest.mock('@edx/frontend-component-footer', () => ({ FooterSlot: () => null }));
+jest.mock('../dashboard/useFeedback');
 jest.mock('./useTraineeDashboard');
 
 const dashboard = {
@@ -136,6 +138,24 @@ const dashboard = {
   }],
 };
 
+const feedbackDetail = {
+  id: 602,
+  feedback_name: 'Instructor feedback',
+  form_name: 'Session feedback',
+  subject_name: 'Ayesha Khan',
+  program_name: 'Specialised Training Programme',
+  deadline: '2026-08-15',
+  status: 'pending',
+  questions: [{
+    id: 1,
+    question: 'How was the session?',
+    question_type: 'star_rating',
+    required: true,
+  }],
+};
+
+const submit = jest.fn();
+
 const renderDashboard = () => render(
   <MemoryRouter>
     <IntlProvider locale="en" messages={{}}>
@@ -145,12 +165,19 @@ const renderDashboard = () => render(
 );
 
 beforeEach(() => {
+  jest.clearAllMocks();
   useTraineeDashboard.mockReturnValue({
     data: dashboard,
     isLoading: false,
     isError: false,
     refetch: jest.fn(),
   });
+  useFeedback.mockImplementation(requestId => ({
+    feedback: requestId === null ? null : feedbackDetail,
+    isLoading: false,
+    loadError: null,
+    submit,
+  }));
 });
 
 it('renders backend dashboard data and links existing detail flows', () => {
@@ -193,6 +220,33 @@ it('requests the selected programme when the switcher changes', async () => {
   await user.selectOptions(screen.getByRole('combobox', { name: 'Programme' }), 'program-v1:FBR+DST+2026-A');
 
   expect(useTraineeDashboard).toHaveBeenLastCalledWith('program-v1:FBR+DST+2026-A');
+});
+
+it('opens a pending feedback form from the dashboard', async () => {
+  const user = userEvent.setup();
+  renderDashboard();
+
+  await user.click(screen.getByRole('button', { name: 'Give feedback' }));
+
+  expect(useFeedback).toHaveBeenLastCalledWith(602);
+  expect(screen.getByRole('dialog')).toBeInTheDocument();
+  expect(screen.getByText('How was the session?', { exact: false })).toBeInTheDocument();
+});
+
+it('keeps non-submittable feedback actions disabled', () => {
+  useTraineeDashboard.mockReturnValue({
+    data: {
+      ...dashboard,
+      feedback: [{ ...dashboard.feedback[0], can_submit: false }],
+    },
+    isLoading: false,
+    isError: false,
+    refetch: jest.fn(),
+  });
+
+  renderDashboard();
+
+  expect(screen.getByRole('button', { name: 'Give feedback' })).toBeDisabled();
 });
 
 it('renders no_programme as an onboarding empty state', () => {
