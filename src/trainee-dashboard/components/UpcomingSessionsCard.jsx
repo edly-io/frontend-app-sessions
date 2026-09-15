@@ -108,11 +108,22 @@ const UpcomingSessionsCard = ({ sessions, programKey }) => {
                 </div>
                 <div className="trainee-dashboard__session-actions">
                   <strong>{formatStartsIn(intl, nextSession.scheduled_start)}</strong>
+                  {nextSession.meeting_join_url && (
+                    <Button
+                      variant="brand"
+                      href={nextSession.meeting_join_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {intl.formatMessage(messages.joinSession)}
+                    </Button>
+                  )}
                   <Button
                     as={nextSession.can_view_details ? Link : undefined}
                     to={nextSession.can_view_details
                       ? `/${programKey}/calendar?modal=session&id=${encodeURIComponent(nextSession.id)}` : undefined}
                     disabled={!nextSession.can_view_details}
+                    variant="outline-primary"
                     title={!nextSession.can_view_details ? intl.formatMessage(messages.detailsUnavailable) : undefined}
                   >
                     {intl.formatMessage(messages.viewDetails)}
@@ -158,6 +169,7 @@ const sessionShape = PropTypes.shape({
   mode: PropTypes.oneOf(['online', 'on_site', 'hybrid']).isRequired,
   location: PropTypes.shape({ name: PropTypes.string.isRequired }),
   instructors: PropTypes.arrayOf(PropTypes.shape({ full_name: PropTypes.string.isRequired })).isRequired,
+  meeting_join_url: PropTypes.string,
   can_view_details: PropTypes.bool.isRequired,
 });
 

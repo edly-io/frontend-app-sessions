@@ -72,7 +72,7 @@ const SessionsAdminLayout = ({ children = null }) => {
         <div className="sessions-program-header">
           <Container size="xl">
 
-            <Link to="/" className="sessions-program-header__back">
+            <Link to="/programs" className="sessions-program-header__back">
               <span className="sessions-program-header__back-arrow">&#8592;</span>
               Programs
             </Link>

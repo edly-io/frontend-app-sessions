@@ -199,11 +199,10 @@ it('renders the live instructor contract without exposing locked actions', () =>
   renderDashboard();
 
   const main = screen.getByRole('main');
-  expect(within(main).getByRole('heading', { level: 1, name: 'Assalam-o-Alaikum, Zubair' })).toBeInTheDocument();
+  expect(within(main).getByRole('heading', { level: 1, name: 'Assalam-o-Alaikum, Dr. Zubair Hussain' })).toBeInTheDocument();
   expect(within(main).getByText('Karachi')).toBeInTheDocument();
   expect(within(main).queryByText(/null/i)).not.toBeInTheDocument();
   expect(within(main).getByText('7 pending')).toBeInTheDocument();
-  expect(within(main).getByText('4 unmarked')).toBeInTheDocument();
   expect(within(main).getAllByText('Progress unavailable')).toHaveLength(2);
   expect(within(main).getByText('−2 hrs vs last month')).toBeInTheDocument();
   expect(within(main).getByRole('progressbar', {

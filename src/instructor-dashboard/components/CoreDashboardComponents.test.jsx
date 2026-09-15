@@ -46,7 +46,7 @@ it('renders nullable instructor and session metadata from the API contract', () 
     </>,
   );
 
-  expect(screen.getByRole('heading', { name: 'Assalam-o-Alaikum, Ayesha' })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'Assalam-o-Alaikum, Ayesha Khan' })).toBeInTheDocument();
   expect(screen.getByText('3.5 hrs')).toBeInTheDocument();
   expect(screen.getByText('Location to be confirmed')).toBeInTheDocument();
   expect(screen.getByRole('link', { name: 'View details' })).toHaveAttribute(

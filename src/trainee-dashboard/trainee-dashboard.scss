@@ -62,7 +62,15 @@
     background: rgb(255 255 255 / .16);
     border: 0;
 
+    .pgn__icon {
+      display: inline-flex;
+      flex-shrink: 0;
+      align-items: center;
+      line-height: 0;
+    }
+
     svg {
+      display: block;
       width: .875rem;
       height: .875rem;
     }
@@ -71,6 +79,35 @@
 
 .trainee-dashboard__hero-copy {
   flex: 1 1 32rem;
+}
+
+.trainee-dashboard__active-label {
+  align-self: center;
+  color: rgb(255 255 255 / .72);
+  font-size: .75rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.trainee-dashboard__hero-program-link {
+  display: inline-flex;
+  align-items: center;
+  padding: .3rem .75rem;
+  color: #FFFFFF;
+  font-size: .8125rem;
+  font-weight: 600;
+  background: rgb(255 255 255 / .16);
+  border: 1px solid rgb(255 255 255 / .3);
+  border-radius: 999px;
+  text-decoration: none;
+  transition: background .15s ease;
+
+  &:hover,
+  &:focus {
+    color: #FFFFFF;
+    background: rgb(255 255 255 / .28);
+    text-decoration: none;
+  }
 }
 
 .trainee-dashboard__identity,
@@ -283,8 +320,12 @@
   grid-template-columns: 3.5rem minmax(0, 1fr) auto;
   gap: .875rem;
   align-items: center;
-  padding: .75rem 0;
-  border-top: 1px solid var(--pgn-color-light-300, #EAEDF1);
+  padding: .625rem .75rem;
+  border-radius: .5rem;
+
+  &:nth-child(odd) {
+    background: rgb(16 40 64 / .04);
+  }
 
   p {
     margin: .2rem 0 0;
@@ -428,6 +469,7 @@
   margin-bottom: .25rem;
 }
 
+
 .trainee-dashboard__attendance-summary {
   display: flex;
   flex-wrap: wrap;
@@ -497,8 +539,12 @@
   display: flex;
   gap: .75rem;
   align-items: center;
-  padding: .75rem 0;
-  border-top: 1px solid var(--pgn-color-light-300, #EAEDF1);
+  padding: .625rem .75rem;
+  border-radius: .5rem;
+
+  &:nth-child(odd) {
+    background: rgb(16 40 64 / .04);
+  }
 }
 
 .trainee-dashboard__attendance-row {

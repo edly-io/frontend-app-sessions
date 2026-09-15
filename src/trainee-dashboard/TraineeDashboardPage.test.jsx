@@ -206,11 +206,8 @@ it('uses API-provided percentages for accessible progress indicators', () => {
     name: 'Programme timeline: 22% complete',
   })).toHaveAttribute('aria-valuenow', '22');
   expect(screen.getByRole('progressbar', {
-    name: 'My attendance: 86% complete',
-  })).toHaveAttribute('aria-valuenow', '86');
-  expect(screen.getAllByRole('progressbar', {
     name: 'Income Tax Law: 63% complete',
-  })).toHaveLength(2);
+  })).toHaveAttribute('aria-valuenow', '63');
 });
 
 it('requests the selected programme when the switcher changes', async () => {

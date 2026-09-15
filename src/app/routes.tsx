@@ -20,6 +20,7 @@ import LocationsPage from '../locations/LocationsPage';
 import HolidaysPage from '../holidays/HolidaysPage';
 import ProgramCoursesPage from '../programs/ProgramCoursesPage';
 import ProgramCertificatePage from '../programs/ProgramCertificatePage';
+import DashboardPage from '../dashboard/DashboardPage';
 
 /**
  * Route paths owned by the sessions-admin area. Importing from here keeps
@@ -34,8 +35,12 @@ import ProgramCertificatePage from '../programs/ProgramCertificatePage';
 // Deprecated alias — old `/sessions/calendar` bookmarks (relative `/calendar`
 // under the MFE basename) redirect to the root programs list.
 export const LEGACY_CALENDAR_PATH = '/calendar';
-// Root entry: programs list page (all roles).
+// Root: redirects to /dashboard.
 export const SESSIONS_ROOT_PATH = '/';
+// Programs list (moved from root).
+export const SESSIONS_PROGRAMS_PATH = '/programs';
+// Unified top-level dashboard (all roles).
+export const SESSIONS_DASHBOARD_PATH = '/dashboard';
 // Program-scoped sections.
 export const SESSIONS_CALENDAR_PATH = '/:programId/calendar';
 export const SESSIONS_REQUESTS_PATH = '/:programId/requests';
@@ -68,6 +73,10 @@ export const sessionsAdminRoutes = (
     />
     <Route
       path={SESSIONS_ROOT_PATH}
+      element={<Navigate to={SESSIONS_DASHBOARD_PATH} replace />}
+    />
+    <Route
+      path={SESSIONS_PROGRAMS_PATH}
       element={<PageWrap><AuthGate><SessionsLanding /></AuthGate></PageWrap>}
     />
     <Route path={SESSIONS_COURSES_PATH} element={wrapInShell(ProgramCoursesPage)} />
@@ -81,6 +90,10 @@ export const sessionsAdminRoutes = (
     </Route>
     <Route path={SESSIONS_LOCATIONS_PATH} element={wrapInShell(LocationsPage)} />
     <Route path={SESSIONS_HOLIDAYS_PATH} element={wrapInShell(HolidaysPage)} />
+    <Route
+      path={SESSIONS_DASHBOARD_PATH}
+      element={<PageWrap><AuthGate><DashboardPage /></AuthGate></PageWrap>}
+    />
     {/* Attendance tab is a layout route — children render inside the
         AttendancePage shell's <Outlet />. Admin: by-course / by-learner tabs.
         Learner: my attendance only (no sub-nav). Instructor: redirected away. */}

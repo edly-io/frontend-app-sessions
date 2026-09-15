@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import PropTypes from 'prop-types';
 import {
   Alert, Button, Col, Row, Spinner,
@@ -7,7 +7,6 @@ import { useIntl } from '@edx/frontend-platform/i18n';
 import DashboardShell from '../dashboard/DashboardShell';
 import FeedbackFormModal from '../dashboard/FeedbackFormModal';
 import useFeedback from '../dashboard/useFeedback';
-import AttendanceToMarkCard from './components/AttendanceToMarkCard';
 import DeliverySummaryCard from './components/DeliverySummaryCard';
 import FeedbackToSubmitCard from './components/FeedbackToSubmitCard';
 import HolidaysCard from './components/HolidaysCard';
@@ -18,42 +17,58 @@ import UpcomingSessionsCard from './components/UpcomingSessionsCard';
 import messages from './messages';
 import useInstructorDashboard from './useInstructorDashboard';
 import './instructor-dashboard.scss';
+import '../dashboard/dashboard.scss';
 
-const InstructorDashboardPage = ({ profileSwitcher = null }) => {
+const InstructorDashboardPage = ({ profileSwitcher = null, asTab = false }) => {
   const intl = useIntl();
   const [feedbackRequestId, setFeedbackRequestId] = useState(null);
   const {
     data, isLoading, isError, error, refetch,
   } = useInstructorDashboard();
   const feedbackForm = useFeedback(feedbackRequestId);
+  const scrollToFeedback = useCallback(() => {
+    document.getElementById('instructor-feedback-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
 
-  if (isLoading) {
+  const wrap = (content) => {
+    if (asTab) {
+      return (
+        <div className="instructor-dashboard">
+          {profileSwitcher}
+          {content}
+        </div>
+      );
+    }
     return (
       <DashboardShell className="instructor-dashboard" profileSwitcher={profileSwitcher}>
-        <div className="py-5 text-center">
-          <Spinner animation="border" screenReaderText={intl.formatMessage(messages.loading)} />
-        </div>
+        {content}
       </DashboardShell>
+    );
+  };
+
+  if (isLoading) {
+    return wrap(
+      <div className="py-5 text-center">
+        <Spinner animation="border" screenReaderText={intl.formatMessage(messages.loading)} />
+      </div>,
     );
   }
 
   if (isError || !data) {
     const detail = error?.response?.data?.error?.detail || error?.response?.data?.detail;
-    return (
-      <DashboardShell className="instructor-dashboard" profileSwitcher={profileSwitcher}>
-        <Alert variant="danger">
-          <Alert.Heading>{intl.formatMessage(messages.loadError)}</Alert.Heading>
-          {detail && <p>{detail}</p>}
-          <Button variant="outline-primary" onClick={() => refetch()}>
-            {intl.formatMessage(messages.tryAgain)}
-          </Button>
-        </Alert>
-      </DashboardShell>
+    return wrap(
+      <Alert variant="danger">
+        <Alert.Heading>{intl.formatMessage(messages.loadError)}</Alert.Heading>
+        {detail && <p>{detail}</p>}
+        <Button variant="outline-primary" onClick={() => refetch()}>
+          {intl.formatMessage(messages.tryAgain)}
+        </Button>
+      </Alert>,
     );
   }
 
-  return (
-    <DashboardShell className="instructor-dashboard" profileSwitcher={profileSwitcher}>
+  return wrap(
+    <>
       {data.state === 'no_assignments' && (
         <Alert variant="info">
           <Alert.Heading>{intl.formatMessage(messages.noAssignmentsTitle)}</Alert.Heading>
@@ -61,12 +76,12 @@ const InstructorDashboardPage = ({ profileSwitcher = null }) => {
         </Alert>
       )}
       <InstructorHero instructor={data.instructor} week={data.week} />
-      <InstructorStats summary={data.summary} />
+      <InstructorStats summary={data.summary} onFeedbackClick={scrollToFeedback} />
       <UpcomingSessionsCard sessions={data.upcoming_sessions} timezone={data.timezone} />
       <InstructorCoursesSection courses={data.courses} />
       <DeliverySummaryCard delivery={data.delivery} courses={data.courses} timezone={data.timezone} />
       <Row className="instructor-dashboard__lower-grid">
-        <Col xs={12} lg={7} className="mb-3">
+        <Col xs={12} lg={7} className="mb-3" id="instructor-feedback-section">
           <FeedbackToSubmitCard
             feedback={data.feedback}
             pendingCount={data.summary.pending_feedback}
@@ -75,7 +90,6 @@ const InstructorDashboardPage = ({ profileSwitcher = null }) => {
         </Col>
         <Col xs={12} lg={5}>
           <div className="instructor-dashboard__side-column">
-            <AttendanceToMarkCard sessions={data.attendance_to_mark} />
             <HolidaysCard holidays={data.holidays} />
           </div>
         </Col>
@@ -88,12 +102,13 @@ const InstructorDashboardPage = ({ profileSwitcher = null }) => {
         onClose={() => setFeedbackRequestId(null)}
         onSubmit={feedbackForm.submit}
       />
-    </DashboardShell>
+    </>,
   );
 };
 
 InstructorDashboardPage.propTypes = {
   profileSwitcher: PropTypes.node,
+  asTab: PropTypes.bool,
 };
 
 export default InstructorDashboardPage;

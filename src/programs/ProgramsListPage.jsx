@@ -38,6 +38,8 @@ const ProgramsListPage = ({ showFeedback = false }) => {
   const isAdmin = config?.user_role === USER_ROLE.ADMIN;
   const authoringBaseUrl = getConfig().AUTHORING_BASE_URL || null;
 
+  const defaultSlug = 'courses';
+
   const defaultSort = isAdmin ? 'az' : 'enrolled';
   const [search, setSearch] = useState('');
   const [statusFilters, setStatusFilters] = useState(new Set());
@@ -156,6 +158,7 @@ const ProgramsListPage = ({ showFeedback = false }) => {
             program={program}
             isAdmin={isAdmin}
             authoringBaseUrl={authoringBaseUrl}
+            defaultSlug={defaultSlug}
           />
         ))}
       </div>
