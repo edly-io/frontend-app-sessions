@@ -204,54 +204,44 @@ describe('reviewRequest', () => {
   });
 });
 
-// ─── getRequests / getMyRequests (merged fetch) ───────────────────────────────
+// ─── getRequests / getMyRequests (single-type fetch) ─────────────────────────
 
 describe('getRequests', () => {
-  it('calls both leave and remote-session endpoints when no type filter', async () => {
-    mockClient.get.mockResolvedValue({ data: { results: [] } });
-    await getRequests({});
-    expect(mockClient.get).toHaveBeenCalledTimes(2);
-    const urls = mockClient.get.mock.calls.map(([url]) => url);
-    expect(urls.some((u) => u.includes('/requests/leave/'))).toBe(true);
-    expect(urls.some((u) => u.includes('/requests/remote-session/'))).toBe(true);
-  });
-
-  it('calls only the leave endpoint when type=leave', async () => {
+  it('calls only the endpoint for the given type', async () => {
     mockClient.get.mockResolvedValue({ data: { results: [], count: 0 } });
     await getRequests({ type: 'leave' });
     expect(mockClient.get).toHaveBeenCalledTimes(1);
     expect(mockClient.get).toHaveBeenCalledWith(expect.stringContaining('/requests/leave/'));
   });
 
-  it('merges and sorts results by created desc', async () => {
-    mockClient.get
-      .mockResolvedValueOnce({ data: { results: [{ id: 1, created: '2026-06-01T10:00:00Z' }] } })
-      .mockResolvedValueOnce({ data: { results: [{ id: 2, created: '2026-06-02T10:00:00Z' }] } });
-    const result = await getRequests({});
-    expect(result.results[0].id).toBe(2);
-    expect(result.results[1].id).toBe(1);
+  it('returns the server envelope untouched, so count is the server total', async () => {
+    mockClient.get.mockResolvedValue({ data: { count: 300, results: [{ id: 1 }] } });
+    const result = await getRequests({ type: 'leave', page: 1, page_size: 25 });
+    expect(result.count).toBe(300);
+    expect(result.results).toEqual([{ id: 1 }]);
   });
 
-  it('applies client-side pagination to merged results', async () => {
-    const items = Array.from({ length: 10 }, (_, i) => ({ id: i, created: `2026-0${i + 1 < 10 ? '0' : ''}${i + 1}-01T00:00:00Z` }));
-    mockClient.get
-      .mockResolvedValueOnce({ data: { results: items.slice(0, 5) } })
-      .mockResolvedValueOnce({ data: { results: items.slice(5) } });
-    const result = await getRequests({ page: 1, page_size: 3 });
-    expect(result.results).toHaveLength(3);
-    expect(result.count).toBe(10);
+  it('forwards paging and filters to the server', async () => {
+    mockClient.get.mockResolvedValue({ data: { results: [], count: 0 } });
+    await getRequests({
+      type: 'remote_session', program_key: 'prog1', state: 'PENDING', page: 3, page_size: 15,
+    });
+    const [url] = mockClient.get.mock.calls[0];
+    expect(url).toContain('/requests/remote-session/');
+    expect(url).toContain('page=3');
+    expect(url).toContain('page_size=15');
+    expect(url).toContain('program_key=prog1');
+    expect(url).toContain('state=PENDING');
   });
 });
 
 describe('getMyRequests', () => {
-  it('is an alias of getRequests (calls both endpoints)', async () => {
-    mockClient.get.mockResolvedValue({ data: { results: [] } });
-    await getMyRequests({});
-    expect(mockClient.get).toHaveBeenCalledTimes(2);
+  it('is an alias of getRequests', async () => {
+    mockClient.get.mockResolvedValue({ data: { results: [], count: 0 } });
+    await getMyRequests({ type: 'leave' });
+    expect(mockClient.get).toHaveBeenCalledTimes(1);
   });
 });
-
-// ─── getLeaveUsage ────────────────────────────────────────────────────────────
 
 describe('getLeaveUsage', () => {
   it('GETs the leave-usage endpoint with program_key', async () => {
