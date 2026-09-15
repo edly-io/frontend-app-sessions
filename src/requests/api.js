@@ -96,69 +96,47 @@ export const bulkApproveLeaves = async ({ program_key, leave_ids }) => {
 };
 
 /**
- * Fetch requests from one or both typed endpoints and merge.
- * When type is specified only that endpoint is called (true server pagination).
- * Without a type filter both endpoints are called with page_size=500 and merged.
+ * List requests of one type, with the server doing the paging.
+ *
+ * `type` is always supplied: every route into the requests views pins one
+ * (`routes.tsx` — /requests/leaves and /requests/remote-sessions), which the
+ * views hold in `filterType` and the Type dropdown can only overwrite with
+ * another type, never clear. An earlier "All types" option fetched both
+ * endpoints and merged them client-side; that control is gone, and with it the
+ * merge, which reported a total built from two separately capped responses.
  */
 // eslint-disable-next-line @typescript-eslint/naming-convention
-const fetchMergedRequests = async ({
+const fetchRequests = async ({
   // eslint-disable-next-line camelcase
   state, type, q, program_key, page, page_size, start_date, end_date,
 } = {}) => {
   const client = getAuthenticatedHttpClient();
 
-  const build = (extra = {}) => {
-    const p = new URLSearchParams();
-    if (state) { p.set('state', state); }
-    if (q) { p.set('q', q); }
-    if (program_key) { p.set('program_key', program_key); }
-    if (start_date) { p.set('start_date', start_date); }
-    if (end_date) { p.set('end_date', end_date); }
-    Object.entries(extra).forEach(([k, v]) => p.set(k, v));
-    return p.toString();
-  };
+  const p = new URLSearchParams();
+  if (state) { p.set('state', state); }
+  if (q) { p.set('q', q); }
+  if (program_key) { p.set('program_key', program_key); }
+  if (start_date) { p.set('start_date', start_date); }
+  if (end_date) { p.set('end_date', end_date); }
+  p.set('page', page ?? 1);
+  p.set('page_size', page_size ?? 25);
 
-  if (type) {
-    // Single-endpoint fetch — server pagination works as normal.
-    const qs = build({ page: page ?? 1, page_size: page_size ?? 25 });
-    const { data } = await client.get(`${typeUrl(type)}?${qs}`);
-    return data;
-  }
-
-  // Both endpoints in parallel — fetch generously and merge client-side.
-  const bigQs = build({ page_size: 500 });
-  const [leaveRes, remoteRes] = await Promise.all([
-    client.get(`${leaveUrl()}?${bigQs}`),
-    client.get(`${remoteUrl()}?${bigQs}`),
-  ]);
-  const leaveResults = Array.isArray(leaveRes.data) ? leaveRes.data : (leaveRes.data.results ?? []);
-  const remoteResults = Array.isArray(remoteRes.data) ? remoteRes.data : (remoteRes.data.results ?? []);
-  const merged = [...leaveResults, ...remoteResults].sort(
-    (a, b) => new Date(b.created) - new Date(a.created),
-  );
-
-  // Apply client-side pagination over the merged list.
-  const perPage = page_size ?? 25;
-  const pageNum = page ?? 1;
-  const startIdx = (pageNum - 1) * perPage;
-  return {
-    count: merged.length,
-    results: merged.slice(startIdx, startIdx + perPage),
-  };
+  const { data } = await client.get(`${typeUrl(type)}?${p.toString()}`);
+  return data;
 };
 
 /**
- * Admin lists all requests for a programme (both types merged).
+ * Admin lists a programme's requests of one type.
  *
- * GET /v1/requests/leave/?program_key=…  +  GET /v1/requests/remote-session/?program_key=…
+ * GET /v1/requests/{leave|remote-session}/?program_key=…
  */
-export const getRequests = fetchMergedRequests;
+export const getRequests = fetchRequests;
 
 /**
  * Learner lists their own requests (server auto-scopes by role).
  * Alias of getRequests.
  */
-export const getMyRequests = fetchMergedRequests;
+export const getMyRequests = fetchRequests;
 
 /**
  * Fetch all APPROVED leave requests for the authenticated learner.
