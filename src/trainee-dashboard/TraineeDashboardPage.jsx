@@ -5,6 +5,8 @@ import {
 } from '@openedx/paragon';
 import { useIntl } from '@edx/frontend-platform/i18n';
 import DashboardShell from '../dashboard/DashboardShell';
+import FeedbackFormModal from '../dashboard/FeedbackFormModal';
+import useFeedback from '../dashboard/useFeedback';
 import AttendanceCard from './components/AttendanceCard';
 import CertificatesSection from './components/CertificatesSection';
 import CoursesSection from './components/CoursesSection';
@@ -21,9 +23,11 @@ import './trainee-dashboard.scss';
 const TraineeDashboardPage = ({ profileSwitcher = null }) => {
   const intl = useIntl();
   const [programKey, setProgramKey] = useState();
+  const [feedbackRequestId, setFeedbackRequestId] = useState(null);
   const {
     data, isLoading, isError, error, refetch,
   } = useTraineeDashboard(programKey);
+  const feedbackForm = useFeedback(feedbackRequestId);
 
   if (isLoading) {
     return (
@@ -89,12 +93,24 @@ const TraineeDashboardPage = ({ profileSwitcher = null }) => {
         <Col xs={12} lg={7} className="mb-3"><AttendanceCard attendance={data.attendance} /></Col>
         <Col xs={12} lg={5}>
           <div className="trainee-dashboard__side-column">
-            <FeedbackCard feedback={data.feedback} pendingCount={data.summary.pending_feedback} />
+            <FeedbackCard
+              feedback={data.feedback}
+              pendingCount={data.summary.pending_feedback}
+              onOpenFeedback={setFeedbackRequestId}
+            />
             <HolidaysCard holidays={data.holidays} />
           </div>
         </Col>
       </Row>
       <CertificatesSection certificates={data.certificates} programme={data.programme} />
+      <FeedbackFormModal
+        isOpen={feedbackRequestId !== null}
+        feedback={feedbackForm.feedback || null}
+        isLoading={feedbackForm.isLoading}
+        loadError={feedbackForm.loadError}
+        onClose={() => setFeedbackRequestId(null)}
+        onSubmit={feedbackForm.submit}
+      />
     </DashboardShell>
   );
 };

@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import {
-  Alert, Button, Form, Spinner, StandardModal,
+  Alert, Button, Form, Icon, Spinner, StandardModal,
 } from '@openedx/paragon';
+import { Star, StarBorder } from '@openedx/paragon/icons';
 import { useIntl } from '@edx/frontend-platform/i18n';
 
-import messages from '../messages';
+import messages from './feedbackMessages';
+import './feedback.scss';
 
 const STAR_VALUES = [1, 2, 3, 4, 5];
 
@@ -55,7 +57,7 @@ const FeedbackFormModal = ({
       if (!question.required) { return; }
       const value = answers[question.id];
       if (value === undefined || value === null || String(value).trim() === '') {
-        errors[question.id] = intl.formatMessage(messages.feedbackAnswerRequired);
+        errors[question.id] = intl.formatMessage(messages.answerRequired);
       }
     });
     setValidationErrors(errors);
@@ -87,7 +89,7 @@ const FeedbackFormModal = ({
     } catch (error) {
       setSubmitError(getErrorMessage(
         error,
-        intl.formatMessage(messages.feedbackSubmitError),
+        intl.formatMessage(messages.submitError),
       ));
     } finally {
       setIsSubmitting(false);
@@ -100,7 +102,7 @@ const FeedbackFormModal = ({
 
   const title = feedback?.feedback_name
     || feedback?.form_name
-    || intl.formatMessage(messages.feedbackModalTitle);
+    || intl.formatMessage(messages.modalTitle);
   const canSubmit = Boolean(feedback) && !isLoading && !loadError && !isSubmitted;
 
   const footerNode = isSubmitted ? (
@@ -119,8 +121,8 @@ const FeedbackFormModal = ({
         className="ml-2"
       >
         {isSubmitting
-          ? intl.formatMessage(messages.submittingFeedback)
-          : intl.formatMessage(messages.submitFeedback)}
+          ? intl.formatMessage(messages.submitting)
+          : intl.formatMessage(messages.submit)}
       </Button>
     </>
   );
@@ -132,26 +134,27 @@ const FeedbackFormModal = ({
       title={title}
       footerNode={footerNode}
       size="lg"
+      className="feedback-form-modal"
     >
       {isLoading && (
         <div className="py-5 text-center">
           <Spinner
             animation="border"
-            screenReaderText={intl.formatMessage(messages.loadingFeedback)}
+            screenReaderText={intl.formatMessage(messages.loading)}
           />
         </div>
       )}
 
       {!isLoading && loadError && (
         <Alert variant="danger">
-          {getErrorMessage(loadError, intl.formatMessage(messages.feedbackLoadError))}
+          {getErrorMessage(loadError, intl.formatMessage(messages.loadError))}
         </Alert>
       )}
 
       {!isLoading && !loadError && isSubmitted && (
         <Alert variant="success">
-          <Alert.Heading>{intl.formatMessage(messages.feedbackSubmitted)}</Alert.Heading>
-          {intl.formatMessage(messages.feedbackSubmittedBody)}
+          <Alert.Heading>{intl.formatMessage(messages.submitted)}</Alert.Heading>
+          {intl.formatMessage(messages.submittedBody)}
         </Alert>
       )}
 
@@ -180,12 +183,23 @@ const FeedbackFormModal = ({
                     value={answers[question.id] || ''}
                     onChange={event => updateAnswer(question.id, event.target.value)}
                     isInline
+                    className="feedback-rating"
                   >
-                    {STAR_VALUES.map(value => (
-                      <Form.Radio key={value} value={String(value)}>
-                        {intl.formatMessage(messages.feedbackRatingValue, { value })}
-                      </Form.Radio>
-                    ))}
+                    {STAR_VALUES.map(value => {
+                      const isActive = value <= Number(answers[question.id] || 0);
+                      return (
+                        <Form.Radio
+                          key={value}
+                          value={String(value)}
+                          aria-label={intl.formatMessage(messages.ratingValue, { value })}
+                          className={`feedback-rating__option${isActive ? ' feedback-rating__option--active' : ''}`}
+                          controlClassName="feedback-rating__input"
+                          labelClassName="feedback-rating__label"
+                        >
+                          <Icon src={isActive ? Star : StarBorder} />
+                        </Form.Radio>
+                      );
+                    })}
                   </Form.RadioSet>
                 )}
 
@@ -196,7 +210,7 @@ const FeedbackFormModal = ({
                     value={answers[question.id] || ''}
                     onChange={event => updateAnswer(question.id, event.target.value)}
                     isInvalid={Boolean(error)}
-                    placeholder={intl.formatMessage(messages.feedbackResponsePlaceholder)}
+                    placeholder={intl.formatMessage(messages.responsePlaceholder)}
                   />
                 )}
 

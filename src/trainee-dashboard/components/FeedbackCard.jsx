@@ -5,22 +5,23 @@ import {
 } from '@openedx/paragon';
 import { CheckCircle, Feedback } from '@openedx/paragon/icons';
 import { useIntl } from '@edx/frontend-platform/i18n';
+import '../../dashboard/feedback.scss';
 import messages from '../messages';
 import { formatDate } from '../utils';
 
 const initials = name => name.split(' ').map(part => part[0]).slice(0, 2).join('');
 
-const FeedbackCard = ({ feedback, pendingCount }) => {
+const FeedbackCard = ({ feedback, pendingCount, onOpenFeedback }) => {
   const intl = useIntl();
 
   return (
     <section aria-labelledby="feedback-heading">
-      <Card>
+      <Card className="dashboard-feedback-card">
         <Card.Header
           title={<h2 id="feedback-heading">{intl.formatMessage(messages.feedback)}</h2>}
           subtitle={intl.formatMessage(messages.pending, { count: pendingCount })}
         />
-        <Card.Section className="trainee-dashboard__compact-list">
+        <Card.Section className="dashboard-feedback-card__scroll trainee-dashboard__compact-list">
           {feedback.length === 0 && <p>{intl.formatMessage(messages.noFeedback)}</p>}
           {feedback.map(item => {
             const displayName = item.subject?.full_name || item.feedback_name;
@@ -39,8 +40,9 @@ const FeedbackCard = ({ feedback, pendingCount }) => {
                     size="sm"
                     variant="outline-primary"
                     iconBefore={Feedback}
-                    disabled
-                    title={intl.formatMessage(messages.formUnavailable)}
+                    disabled={!item.can_submit}
+                    title={item.can_submit ? undefined : intl.formatMessage(messages.formUnavailable)}
+                    onClick={() => onOpenFeedback(item.id)}
                   >
                     {intl.formatMessage(messages.giveFeedback)}
                   </Button>
@@ -65,7 +67,7 @@ const FeedbackCard = ({ feedback, pendingCount }) => {
 
 FeedbackCard.propTypes = {
   feedback: PropTypes.arrayOf(PropTypes.shape({
-    id: PropTypes.number.isRequired,
+    id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
     feedback_name: PropTypes.string.isRequired,
     form_name: PropTypes.string.isRequired,
     subject: PropTypes.shape({ full_name: PropTypes.string.isRequired }),
@@ -73,8 +75,10 @@ FeedbackCard.propTypes = {
     deadline: PropTypes.string.isRequired,
     status: PropTypes.oneOf(['pending', 'submitted', 'expired']).isRequired,
     urgent: PropTypes.bool.isRequired,
+    can_submit: PropTypes.bool.isRequired,
   })).isRequired,
   pendingCount: PropTypes.number.isRequired,
+  onOpenFeedback: PropTypes.func.isRequired,
 };
 
 export default FeedbackCard;

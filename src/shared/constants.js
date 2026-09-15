@@ -112,6 +112,15 @@ export const USER_ROLE = {
 // FBR profile roles returned by the biodata current-user endpoint. Unlike
 // `user_role`, this collection can contain multiple roles for a single person.
 export const FBR_ROLE = {
+  SUPER_ADMIN: 'super_admin',
+  MIDDLE_ADMIN: 'middle_admin',
+  DATA_ADMIN: 'data_admin',
   INSTRUCTOR: 'instructor',
   TRAINEE: 'trainee',
 };
+
+export const FBR_ADMIN_ROLES = [
+  FBR_ROLE.SUPER_ADMIN,
+  FBR_ROLE.MIDDLE_ADMIN,
+  FBR_ROLE.DATA_ADMIN,
+];

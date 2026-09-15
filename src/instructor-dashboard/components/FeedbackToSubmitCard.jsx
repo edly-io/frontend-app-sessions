@@ -5,6 +5,7 @@ import {
 } from '@openedx/paragon';
 import { CheckCircle, Feedback, MenuBook } from '@openedx/paragon/icons';
 import { useIntl } from '@edx/frontend-platform/i18n';
+import '../../dashboard/feedback.scss';
 import messages from '../messages';
 import { formatDate } from '../utils';
 
@@ -42,12 +43,12 @@ const FeedbackToSubmitCard = ({ feedback, pendingCount, onOpenFeedback }) => {
   };
 
   return (
-    <Card className="instructor-dashboard__fill-card">
+    <Card className="dashboard-feedback-card instructor-dashboard__fill-card">
       <Card.Header
         title={<h2 id="instructor-feedback-heading">{intl.formatMessage(messages.feedbackToSubmit)}</h2>}
         subtitle={intl.formatMessage(messages.pendingCount, { count: pendingCount })}
       />
-      <Card.Section>
+      <Card.Section className="dashboard-feedback-card__scroll">
         {!feedback.length ? <Alert variant="success">{intl.formatMessage(messages.noFeedback)}</Alert> : (
           <div className="instructor-dashboard__compact-list">
             {feedback.map(item => (
