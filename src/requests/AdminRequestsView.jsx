@@ -288,6 +288,11 @@ const AdminRequestsView = ({ readOnly, showNewRequest, lockedType }) => {
                   Approval would exceed threshold
                 </small>
               )}
+              {lockedType === REQUEST_TYPE.LEAVE && req.has_session_conflict === true && (
+                <small className="requests-view__conflict-note d-block mt-1">
+                  Sessions scheduled during leave period
+                </small>
+              )}
             </div>
           );
         },
