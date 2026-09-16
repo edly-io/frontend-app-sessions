@@ -15,7 +15,6 @@ const messages = defineMessages({
   hoursShort: { id: 'sessions.instructorDashboard.hoursShort', defaultMessage: '{hours} hrs' },
   dashboardSummary: { id: 'sessions.instructorDashboard.dashboardSummary', defaultMessage: 'Instructor dashboard summary' },
   coursesAcrossProgrammes: { id: 'sessions.instructorDashboard.coursesAcrossProgrammes', defaultMessage: 'Courses across {programmes} programmes' },
-  traineesTaught: { id: 'sessions.instructorDashboard.traineesTaught', defaultMessage: 'Trainees taught · {enrolments} enrolments' },
   sessionsDelivered: { id: 'sessions.instructorDashboard.sessionsDelivered', defaultMessage: '{sessions} sessions delivered' },
   feedbackFormsToSubmit: { id: 'sessions.instructorDashboard.feedbackFormsToSubmit', defaultMessage: 'Feedback forms to submit' },
   upcomingSessions: { id: 'sessions.instructorDashboard.upcomingSessions', defaultMessage: 'Upcoming sessions' },

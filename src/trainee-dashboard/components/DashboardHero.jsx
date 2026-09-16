@@ -2,12 +2,13 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { Badge, Icon } from '@openedx/paragon';
 import { LocationOn, MenuBook, Person } from '@openedx/paragon/icons';
+import { Link } from 'react-router-dom';
 import { useIntl } from '@edx/frontend-platform/i18n';
 import AccessibleProgressBar from '../../dashboard/AccessibleProgressBar';
 import messages from '../messages';
 import { formatDate } from '../utils';
 
-const DashboardHero = ({ trainee, programme }) => {
+const DashboardHero = ({ trainee, programme, programKey = undefined }) => {
   const intl = useIntl();
   const { timeline } = programme;
 
@@ -20,8 +21,14 @@ const DashboardHero = ({ trainee, programme }) => {
         <p>{intl.formatMessage(messages.standing, { batch: programme.batch || programme.name })}</p>
         <div className="trainee-dashboard__identity" aria-label={intl.formatMessage(messages.traineeDetails)}>
           {trainee.roll_number && <Badge variant="light"><Icon src={Person} />{trainee.roll_number}</Badge>}
+          <span className="trainee-dashboard__active-label">Active Programme:</span>
           <Badge variant="light"><Icon src={MenuBook} />{programme.name}</Badge>
           {programme.campus?.name && <Badge variant="light"><Icon src={LocationOn} />{programme.campus.name}</Badge>}
+          {programKey && (
+            <Link to={`/${programKey}/courses`} className="trainee-dashboard__hero-program-link">
+              View My Program →
+            </Link>
+          )}
         </div>
       </div>
       <div className="trainee-dashboard__timeline">
@@ -69,6 +76,7 @@ DashboardHero.propTypes = {
       percentage: PropTypes.number.isRequired,
     }).isRequired,
   }).isRequired,
+  programKey: PropTypes.string,
 };
 
 export default DashboardHero;

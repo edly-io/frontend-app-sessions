@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import {
   Alert, Badge, Card, Col, Row,
 } from '@openedx/paragon';
+import { getConfig } from '@edx/frontend-platform';
 import { useIntl } from '@edx/frontend-platform/i18n';
 import AccessibleProgressBar from '../../dashboard/AccessibleProgressBar';
 import messages from '../messages';
@@ -18,6 +19,11 @@ const getStatusVariant = status => {
   if (status === 'completed') { return 'success'; }
   if (status === 'unavailable') { return 'light'; }
   return 'info';
+};
+
+const buildLearningUrl = (courseId) => {
+  const base = (getConfig().LEARNING_MICROFRONTEND_URL || '').replace(/\/$/, '');
+  return base && courseId ? `${base}/course/${courseId}/` : null;
 };
 
 const InstructorCoursesSection = ({ courses }) => {
@@ -76,6 +82,18 @@ const InstructorCoursesSection = ({ courses }) => {
                       <span>{intl.formatMessage(messages.averageLearnerProgress)}</span>
                       {hasProgress && <strong>{progress}%</strong>}
                     </div>
+                    {buildLearningUrl(course.course_id) && (
+                      <div className="instructor-dashboard__course-actions">
+                        <a
+                          href={buildLearningUrl(course.course_id)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="btn btn-outline-primary btn-sm"
+                        >
+                          Open in Learning →
+                        </a>
+                      </div>
+                    )}
                   </Card.Section>
                 </Card>
               </Col>

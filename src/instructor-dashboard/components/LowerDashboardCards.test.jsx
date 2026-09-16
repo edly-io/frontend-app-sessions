@@ -3,13 +3,16 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { IntlProvider } from 'react-intl';
+import { MemoryRouter } from 'react-router-dom';
 
 import AttendanceToMarkCard from './AttendanceToMarkCard';
 import FeedbackToSubmitCard from './FeedbackToSubmitCard';
 import HolidaysCard from './HolidaysCard';
 
 const renderWithIntl = component => render(
-  <IntlProvider locale="en" messages={{}}>{component}</IntlProvider>,
+  <MemoryRouter>
+    <IntlProvider locale="en" messages={{}}>{component}</IntlProvider>
+  </MemoryRouter>,
 );
 
 it('uses the summary pending count and opens only submittable feedback', async () => {

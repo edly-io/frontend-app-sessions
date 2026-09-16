@@ -4,11 +4,12 @@ import {
   Alert, Badge, Card, Icon,
 } from '@openedx/paragon';
 import { CheckCircle, FactCheck } from '@openedx/paragon/icons';
+import { Link } from 'react-router-dom';
 import { useIntl } from '@edx/frontend-platform/i18n';
 import messages from '../messages';
 import { formatDate } from '../utils';
 
-const AttendanceToMarkCard = ({ sessions }) => {
+const AttendanceToMarkCard = ({ sessions, getSessionLink = null }) => {
   const intl = useIntl();
   const getAgeLabel = (ageDays) => {
     if (ageDays === 0) { return intl.formatMessage(messages.today); }
@@ -36,17 +37,30 @@ const AttendanceToMarkCard = ({ sessions }) => {
                 <div>
                   <strong>{session.title}</strong>
                   <p>
-                    {[session.course_code, intl.formatMessage(messages.trainees, { count: session.trainee_count })]
-                      .filter(Boolean).join(' · ')}
+                    {[
+                      session.program_name,
+                      session.course_code,
+                      intl.formatMessage(messages.trainees, { count: session.trainee_count }),
+                    ].filter(Boolean).join(' · ')}
                   </p>
                   <small>
                     <time dateTime={session.session_start}>{formatDate(intl, session.session_start)}</time> · {' '}
                     {getAgeLabel(session.age_days)}
                   </small>
                 </div>
-                <Badge variant="warning">
-                  {intl.formatMessage(messages.unmarkedCount, { count: session.unmarked_count })}
-                </Badge>
+                <div className="instructor-dashboard__attendance-actions">
+                  <Badge variant="warning">
+                    {intl.formatMessage(messages.unmarkedCount, { count: session.unmarked_count })}
+                  </Badge>
+                  {session.program_key && (
+                    <Link
+                      to={getSessionLink ? getSessionLink(session) : `/${session.program_key}/attendance`}
+                      className="btn btn-outline-secondary btn-sm"
+                    >
+                      Mark →
+                    </Link>
+                  )}
+                </div>
               </article>
             ))}
           </div>
@@ -57,9 +71,11 @@ const AttendanceToMarkCard = ({ sessions }) => {
 };
 
 AttendanceToMarkCard.propTypes = {
+  getSessionLink: PropTypes.func,
   sessions: PropTypes.arrayOf(PropTypes.shape({
     session_id: PropTypes.string.isRequired,
     program_key: PropTypes.string.isRequired,
+    program_name: PropTypes.string,
     course_id: PropTypes.string,
     session_start: PropTypes.string.isRequired,
     title: PropTypes.string.isRequired,

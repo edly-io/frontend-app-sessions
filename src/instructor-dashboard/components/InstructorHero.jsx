@@ -7,7 +7,7 @@ import messages from '../messages';
 
 const InstructorHero = ({ instructor, week }) => {
   const intl = useIntl();
-  const instructorName = instructor.first_name || instructor.full_name;
+  const instructorName = instructor.full_name || instructor.first_name;
   const organization = [instructor.designation, instructor.department].filter(Boolean).join(' · ');
 
   return (

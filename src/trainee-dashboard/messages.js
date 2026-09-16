@@ -37,6 +37,7 @@ const messages = defineMessages({
   instructorUnavailable: { id: 'sessions.traineeDashboard.instructorUnavailable', defaultMessage: 'Instructor to be confirmed' },
   detailsUnavailable: { id: 'sessions.traineeDashboard.detailsUnavailable', defaultMessage: 'Session details are not available' },
   viewDetails: { id: 'sessions.traineeDashboard.viewDetails', defaultMessage: 'View details' },
+  joinSession: { id: 'sessions.traineeDashboard.joinSession', defaultMessage: 'Join session' },
   myCourses: { id: 'sessions.traineeDashboard.myCourses', defaultMessage: 'My courses' },
   programmeCourses: { id: 'sessions.traineeDashboard.programmeCourses', defaultMessage: 'Courses in this programme' },
   noCourses: { id: 'sessions.traineeDashboard.noCourses', defaultMessage: 'No courses are available for this programme yet.' },

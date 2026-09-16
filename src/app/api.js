@@ -31,6 +31,13 @@ export const getPendingFeedback = async () => {
   return Array.isArray(data) ? data : data.results ?? [];
 };
 
+export const getAdminDashboard = async () => {
+  const client = getAuthenticatedHttpClient();
+  const url = `${getConfig().LMS_BASE_URL}/fbr/api/admin-dashboard/v1/summary/`;
+  const { data } = await client.get(url);
+  return data;
+};
+
 export const getFeedbackDetail = async (requestId) => {
   const client = getAuthenticatedHttpClient();
   const url = `${getConfig().LMS_BASE_URL}/fbr/api/feedback/${encodeURIComponent(requestId)}/`;

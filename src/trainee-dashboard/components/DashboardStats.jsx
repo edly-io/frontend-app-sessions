@@ -9,7 +9,7 @@ import {
 import { useIntl } from '@edx/frontend-platform/i18n';
 import messages from '../messages';
 
-const DashboardStats = ({ summary }) => {
+const DashboardStats = ({ summary, onFeedbackClick = undefined }) => {
   const intl = useIntl();
   const stats = [
     {
@@ -33,6 +33,7 @@ const DashboardStats = ({ summary }) => {
       label: intl.formatMessage(messages.feedbackForms),
       icon: Feedback,
       variant: 'warning',
+      onClick: summary.pending_feedback > 0 ? onFeedbackClick : undefined,
     },
     {
       value: summary.earned_certificates,
@@ -47,7 +48,10 @@ const DashboardStats = ({ summary }) => {
       <Row>
         {stats.map(stat => (
           <Col xs={12} sm={6} lg={3} key={stat.label} className="mb-3">
-            <Card className="trainee-dashboard__stat-card h-100">
+            <Card
+              className={`trainee-dashboard__stat-card h-100${stat.onClick ? ' dashboard-stat-card--clickable' : ''}`}
+              onClick={stat.onClick}
+            >
               <Card.Section>
                 <span className={`trainee-dashboard__stat-icon trainee-dashboard__stat-icon--${stat.variant}`} aria-hidden="true">
                   <Icon src={stat.icon} />
@@ -55,6 +59,7 @@ const DashboardStats = ({ summary }) => {
                 <span>
                   <strong className="trainee-dashboard__stat-value">{stat.value}</strong>
                   <span className="trainee-dashboard__stat-label">{stat.label}</span>
+                  {stat.onClick && <span className="dashboard-stat-scroll-arrow" aria-hidden="true">↓ View below</span>}
                 </span>
               </Card.Section>
             </Card>
@@ -66,6 +71,7 @@ const DashboardStats = ({ summary }) => {
 };
 
 DashboardStats.propTypes = {
+  onFeedbackClick: PropTypes.func,
   summary: PropTypes.shape({
     course_progress: PropTypes.shape({
       completed_modules: PropTypes.number.isRequired,

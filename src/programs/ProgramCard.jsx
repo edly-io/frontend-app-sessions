@@ -22,7 +22,9 @@ const formatDate = (dateStr) => {
   return new Date(dateStr).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
 };
 
-const ProgramCard = ({ program, isAdmin = false, authoringBaseUrl = null }) => {
+const ProgramCard = ({
+  program, isAdmin = false, authoringBaseUrl = null, defaultSlug = 'courses',
+}) => {
   const {
     id, name, programType, org, batch, status, startDate, endDate, description, cardImage,
     courseCount, enrolledAt,
@@ -40,7 +42,7 @@ const ProgramCard = ({ program, isAdmin = false, authoringBaseUrl = null }) => {
 
   return (
     <div className="program-card">
-      <Link to={`/${id}/courses`} className="program-card__link">
+      <Link to={`/${id}/${defaultSlug}`} className="program-card__link">
         <div className="program-card__banner" style={bannerStyle}>
           {!cardImage && (
             <div className="program-card__banner-placeholder">
@@ -110,6 +112,7 @@ ProgramCard.propTypes = {
   }).isRequired,
   isAdmin: PropTypes.bool,
   authoringBaseUrl: PropTypes.string,
+  defaultSlug: PropTypes.string,
 };
 
 export default ProgramCard;

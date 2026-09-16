@@ -4,12 +4,12 @@ import {
   Card, Col, Icon, Row,
 } from '@openedx/paragon';
 import {
-  AccessTime, Feedback, MenuBook, People,
+  AccessTime, Feedback, MenuBook,
 } from '@openedx/paragon/icons';
 import { useIntl } from '@edx/frontend-platform/i18n';
 import messages from '../messages';
 
-const InstructorStats = ({ summary }) => {
+const InstructorStats = ({ summary, onFeedbackClick = undefined }) => {
   const intl = useIntl();
   const stats = [
     {
@@ -17,12 +17,6 @@ const InstructorStats = ({ summary }) => {
       value: summary.courses,
       label: intl.formatMessage(messages.coursesAcrossProgrammes, { programmes: summary.programmes }),
       variant: 'primary',
-    },
-    {
-      icon: People,
-      value: summary.distinct_trainees,
-      label: intl.formatMessage(messages.traineesTaught, { enrolments: summary.enrolments }),
-      variant: 'success',
     },
     {
       icon: AccessTime,
@@ -35,6 +29,7 @@ const InstructorStats = ({ summary }) => {
       value: summary.pending_feedback,
       label: intl.formatMessage(messages.feedbackFormsToSubmit),
       variant: 'warning',
+      onClick: summary.pending_feedback > 0 ? onFeedbackClick : undefined,
     },
   ];
 
@@ -42,8 +37,11 @@ const InstructorStats = ({ summary }) => {
     <section className="instructor-dashboard__stats instructor-dashboard__section" aria-label={intl.formatMessage(messages.dashboardSummary)}>
       <Row>
         {stats.map(stat => (
-          <Col xs={12} sm={6} xl={3} className="mb-3" key={stat.label}>
-            <Card className="instructor-dashboard__stat-card">
+          <Col xs={12} sm={4} className="mb-3" key={stat.label}>
+            <Card
+              className={`instructor-dashboard__stat-card${stat.onClick ? ' dashboard-stat-card--clickable' : ''}`}
+              onClick={stat.onClick}
+            >
               <Card.Section>
                 <span className={`instructor-dashboard__stat-icon instructor-dashboard__stat-icon--${stat.variant}`}>
                   <Icon src={stat.icon} />
@@ -51,6 +49,7 @@ const InstructorStats = ({ summary }) => {
                 <span>
                   <strong className="instructor-dashboard__stat-value">{stat.value}</strong>
                   <span className="instructor-dashboard__stat-label">{stat.label}</span>
+                  {stat.onClick && <span className="dashboard-stat-scroll-arrow" aria-hidden="true">↓ View below</span>}
                 </span>
               </Card.Section>
             </Card>
@@ -62,12 +61,10 @@ const InstructorStats = ({ summary }) => {
 };
 
 InstructorStats.propTypes = {
+  onFeedbackClick: PropTypes.func,
   summary: PropTypes.shape({
     courses: PropTypes.number.isRequired,
     programmes: PropTypes.number.isRequired,
-    average_course_progress_percentage: PropTypes.number,
-    distinct_trainees: PropTypes.number.isRequired,
-    enrolments: PropTypes.number.isRequired,
     delivered_hours: PropTypes.number.isRequired,
     delivered_sessions: PropTypes.number.isRequired,
     pending_feedback: PropTypes.number.isRequired,
