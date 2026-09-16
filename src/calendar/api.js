@@ -70,11 +70,11 @@ export const fetchProgramCourses = async (programKey) => {
  * GET /fbr/api/programs/users/?role=instructor&program_key=...&no_page
  * Returns: [{ id, username, email, first_name, last_name }, ...]
  */
-export const fetchProgramInstructors = async (programKey) => {
+export const fetchProgramInstructors = async (programKey, courseId = null) => {
   const client = getAuthenticatedHttpClient();
-  const { data } = await client.get(
-    `${getProgramsBaseUrl()}/users/?role=instructor&no_page&program_key=${encodeURIComponent(programKey)}`,
-  );
+  let url = `${getProgramsBaseUrl()}/users/?role=instructor&no_page&program_key=${encodeURIComponent(programKey)}`;
+  if (courseId) { url += `&course_id=${encodeURIComponent(courseId)}`; }
+  const { data } = await client.get(url);
   return Array.isArray(data) ? data : (data.results ?? []);
 };
 
