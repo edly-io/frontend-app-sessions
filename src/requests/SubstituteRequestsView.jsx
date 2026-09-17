@@ -146,7 +146,10 @@ const SubstituteRequestsView = () => {
         const { leave_request: lr } = row.original;
         return (
           <div>
-            <div className="requests-view__cell-text">{lr.submitter_email}</div>
+            <div className="requests-view__cell-text">{lr.submitter_name || lr.submitter_email}</div>
+            {lr.submitter_name && (
+              <div className="text-muted requests-view__cell-meta">{lr.submitter_email}</div>
+            )}
             <div className="text-muted requests-view__cell-meta">
               {lr.leave_start_date} – {lr.leave_end_date}
             </div>
@@ -165,10 +168,17 @@ const SubstituteRequestsView = () => {
     },
     {
       Header: 'Substitute',
-      accessor: 'substitute_instructor_email',
-      Cell: ({ value }) => (value
-        ? <span className="requests-view__cell-text">{value}</span>
-        : <span className="text-muted">—</span>),
+      id: 'substitute',
+      Cell: ({ row }) => {
+        const { substitute_instructor_email: email, substitute_instructor_name: name } = row.original;
+        if (!email) { return <span className="text-muted">—</span>; }
+        return (
+          <div>
+            <div className="requests-view__cell-text">{name || email}</div>
+            {name && <div className="text-muted requests-view__cell-meta">{email}</div>}
+          </div>
+        );
+      },
     },
     {
       Header: 'Actions',

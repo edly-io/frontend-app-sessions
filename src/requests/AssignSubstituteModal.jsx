@@ -86,7 +86,12 @@ const AssignSubstituteModal = ({
         ...(selectedCourseRun ? { course_id: selectedCourseRun.value } : {}),
         instructor_emails: selectedInstructors.map((i) => i.value),
       });
-      await assignSubstitute(substituteRequest.id, selectedInstructors[0].value);
+      // Use the first newly-added instructor as the substitute, not the original.
+      // If the admin added a new sub without removing the original, [0] would
+      // still be the original instructor — so pick the first one not in originalEmails.
+      const addedInstructor = selectedInstructors.find((i) => !originalEmails.includes(i.value));
+      const substituteEmail = (addedInstructor || selectedInstructors[0]).value;
+      await assignSubstitute(substituteRequest.id, substituteEmail);
       onSuccess();
     } catch (err) {
       setError(extractApiError(err, 'Failed to assign substitute'));

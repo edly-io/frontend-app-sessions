@@ -352,7 +352,7 @@ const ScheduleMeetingModal = ({
     }
     setInstructorsLoading(true);
     if (!isSessionType) { setSelectedInstructors([]); }
-    fetchProgramInstructors(programKey)
+    fetchProgramInstructors(programKey, isSessionType ? selectedCourseRunId : null)
       .then((data) => setInstructorOptions(
         data.map((i) => ({
           value: i.id,

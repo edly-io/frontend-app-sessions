@@ -85,6 +85,10 @@
     font-size: 12px;
   }
 
+  &__conflict-note {
+    color: var(--sessions-text-warning);
+  }
+
   &__confirm-text {
     color: var(--sessions-text-secondary);
   }
