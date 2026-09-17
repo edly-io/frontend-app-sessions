@@ -7,7 +7,7 @@ import {
   Alert, Badge, Container, DataTable, Spinner,
 } from '@openedx/paragon';
 
-import { getCourseSessionsList, getMyAttendanceRecords, getNoCourseSessionsList } from './api';
+import { getMyCourseAttendance } from './api';
 import { fetchProgramCourses } from '../calendar/api';
 import SearchableSelect from '../shared/SearchableSelect';
 import { ATTENDANCE_STATUS } from '../shared/constants';
@@ -20,30 +20,27 @@ const CX = { cellClassName: 'text-center', headerClassName: 'justify-content-cen
 
 const SessionCell = ({ row }) => (
   <div>
-    <div>{row.original.title || '—'}</div>
-    <small className="text-muted">{formatDateTime(row.original.scheduled_start_time)}</small>
+    <div>{row.original.session_title || '—'}</div>
+    <small className="text-muted">{formatDateTime(row.original.session_date)}</small>
   </div>
 );
 SessionCell.propTypes = {
   row: PropTypes.shape({
     original: PropTypes.shape({
-      title: PropTypes.string,
-      scheduled_start_time: PropTypes.string,
+      session_title: PropTypes.string,
+      session_date: PropTypes.string,
     }).isRequired,
   }).isRequired,
 };
 
+// Every row carries a derived status — an unmarked session reads "Pending",
+// the same word the admin By-Learner tab uses for it.
 const StatusCell = ({ value }) => (
-  value
-    ? (
-      <Badge variant={getStatusVariant(value)}>
-        {ATTENDANCE_STATUS[value] || value}
-      </Badge>
-    )
-    : <span className="text-muted">Not marked</span>
+  <Badge variant={getStatusVariant(value)}>
+    {ATTENDANCE_STATUS[value] || value}
+  </Badge>
 );
-StatusCell.propTypes = { value: PropTypes.string };
-StatusCell.defaultProps = { value: '' };
+StatusCell.propTypes = { value: PropTypes.string.isRequired };
 
 const NotesCell = ({ row }) => (
   row.original.is_overridden && row.original.override_reason
@@ -60,9 +57,9 @@ NotesCell.propTypes = {
 };
 
 const COLUMNS = [
-  { Header: 'Session', accessor: 'title', Cell: SessionCell },
+  { Header: 'Session', accessor: 'session_title', Cell: SessionCell },
   {
-    Header: 'Status', accessor: 'attendance_status', Cell: StatusCell, ...CX,
+    Header: 'Status', accessor: 'status', Cell: StatusCell, ...CX,
   },
   {
     Header: 'Notes', accessor: 'override_reason', Cell: NotesCell, ...CX,
@@ -72,67 +69,59 @@ const COLUMNS = [
 const MyAttendanceView = () => {
   const { programId } = useParams();
 
-  const [allRecords, setAllRecords] = useState([]);
-  const [recordsLoading, setRecordsLoading] = useState(true);
   const [error, setError] = useState('');
 
   const [courses, setCourses] = useState([]);
   const [coursesLoading, setCoursesLoading] = useState(true);
 
   const [selectedCourseId, setSelectedCourseId] = useState('');
-  const [sessions, setSessions] = useState([]);
-  const [sessionsLoading, setSessionsLoading] = useState(false);
-  const [sessionsError, setSessionsError] = useState('');
-  const [sessionPageIndex, setSessionPageIndex] = useState(0);
-  const [sessionCount, setSessionCount] = useState(0);
+  const [rows, setRows] = useState([]);
+  const [rowsLoading, setRowsLoading] = useState(false);
+  const [rowsError, setRowsError] = useState('');
+  const [pageIndex, setPageIndex] = useState(0);
+  const [rowCount, setRowCount] = useState(0);
 
   useEffect(() => {
     if (!programId) { return () => {}; }
     let cancelled = false;
     (async () => {
       try {
-        const [recordsData, coursesData] = await Promise.all([
-          getMyAttendanceRecords({ pageSize: 500 }),
-          fetchProgramCourses(programId).catch(() => []),
-        ]);
+        const coursesData = await fetchProgramCourses(programId);
         if (cancelled) { return; }
-        setAllRecords(Array.isArray(recordsData) ? recordsData : recordsData.results ?? []);
         setCourses((coursesData || []).map((c) => ({ id: c.course_key, title: c.display_name })));
       } catch (err) {
-        if (!cancelled) { setError(extractApiError(err, 'Failed to load your attendance')); }
+        if (!cancelled) { setError(extractApiError(err, 'Failed to load your courses')); }
       } finally {
-        if (!cancelled) {
-          setRecordsLoading(false);
-          setCoursesLoading(false);
-        }
+        if (!cancelled) { setCoursesLoading(false); }
       }
     })();
     return () => { cancelled = true; };
   }, [programId]);
 
-  // Server-paged fetch, for the selected course or for the programme's
-  // course-less events (seminars, workshops, conferences). Both go through the
-  // same view server-side, so both get the same scope (past + in-progress,
-  // cancelled excluded), ordering (newest first) and pagination — and, because
-  // this lists sessions rather than records, a session the learner was never
-  // marked on still appears as "Not marked". Paragon's DataTable calls this on
-  // mount and on every page change (manualPagination); key={selectedCourseId}
-  // remounts the table on selection change, re-firing it for page 1.
-  const fetchSessions = useCallback(async ({ pageIndex: nextIndex = 0 } = {}) => {
-    setSessionsLoading(true);
-    setSessionsError('');
+  // Server-paged fetch of the learner's own derived attendance, for the
+  // selected course or for the programme's course-less events (seminars,
+  // workshops, conferences — `course_id=""`). One row per completed session
+  // with its status already resolved server-side, so the page never merges two
+  // sources and never depends on holding the learner's whole history. Paragon's
+  // DataTable calls this on mount and on every page change (manualPagination);
+  // key={selectedCourseId} remounts the table on selection change, re-firing it
+  // for page 1.
+  const fetchRows = useCallback(async ({ pageIndex: nextIndex = 0 } = {}) => {
+    setRowsLoading(true);
+    setRowsError('');
     try {
-      const opts = { page: nextIndex + 1, pageSize: PAGE_SIZE };
-      const data = selectedCourseId === NO_COURSE_VALUE
-        ? await getNoCourseSessionsList(programId, opts)
-        : await getCourseSessionsList(selectedCourseId, programId, opts);
-      setSessions(data.results ?? []);
-      setSessionCount(data.count ?? 0);
-      setSessionPageIndex(nextIndex);
+      const courseKey = selectedCourseId === NO_COURSE_VALUE ? '' : selectedCourseId;
+      const data = await getMyCourseAttendance(programId, courseKey, {
+        page: nextIndex + 1,
+        pageSize: PAGE_SIZE,
+      });
+      setRows(data.results ?? []);
+      setRowCount(data.count ?? 0);
+      setPageIndex(nextIndex);
     } catch (err) {
-      setSessionsError(extractApiError(err, 'Failed to load sessions'));
+      setRowsError(extractApiError(err, 'Failed to load your attendance'));
     } finally {
-      setSessionsLoading(false);
+      setRowsLoading(false);
     }
   }, [programId, selectedCourseId]);
 
@@ -147,32 +136,9 @@ const MyAttendanceView = () => {
     [courseOptions, selectedCourseId],
   );
 
-  // Index records by session UUID for O(1) lookup when merging
-  // The /records/me/ response uses `session` (the FK value) not `session_id`
-  const recordsBySessionId = useMemo(() => {
-    const map = {};
-    allRecords.forEach((r) => { if (r.session) { map[r.session] = r; } });
-    return map;
-  }, [allRecords]);
+  const pageCount = Math.max(1, Math.ceil(rowCount / PAGE_SIZE));
 
-  // One row per session, with the learner's record merged in where it exists.
-  // A session with no record shows as "Not marked" — previously the no-course
-  // option listed records only, so an unmarked seminar was invisible.
-  const tableRows = useMemo(() => sessions.map((s) => {
-    const record = recordsBySessionId[s.id];
-    return {
-      ...s,
-      attendance_status: record?.status ?? null,
-      override_reason: record?.override_reason ?? null,
-      is_overridden: record?.is_overridden ?? false,
-    };
-  }), [sessions, recordsBySessionId]);
-
-  const pageCount = Math.max(1, Math.ceil(sessionCount / PAGE_SIZE));
-
-  const loading = recordsLoading || coursesLoading;
-
-  if (loading) {
+  if (coursesLoading) {
     return (
       <Container className="py-5 text-center">
         <Spinner animation="border" variant="primary" />
@@ -188,9 +154,9 @@ const MyAttendanceView = () => {
           {error}
         </Alert>
       )}
-      {sessionsError && (
-        <Alert variant="danger" dismissible onClose={() => setSessionsError('')}>
-          {sessionsError}
+      {rowsError && (
+        <Alert variant="danger" dismissible onClose={() => setRowsError('')}>
+          {rowsError}
         </Alert>
       )}
 
@@ -202,9 +168,9 @@ const MyAttendanceView = () => {
           value={selectedCourseOption}
           onChange={(opt) => {
             setSelectedCourseId(opt?.value || '');
-            setSessions([]);
-            setSessionCount(0);
-            setSessionPageIndex(0);
+            setRows([]);
+            setRowCount(0);
+            setPageIndex(0);
           }}
           loading={coursesLoading}
           placeholder="Select a course…"
@@ -215,7 +181,7 @@ const MyAttendanceView = () => {
         <Alert variant="info">Select a course above to see your attendance.</Alert>
       )}
 
-      {selectedCourseId && sessionsLoading && (
+      {selectedCourseId && rowsLoading && (
         <div className="text-center py-4">
           <Spinner animation="border" variant="primary" />
           <p className="mt-2">Loading sessions…</p>
@@ -231,12 +197,12 @@ const MyAttendanceView = () => {
           key={selectedCourseId}
           isPaginated
           manualPagination
-          fetchData={fetchSessions}
+          fetchData={fetchRows}
           pageCount={pageCount}
-          itemCount={sessionCount}
-          data={tableRows}
+          itemCount={rowCount}
+          data={rows}
           columns={COLUMNS}
-          initialState={{ pageIndex: sessionPageIndex, pageSize: PAGE_SIZE }}
+          initialState={{ pageIndex, pageSize: PAGE_SIZE }}
         >
           <DataTable.Table />
           <DataTable.EmptyTable content="No sessions found yet." />
