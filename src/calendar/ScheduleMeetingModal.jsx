@@ -619,7 +619,7 @@ const ScheduleMeetingModal = ({
     if (!isRecurring) { return null; }
     const recurrence = { repeat_interval: 1 };
     if (recurrenceType === 'daily') {
-      // type 1 = Zoom daily recurrence (every weekday when repeat_interval=1 and no weekly_days)
+      // type 1 = Zoom daily recurrence — every day, weekends included.
       recurrence.type = 1;
     } else if (recurrenceType === 'weekly') {
       recurrence.type = 2;
@@ -720,13 +720,18 @@ const ScheduleMeetingModal = ({
           scheduled_start_time: toISOString(formData.scheduled_start_time),
           scheduled_end_time: toISOString(formData.scheduled_end_time),
           timezone: timezoneName,
-          is_recurring: isRecurring,
           instructor_emails: selectedInstructors.map((i) => i.email),
           location_id: selectedLocation?.value || null,
           create_zoom_meeting: createZoomMeeting,
         };
-        if (recurrence) {
-          sessionData.recurrence = recurrence;
+        // Recurrence is fixed at creation. An edit applies to the single
+        // occurrence being edited, so resending the series rules would only
+        // misrepresent what the request does.
+        if (!session) {
+          sessionData.is_recurring = isRecurring;
+          if (recurrence) {
+            sessionData.recurrence = recurrence;
+          }
         }
         setPendingPayload(sessionData);
         if (session) {
@@ -1093,10 +1098,7 @@ const ScheduleMeetingModal = ({
               id="create-zoom-meeting-toggle"
               name="create_zoom_meeting"
               checked={createZoomMeeting}
-              onChange={(e) => {
-                const next = e.target.checked;
-                setCreateZoomMeeting(next);
-              }}
+              onChange={(e) => setCreateZoomMeeting(e.target.checked)}
               disabled={isPastSession || descriptionOnly || Boolean(session?.create_zoom_meeting)}
             >
               Create Zoom meeting for this session
