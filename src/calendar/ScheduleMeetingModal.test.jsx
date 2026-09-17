@@ -59,8 +59,9 @@ beforeEach(() => {
   getSessionsConfig.mockResolvedValue({
     session_types: [
       { value: 'session', label: 'Session' },
-      { value: 'orientation', label: 'Orientation' },
+      { value: 'workshop', label: 'Workshop' },
     ],
+    lecture_duration_choices_minutes: [60, 90, 120],
   });
   getApprovedLeaves.mockResolvedValue([]);
   createSession.mockResolvedValue({ id: 1 });
@@ -361,6 +362,89 @@ describe('base validation', () => {
 
     await waitFor(() => expect(screen.getByText('Start time must be in the future')).toBeInTheDocument());
     expect(createSession).not.toHaveBeenCalled();
+  });
+});
+
+// ─── Duration policy by session type ──────────────────────────────────────────
+
+describe('duration policy by session type', () => {
+  const selectWorkshop = async () => {
+    const select = await screen.findByDisplayValue('Session');
+    fireEvent.change(select, { target: { value: 'workshop' } });
+  };
+
+  // A non-lecture type needs no course, instructor or location — only a title
+  // and a time range.
+  const fillEventFields = ({ endDate = MONDAY, endTime }) => {
+    fireEvent.change(screen.getByPlaceholderText('e.g., Week 5 Live Session'), {
+      target: { name: 'title', value: 'Graduation Workshop' },
+    });
+    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: MONDAY } });
+    fireEvent.change(screen.getByLabelText('Start time'), { target: { value: '10:00' } });
+    fireEvent.change(screen.getByLabelText('End date'), { target: { value: endDate } });
+    fireEvent.change(screen.getByLabelText('End time'), { target: { value: endTime } });
+  };
+
+  it('accepts an off-slot duration for a non-lecture type', async () => {
+    wrap();
+    await selectWorkshop();
+    fillEventFields({ endTime: '10:45' });
+    submitCreate();
+
+    await waitFor(() => expect(createSession).toHaveBeenCalledTimes(1));
+    expect(lastCreatePayload()).toMatchObject({ session_type: 'workshop' });
+  });
+
+  it('accepts a full-day duration for a non-lecture type', async () => {
+    wrap();
+    await selectWorkshop();
+    fillEventFields({ endTime: '19:00' });
+    submitCreate();
+
+    await waitFor(() => expect(createSession).toHaveBeenCalledTimes(1));
+  });
+
+  it('accepts a multi-day duration for a non-lecture type', async () => {
+    // No ceiling applies to a non-lecture type.
+    const threeDaysOn = new Date(`${MONDAY}T12:00:00`);
+    threeDaysOn.setDate(threeDaysOn.getDate() + 3);
+    wrap();
+    await selectWorkshop();
+    fillEventFields({ endDate: threeDaysOn.toLocaleDateString('en-CA'), endTime: '17:00' });
+    submitCreate();
+
+    await waitFor(() => expect(createSession).toHaveBeenCalledTimes(1));
+  });
+
+  it('follows the slots the API serves rather than hardcoded ones', async () => {
+    getSessionsConfig.mockResolvedValue({
+      session_types: [
+        { value: 'session', label: 'Session' },
+        { value: 'workshop', label: 'Workshop' },
+      ],
+      lecture_duration_choices_minutes: [45, 90],
+    });
+    wrap();
+    await fillRequiredFields({ endTime: '11:00' }); // 1h — a slot today, not here
+    submitCreate();
+
+    await waitFor(() => expect(
+      screen.getByText('Session duration must be 45 minutes, or 1 hour 30 minutes'),
+    ).toBeInTheDocument());
+    expect(createSession).not.toHaveBeenCalled();
+  });
+
+  it('skips the client-side check when the config call fails', async () => {
+    // The backend still validates; the form must not invent a limit of its own.
+    getSessionsConfig.mockRejectedValue(new Error('boom'));
+    wrap();
+    fillEventFields({ endTime: '10:45' });
+    await selectFromSearchable(courseInput, COURSE.display_name);
+    await selectFromSearchable(instructorInput, 'Alice Smith');
+    await selectFromSearchable(locationInput, LOCATION.name);
+    submitCreate();
+
+    await waitFor(() => expect(createSession).toHaveBeenCalledTimes(1));
   });
 });
 

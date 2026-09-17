@@ -87,6 +87,32 @@ const splitDateTimeLocal = (dateTimeLocalString) => {
 
 const combineDateTimeLocal = (date, time) => (date && time ? `${date}T${time}` : '');
 
+// ─── Session duration policy ──────────────────────────────────────────────────
+// The numbers come from GET /v1/config/, so the form and the API can never
+// disagree and a policy change needs no frontend release.
+
+/** Renders a minute count the way the messages read: 90 → "1 hour 30 minutes". */
+const humanizeMinutes = (minutes) => {
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  const parts = [];
+  if (hours) { parts.push(`${hours} hour${hours > 1 ? 's' : ''}`); }
+  if (remainingMinutes) { parts.push(`${remainingMinutes} minutes`); }
+  return parts.join(' ');
+};
+
+/**
+ * Returns why this duration is invalid for this session type, or '' if it is
+ * fine. An in-class lecture must land on one of the fixed teaching slots; every
+ * other type is a free-form event of any length. The check is skipped when the
+ * config call has not landed — the backend validates either way.
+ */
+const getDurationError = (durationMinutes, isLecture, lectureSlots) => {
+  if (!isLecture || !lectureSlots || lectureSlots.includes(durationMinutes)) { return ''; }
+  const rendered = lectureSlots.map(humanizeMinutes);
+  return `Session duration must be ${rendered.slice(0, -1).join(', ')}, or ${rendered[rendered.length - 1]}`;
+};
+
 /** Builds a human-readable summary shown below the recurrence panel. */
 const buildSummary = ({
   recurrenceType, weeklyDays, monthlyMode, monthlyDay, monthlyWeek, monthlyWeekDay, endType, endCount, endDate,
@@ -168,6 +194,7 @@ const ScheduleMeetingModal = ({
   const [instructorsLoading, setInstructorsLoading] = useState(false);
   const [sessionType, setSessionType] = useState('session');
   const [sessionTypeOptions, setSessionTypeOptions] = useState([]);
+  const [lectureDurations, setLectureDurations] = useState(null);
   const isSessionType = sessionType === 'session';
 
   // Conflict detection — set when the API returns HTTP 409.
@@ -249,11 +276,15 @@ const ScheduleMeetingModal = ({
       .finally(() => setLocationsLoading(false));
   }, [isOpen, programKey]);
 
-  // Fetch session type options from the attendance config endpoint.
+  // Fetch session type options and the lecture duration slots from the
+  // attendance config endpoint.
   useEffect(() => {
     if (!isOpen) { return; }
     getSessionsConfig()
-      .then((cfg) => setSessionTypeOptions(cfg.session_types || []))
+      .then((cfg) => {
+        setSessionTypeOptions(cfg.session_types || []);
+        setLectureDurations(cfg.lecture_duration_choices_minutes || null);
+      })
       .catch(() => {});
   }, [isOpen]);
 
@@ -552,8 +583,9 @@ const ScheduleMeetingModal = ({
       const durationMinutes = Math.round(
         (new Date(formData.scheduled_end_time) - new Date(formData.scheduled_start_time)) / (1000 * 60),
       );
-      if (![60, 90, 120].includes(durationMinutes)) {
-        setError('Session duration must be 1 hour, 1 hour 30 minutes, or 2 hours');
+      const durationError = getDurationError(durationMinutes, isSessionType, lectureDurations);
+      if (durationError) {
+        setError(durationError);
         setTimeout(() => errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
         return false;
       }
