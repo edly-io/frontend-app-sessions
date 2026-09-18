@@ -163,12 +163,12 @@ const LeaveUsagePanel = ({ programKey }) => {
       )}
       {error && <Alert variant="danger">{error}</Alert>}
       {!loading && !error && usage && (
-        <div className="sticky-header-table sessions-table-scroll">
-          <DataTable isSortable data={rows} columns={COLUMNS} itemCount={rows.length}>
+        <DataTable isSortable data={rows} columns={COLUMNS} itemCount={rows.length}>
+          <div className="sticky-header-table sessions-table-scroll">
             <DataTable.Table />
             <DataTable.EmptyTable content="No learners found." />
-          </DataTable>
-        </div>
+          </div>
+        </DataTable>
       )}
     </div>
   );

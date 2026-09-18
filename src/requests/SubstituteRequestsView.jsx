@@ -327,23 +327,23 @@ const SubstituteRequestsView = () => {
       {count === 0 ? (
         <Alert variant="info">No substitute requests found for this program.</Alert>
       ) : (
-        <div className="sticky-header-table sessions-table-scroll">
-          <DataTable
-            key={`${filterStatus}-${filterDateFrom}-${filterDateTo}`}
-            isPaginated
-            manualPagination
-            fetchData={fetchData}
-            pageCount={Math.max(1, Math.ceil(count / PAGE_SIZE))}
-            itemCount={count}
-            data={requests}
-            columns={columns}
-            initialState={{ pageIndex, pageSize: PAGE_SIZE }}
-          >
+        <DataTable
+          key={`${filterStatus}-${filterDateFrom}-${filterDateTo}`}
+          isPaginated
+          manualPagination
+          fetchData={fetchData}
+          pageCount={Math.max(1, Math.ceil(count / PAGE_SIZE))}
+          itemCount={count}
+          data={requests}
+          columns={columns}
+          initialState={{ pageIndex, pageSize: PAGE_SIZE }}
+        >
+          <div className="sticky-header-table sessions-table-scroll">
             <DataTable.Table />
             <DataTable.EmptyTable content="No substitute requests" />
-            <DataTable.TableFooter />
-          </DataTable>
-        </div>
+          </div>
+          <DataTable.TableFooter />
+        </DataTable>
       )}
 
       <AssignSubstituteModal

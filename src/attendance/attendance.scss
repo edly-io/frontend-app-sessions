@@ -21,3 +21,11 @@
   bottom: 1.5rem;
   z-index: 9999;
 }
+
+// A session's title and its date are one label, not prose: broken over a
+// narrow column they become one word per line and the row grows taller than
+// the screen. The listing scrolls sideways instead, so the label stays on its
+// own single line at every width.
+.attendance-session-cell {
+  white-space: nowrap;
+}
