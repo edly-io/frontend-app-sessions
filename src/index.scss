@@ -9,6 +9,18 @@ body {
   min-width: 320px;
 }
 
+// A listing is the only thing on a page allowed to scroll sideways: its own
+// `.pgn__data-table-container` does that. Anything else that outgrows a phone
+// is clipped here rather than stretching the window, which is what put a
+// second scrollbar under the table footer. `clip` rather than `hidden` so the
+// element never becomes a scroll container itself and sticky headers still
+// stick.
+html,
+body {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
 // Compact form fields below `lg`. Paragon's `size="sm"` is a single static
 // value with no responsive variant, so applying it per field would shrink the
 // desktop too. This reuses Paragon's own `-sm` tokens for the small state and
@@ -85,6 +97,9 @@ textarea.form-control:not(.form-control-sm, .form-control-lg) {
 // Tables carry the most columns of anything here, so they read smaller on
 // phones. From `sm` up Paragon's own DataTable size is restored by name.
 .pgn__data-table-wrapper {
+  // The table scrolls inside its own container; the wrapper holding that
+  // container and the footer stays within the column it was given.
+  max-width: 100%;
   font-size: .75rem;
 
   @media (--pgn-size-breakpoint-min-width-sm) {
@@ -103,19 +118,43 @@ textarea.form-control:not(.form-control-sm, .form-control-lg) {
   z-index: 1;
 }
 
-// Listings keep their columns legible and let Paragon's own
-// `.pgn__data-table-container` scroll horizontally instead of squeezing five to
-// ten columns into a narrow viewport. The floor is per column rather than per
-// table, so a four-column listing still fits a phone while a ten-column one
-// scrolls; on a desktop the floor is below what the columns take anyway.
+// Listings let Paragon's own `.pgn__data-table-container` scroll horizontally
+// rather than squeezing five to ten columns into a narrow viewport. Column
+// widths come from the content; only the parts that must not reflow are
+// pinned here.
 .sessions-table-scroll .pgn__data-table {
-  th,
-  td {
-    min-width: 7rem;
-  }
-
   th {
     white-space: nowrap;
+  }
+
+  // A control is a fixed-size target rather than text to reflow: wrapping a
+  // label like "Add note" over two lines makes the button taller than its row
+  // and smaller to hit.
+  td .btn {
+    white-space: nowrap;
+  }
+}
+
+// Paragon caps every DataTable cell at `max-width: 20vw` and clips the
+// overflow. That is ~280px on a desktop but only ~75px on a phone, which cuts
+// names, emails and dates off mid-word. A fixed cap reads the same at every
+// size, and a listing that outgrows it scrolls rather than clipping.
+.pgn__data-table-cell-wrap {
+  max-width: 20rem;
+}
+
+// The footer sits outside the table's scroll area, so it wraps onto more rows
+// on a narrow screen rather than stretching the page wider than the viewport.
+.pgn__data-table-footer {
+  flex-wrap: wrap;
+  gap: .5rem;
+
+  // Flex items default to a min-content floor, so the row status and the
+  // pagination would hold the footer open wider than the viewport instead of
+  // wrapping onto two rows.
+  > * {
+    min-width: 0;
+    max-width: 100%;
   }
 }
 

@@ -121,23 +121,23 @@ const SessionLeavesPanel = ({ programKey }) => {
         </div>
       ) : (
         !error && (
-          <div className="sticky-header-table sessions-table-scroll">
-            <DataTable
-              key={searchQ}
-              isPaginated
-              manualPagination
-              fetchData={fetchData}
-              pageCount={Math.max(1, Math.ceil(count / PAGE_SIZE))}
-              itemCount={count}
-              data={sessions}
-              columns={columns}
-              initialState={{ pageIndex, pageSize: PAGE_SIZE }}
-            >
+          <DataTable
+            key={searchQ}
+            isPaginated
+            manualPagination
+            fetchData={fetchData}
+            pageCount={Math.max(1, Math.ceil(count / PAGE_SIZE))}
+            itemCount={count}
+            data={sessions}
+            columns={columns}
+            initialState={{ pageIndex, pageSize: PAGE_SIZE }}
+          >
+            <div className="sticky-header-table sessions-table-scroll">
               <DataTable.Table />
               <DataTable.EmptyTable content="No sessions found" />
-              <DataTable.TableFooter />
-            </DataTable>
-          </div>
+            </div>
+            <DataTable.TableFooter />
+          </DataTable>
         )
       )}
 

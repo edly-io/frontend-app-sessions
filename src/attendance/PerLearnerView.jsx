@@ -16,6 +16,7 @@ import { fetchProgramCourses, fetchProgramLearners } from '../calendar/api';
 import { useConfig } from '../app/useConfig';
 import { ATTENDANCE_STATUS, USER_ROLE } from '../shared/constants';
 import { extractApiError, formatDateTime, getStatusVariant } from '../shared/utils';
+import './attendance.scss';
 
 const PAGE_SIZE = 50;
 
@@ -27,7 +28,7 @@ const EDIT_OPTIONS = [
 // ─── Cell renderers ──────────────────────────────────────────────────────────
 
 const SessionCell = ({ row }) => (
-  <div>
+  <div className="attendance-session-cell">
     <div>{row.original.session_title || '—'}</div>
     {row.original.session_date && (
       <small className="text-muted">{formatDateTime(row.original.session_date)}</small>
@@ -548,8 +549,10 @@ const PerLearnerView = () => {
           columns={columns}
           initialState={{ pageIndex, pageSize: PAGE_SIZE }}
         >
-          <DataTable.Table />
-          <DataTable.EmptyTable content="No records" />
+          <div className="sticky-header-table sessions-table-scroll">
+            <DataTable.Table />
+            <DataTable.EmptyTable content="No records" />
+          </div>
           <DataTable.TableFooter />
         </DataTable>
       )}
