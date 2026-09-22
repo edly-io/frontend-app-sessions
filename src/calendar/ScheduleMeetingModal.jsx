@@ -155,6 +155,11 @@ const ScheduleMeetingModal = ({
   const isPastSession = !!session && new Date(session.scheduled_end_time || session.scheduled_start_time) <= new Date();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  // Populated only for a Zoom registrant-rejection error (400,
+  // error: 'zoom_registrant_rejected'), where the backend names exactly
+  // which trainee's email Zoom rejected — every other failure leaves this
+  // empty and shows just the plain `error` message.
+  const [rejectedEmails, setRejectedEmails] = useState([]);
   const errorRef = useRef(null);
   const conflictRef = useRef(null);
   const [formData, setFormData] = useState({
@@ -686,9 +691,22 @@ const ScheduleMeetingModal = ({
     setEndTimeInput('');
   };
 
+  // Shared by handleSubmit and handleProceedAnyway: a Zoom registrant
+  // rejection names the trainee(s); every other failure shows the plain
+  // fallback message extractApiError already produces.
+  const setSessionSaveError = (err) => {
+    if (err.response?.data?.error === 'zoom_registrant_rejected') {
+      setError(err.response.data.detail);
+      setRejectedEmails(err.response.data.emails || []);
+    } else {
+      setError(extractApiError(err, 'Failed to save session. Please try again.'));
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setRejectedEmails([]);
     setConflictData(null);
 
     // Description-only mode (instructor editing their own session).
@@ -779,7 +797,7 @@ const ScheduleMeetingModal = ({
       if (err.response?.status === 409) {
         setConflictData(err.response.data);
       } else {
-        setError(extractApiError(err, 'Failed to save session. Please try again.'));
+        setSessionSaveError(err);
       }
     } finally {
       setLoading(false);
@@ -801,7 +819,7 @@ const ScheduleMeetingModal = ({
         setConflictData(err.response.data);
         setPendingPayload({ ...pendingPayload, acknowledge: true });
       } else {
-        setError(extractApiError(err, 'Failed to save session. Please try again.'));
+        setSessionSaveError(err);
       }
     } finally {
       setLoading(false);
@@ -810,6 +828,7 @@ const ScheduleMeetingModal = ({
 
   const handleClose = () => {
     setError('');
+    setRejectedEmails([]);
     setConflictData(null);
     onClose();
   };
@@ -853,8 +872,18 @@ const ScheduleMeetingModal = ({
       }}
       >
         {error && (
-          <Alert variant="danger" dismissible onClose={() => setError('')} ref={errorRef}>
+          <Alert
+            variant="danger"
+            dismissible
+            onClose={() => { setError(''); setRejectedEmails([]); }}
+            ref={errorRef}
+          >
             {error}
+            {rejectedEmails.length > 0 && (
+              <ul className="mt-2 mb-0 pl-4">
+                {rejectedEmails.map((email) => <li key={email}>{email}</li>)}
+              </ul>
+            )}
           </Alert>
         )}
 
