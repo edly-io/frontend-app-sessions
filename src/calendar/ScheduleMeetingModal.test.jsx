@@ -625,6 +625,27 @@ describe('conflict handling', () => {
 
     await waitFor(() => expect(screen.getByText('Zoom unavailable')).toBeInTheDocument());
   });
+
+  it('names the rejected trainee for a Zoom registrant-rejection error', async () => {
+    createSession.mockRejectedValue({
+      response: {
+        status: 400,
+        data: {
+          error: 'zoom_registrant_rejected',
+          detail: "Zoom rejected these trainees' registration.",
+          emails: ['bad@example.com'],
+        },
+      },
+    });
+    wrap();
+    await fillRequiredFields();
+    submitCreate();
+
+    await waitFor(() => expect(
+      screen.getByText("Zoom rejected these trainees' registration."),
+    ).toBeInTheDocument());
+    expect(screen.getByText('bad@example.com')).toBeInTheDocument();
+  });
 });
 
 // ─── Soft scheduling warnings ─────────────────────────────────────────────────
