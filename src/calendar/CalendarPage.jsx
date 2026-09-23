@@ -446,7 +446,7 @@ const CalendarPage = () => {
         <div className="audit-log-view">
           <AuditLogTable
             appLabel="attendance"
-            models={['session']}
+            models={['session', 'sessioninstructor']}
             programKey={programId}
             recordFilter={recordFilter}
             onClearFilter={handleClearFilter}

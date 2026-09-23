@@ -79,17 +79,89 @@ const ACTION_OPTIONS = [
 ];
 
 const MODEL_ACTION_LABELS = {
-  session: { created: 'Scheduled', deleted: 'Cancelled' },
+  session: { created: 'Scheduled', deleted: 'Deleted' },
+  sessioninstructor: { created: 'Assigned', deleted: 'Removed' },
   leaverequest: { created: 'Submitted', updated: 'Status Changed' },
   remotesessionrequest: { created: 'Requested', updated: 'Status Changed' },
   substituterequest: { created: 'Assigned', deleted: 'Removed' },
   attendancerecord: { created: 'Marked', updated: 'Updated' },
 };
 
-const getActionLabel = (action, recordType) => {
+// Filter dropdown options per model — shown when a single model is active.
+const MODEL_FILTER_LABELS = {
+  session: { 0: 'Scheduled', 1: 'Updated', 2: 'Deleted' },
+  sessioninstructor: { 0: 'Assigned', 1: 'Updated', 2: 'Removed' },
+  leaverequest: { 0: 'Submitted', 1: 'Status Changed', 2: 'Deleted' },
+};
+
+const getFilterOptions = (models) => {
+  if (models && models.length === 1 && MODEL_FILTER_LABELS[models[0]]) {
+    const labels = MODEL_FILTER_LABELS[models[0]];
+    return [
+      { value: '', label: 'All actions' },
+      { value: '0', label: labels[0] },
+      { value: '1', label: labels[1] },
+      { value: '2', label: labels[2] },
+    ];
+  }
+  return ACTION_OPTIONS;
+};
+
+// Change-aware label resolver for session cancellations and leave state transitions.
+const getActionLabel = (action, recordType, changes) => {
+  if (recordType === 'session' && action === 'updated') {
+    if (changes?.status?.[1] === 'cancelled') { return 'Cancelled'; }
+  }
+  if (recordType === 'leaverequest' && action === 'updated') {
+    if (changes?.state?.[1] === 'cancelled') { return 'Cancelled'; }
+    if (changes?.state?.[1] === 'approved') { return 'Approved'; }
+    if (changes?.state?.[1] === 'rejected') { return 'Rejected'; }
+    if (changes?.state?.[1] === 'withdrawn') { return 'Withdrawn'; }
+    if (changes?.state?.[1] === 'withdrawal_pending') { return 'Withdrawal Requested'; }
+  }
   const overrides = MODEL_ACTION_LABELS[recordType];
   return (overrides && overrides[action]) || action;
 };
+
+function groupLogs(logs, expandedBatches) {
+  const rows = [];
+  let i = 0;
+  while (i < logs.length) {
+    const entry = logs[i];
+    const batchId = entry.additional_data?.batch_id;
+    let advanced = false;
+    if (batchId) {
+      const batchEntries = [entry];
+      let j = i + 1;
+      while (j < logs.length && logs[j].additional_data?.batch_id === batchId) {
+        batchEntries.push(logs[j]);
+        j++;
+      }
+      if (batchEntries.length > 1) {
+        const first = batchEntries[0];
+        rows.push({
+          ...first,
+          id: `batch-${batchId}`,
+          rowType: 'batch',
+          batchId,
+          batchCount: batchEntries.length,
+          batchEntries,
+          action: 'batch',
+        });
+        if (expandedBatches.has(batchId)) {
+          batchEntries.forEach((e) => rows.push({ ...e, rowType: 'batch-child', batchId }));
+        }
+        i = j;
+        advanced = true;
+      }
+    }
+    if (!advanced) {
+      rows.push({ ...entry, rowType: 'entry' });
+      i += 1;
+    }
+  }
+  return rows;
+}
 
 const RECORD_TYPE_LABELS = {
   fbrprofile: 'User Profile',
@@ -342,6 +414,17 @@ const AuditLogTable = ({
   const [dateTo, setDateTo] = useState('');
   const [changesModal, setChangesModal] = useState(null);
   const [historyModal, setHistoryModal] = useState(null);
+  const [expandedBatches, setExpandedBatches] = useState(new Set());
+
+  const hasActiveFilters = actionFilter !== '' || searchText !== '' || dateFrom !== '' || dateTo !== '';
+  const handleClearFilters = () => {
+    setActionFilter('');
+    setSearchText('');
+    setDebouncedSearch('');
+    setDateFrom('');
+    setDateTo('');
+    setPage(1);
+  };
 
   const activeObjectId = objectId || recordFilter;
 
@@ -403,6 +486,7 @@ const AuditLogTable = ({
 
   const isPageLevel = !objectId;
   const pageCount = Math.ceil(count / PAGE_SIZE);
+  const displayRows = groupLogs(logs, expandedBatches);
 
   const columns = [
     {
@@ -432,10 +516,29 @@ const AuditLogTable = ({
       Header: 'Action',
       accessor: 'action',
       Cell: ({ row }) => {
-        const { action, record_type: rt } = row.original;
+        const {
+          action, record_type: rt, changes, rowType, batchId: entryBatchId, batchCount,
+        } = row.original;
+        if (rowType === 'batch') {
+          return (
+            <Button
+              variant="link"
+              size="sm"
+              onClick={() => setExpandedBatches((prev) => {
+                const next = new Set(prev);
+                if (next.has(entryBatchId)) { next.delete(entryBatchId); } else { next.add(entryBatchId); }
+                return next;
+              })}
+              className="audit-log__batch-toggle"
+            >
+              <Badge variant="light">{batchCount} entries</Badge>
+              {' '}{expandedBatches.has(entryBatchId) ? '▲' : '▼'}
+            </Button>
+          );
+        }
         return (
           <Badge variant={ACTION_VARIANT[action] || 'light'}>
-            {getActionLabel(action, rt)}
+            {getActionLabel(action, rt, changes)}
           </Badge>
         );
       },
@@ -457,19 +560,31 @@ const AuditLogTable = ({
       accessor: 'object_repr',
       Cell: ({ row }) => {
         const entry = row.original;
+        if (entry.rowType === 'batch') {
+          return (
+            <div>
+              <div className="audit-log__record-repr audit-log__batch-summary">
+                {entry.batchCount} records created together
+              </div>
+            </div>
+          );
+        }
+        const prefix = entry.rowType === 'batch-child' ? '↳ ' : '';
         return (
-          <div>
-            <div className="audit-log__record-repr">{entry.object_repr || '—'}</div>
+          <div className={entry.rowType === 'batch-child' ? 'audit-log__record--child' : ''}>
+            <div className="audit-log__record-repr">{prefix}{entry.object_repr || '—'}</div>
             {entry.object_pk && (
               <div className="audit-log__record-id">ID: {entry.object_pk}</div>
             )}
-            <Button
-              variant="link"
-              onClick={() => setHistoryModal(entry)}
-              className="audit-log__history-btn"
-            >
-              ⟳ Full history
-            </Button>
+            {entry.rowType !== 'batch-child' && (
+              <Button
+                variant="link"
+                onClick={() => setHistoryModal(entry)}
+                className="audit-log__history-btn"
+              >
+                ⟳ Full history
+              </Button>
+            )}
           </div>
         );
       },
@@ -545,7 +660,7 @@ const AuditLogTable = ({
           aria-label="Filter by action"
           className="audit-log__action-select"
         >
-          {ACTION_OPTIONS.map(opt => (
+          {getFilterOptions(models).map(opt => (
             <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}
         </Form.Control>
@@ -575,6 +690,16 @@ const AuditLogTable = ({
         <span className="audit-log__count">
           {count} result{count !== 1 ? 's' : ''}
         </span>
+        {hasActiveFilters && (
+          <Button
+            variant="tertiary"
+            size="sm"
+            onClick={handleClearFilters}
+            className="audit-log__clear-btn"
+          >
+            Clear filters
+          </Button>
+        )}
       </div>
 
       {loading && (
@@ -588,7 +713,7 @@ const AuditLogTable = ({
           <DataTable
             className="sessions-table-scroll"
             isSortable
-            data={logs}
+            data={displayRows}
             columns={columns}
             itemCount={count}
           >
