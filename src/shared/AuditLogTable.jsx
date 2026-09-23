@@ -94,14 +94,31 @@ const MODEL_FILTER_LABELS = {
   leaverequest: { 0: 'Submitted', 1: 'Status Changed', 2: 'Deleted' },
 };
 
+// Filter dropdown options for known multi-model combinations (keyed by sorted, comma-joined model names).
+const MULTI_MODEL_FILTER_LABELS = {
+  'session,sessioninstructor': { 0: 'Scheduled / Assigned', 1: 'Updated', 2: 'Deleted / Removed' },
+  'leaverequest,remotesessionrequest,substituterequest': { 0: 'Submitted / Requested', 1: 'Status Changed', 2: 'Deleted / Removed' },
+};
+
 const getFilterOptions = (models) => {
-  if (models && models.length === 1 && MODEL_FILTER_LABELS[models[0]]) {
+  if (!models || models.length === 0) { return ACTION_OPTIONS; }
+  if (models.length === 1 && MODEL_FILTER_LABELS[models[0]]) {
     const labels = MODEL_FILTER_LABELS[models[0]];
     return [
       { value: '', label: 'All actions' },
       { value: '0', label: labels[0] },
       { value: '1', label: labels[1] },
       { value: '2', label: labels[2] },
+    ];
+  }
+  const multiKey = [...models].sort().join(',');
+  const multiLabels = MULTI_MODEL_FILTER_LABELS[multiKey];
+  if (multiLabels) {
+    return [
+      { value: '', label: 'All actions' },
+      { value: '0', label: multiLabels[0] },
+      { value: '1', label: multiLabels[1] },
+      { value: '2', label: multiLabels[2] },
     ];
   }
   return ACTION_OPTIONS;
@@ -416,7 +433,7 @@ const AuditLogTable = ({
   const [historyModal, setHistoryModal] = useState(null);
   const [expandedBatches, setExpandedBatches] = useState(new Set());
 
-  const hasActiveFilters = actionFilter !== '' || searchText !== '' || dateFrom !== '' || dateTo !== '';
+  const hasActiveFilters = actionFilter !== '' || searchText !== '' || dateFrom !== '' || dateTo !== '' || !!recordFilter;
   const handleClearFilters = () => {
     setActionFilter('');
     setSearchText('');
@@ -424,6 +441,7 @@ const AuditLogTable = ({
     setDateFrom('');
     setDateTo('');
     setPage(1);
+    onClearFilter?.();
   };
 
   const activeObjectId = objectId || recordFilter;
