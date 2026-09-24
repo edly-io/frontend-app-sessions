@@ -140,7 +140,7 @@ textarea.form-control:not(.form-control-sm, .form-control-lg) {
 // names, emails and dates off mid-word. A fixed cap reads the same at every
 // size, and a listing that outgrows it scrolls rather than clipping.
 .pgn__data-table-cell-wrap {
-  max-width: 20rem;
+  max-width: none;
 }
 
 // The footer sits outside the table's scroll area, so it wraps onto more rows
