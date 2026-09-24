@@ -3,8 +3,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import {
-  Alert, Badge, Button, DataTable, Form, Pagination, Spinner,
+  Alert, Badge, Button, DataTable, Form, Icon, IconButtonWithTooltip, Pagination, Spinner,
 } from '@openedx/paragon';
+import { History } from '@openedx/paragon/icons';
 import { getAuditLogs } from './auditLogApi';
 import './AuditLogTable.scss';
 
@@ -595,13 +596,16 @@ const AuditLogTable = ({
               <div className="audit-log__record-id">ID: {entry.object_pk}</div>
             )}
             {entry.rowType !== 'batch-child' && (
-              <Button
-                variant="link"
+              <IconButtonWithTooltip
+                tooltipContent="Full history"
+                tooltipPlacement="top"
+                src={History}
+                iconAs={Icon}
+                alt="Full history"
                 onClick={() => setHistoryModal(entry)}
                 className="audit-log__history-btn"
-              >
-                ⟳ Full history
-              </Button>
+                size="sm"
+              />
             )}
           </div>
         );
