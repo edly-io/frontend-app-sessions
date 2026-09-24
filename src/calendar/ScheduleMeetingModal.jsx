@@ -349,15 +349,17 @@ const ScheduleMeetingModal = ({
       return;
     }
     // Normal mode: course is only required when session_type is 'session'.
-    // For other types load all instructors immediately even without a course.
+    // For other types, a course is optional — but if one is picked, still scope
+    // the instructor list to that course's team (the primary reason for picking
+    // a course on any session type).
     if (!selectedCourseRunId && isSessionType) {
       setInstructorOptions([]);
       setSelectedInstructors([]);
       return;
     }
     setInstructorsLoading(true);
-    if (!isSessionType) { setSelectedInstructors([]); }
-    fetchProgramInstructors(programKey, isSessionType ? selectedCourseRunId : null)
+    setSelectedInstructors([]);
+    fetchProgramInstructors(programKey, selectedCourseRunId)
       .then((data) => setInstructorOptions(
         data.map((i) => ({
           value: i.id,
@@ -1058,9 +1060,13 @@ const ScheduleMeetingModal = ({
               {instructorLeaveError}
             </div>
           )}
-          {!descriptionOnly && programInfo?.city?.name && (
+          {!descriptionOnly && (
             <small className="text-muted d-block" style={{ marginTop: instructorLeaveError ? 0 : -8, marginBottom: 12 }}>
-              Only instructors from <strong>{programInfo.city.name}</strong> are shown.
+              {selectedCourseRun ? (
+                <>Only instructors assigned to <strong>{selectedCourseRun.label}</strong> are shown.</>
+              ) : programInfo?.city?.name && (
+                <>Only instructors from <strong>{programInfo.city.name}</strong> are shown.</>
+              )}
             </small>
           )}
 

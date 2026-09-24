@@ -416,6 +416,20 @@ describe('duration policy by session type', () => {
     await waitFor(() => expect(createSession).toHaveBeenCalledTimes(1));
   });
 
+  it('scopes the instructor list to the picked course even for a non-lecture session type', async () => {
+    // Regression: when session_type was not 'session', the modal used to drop
+    // the course_id from the instructors call and list every city instructor,
+    // even after a course was picked.
+    wrap();
+    await selectWorkshop();
+    await selectFromSearchable(courseInput, COURSE.display_name);
+
+    await waitFor(() => {
+      const call = fetchProgramInstructors.mock.calls.at(-1);
+      expect(call).toEqual(['prog-1', COURSE.course_key]);
+    });
+  });
+
   it('follows the slots the API serves rather than hardcoded ones', async () => {
     getSessionsConfig.mockResolvedValue({
       session_types: [

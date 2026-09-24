@@ -122,3 +122,51 @@ describe('SubstituteRequestsView — a cancelled session', () => {
     expect(cancelSession).not.toHaveBeenCalled();
   });
 });
+
+describe('SubstituteRequestsView — after a substitute is assigned', () => {
+  // The fixture's `...overrides` spread replaces `session` wholesale, so the
+  // override must carry every field the row cell reads (id, title, dates, etc.).
+  const assigned = () => substituteRequest({
+    status: 'assigned',
+    substitute_instructor_email: 'sub@fbr.test',
+    substitute_instructor_name: 'Sub One',
+    session: {
+      id: 'sess-1',
+      title: 'Course 1 — Session 17',
+      scheduled_start_time: '2026-09-02T09:00:00Z',
+      status: 'scheduled',
+      location: null,
+      instructor_emails: ['instructor1@fbr.test', 'sub@fbr.test', 'sub2@fbr.test'],
+      instructor_names: ['Instructor One', 'Sub One', 'Sub Two'],
+    },
+  });
+
+  // "Assigned" also appears in the status filter dropdown; scope lookups to
+  // the table so the badge in the row is what we're actually asserting on.
+  const inTable = async () => within(await screen.findByRole('table'));
+
+  it('drops the action buttons — the request is resolved', async () => {
+    getSubstituteRequests.mockResolvedValue({ results: [assigned()], count: 1 });
+    renderView();
+
+    const table = await inTable();
+    expect(table.getByText('Assigned')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Assign Substitute' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Cancel Session' })).not.toBeInTheDocument();
+  });
+
+  it('lists every current instructor except the one on leave in the Substitute column', async () => {
+    getSubstituteRequests.mockResolvedValue({ results: [assigned()], count: 1 });
+    renderView();
+
+    const table = await inTable();
+    // Both cover instructors appear; the original on-leave instructor does not.
+    expect(table.getByText('Sub One')).toBeInTheDocument();
+    expect(table.getByText('Sub Two')).toBeInTheDocument();
+    expect(table.getByText('(sub@fbr.test)')).toBeInTheDocument();
+    expect(table.getByText('(sub2@fbr.test)')).toBeInTheDocument();
+    // The on-leave instructor stays in their own column but not as a substitute.
+    const substituteCell = table.getAllByRole('cell')[3];
+    expect(within(substituteCell).queryByText(/instructor1@fbr.test/)).not.toBeInTheDocument();
+  });
+});

@@ -200,3 +200,50 @@ label.requests-filters__date-label {
   color: var(--sessions-text-muted);
   white-space: nowrap;
 }
+
+.assign-substitute-modal {
+  &__session-summary {
+    background: var(--sessions-surface-muted);
+    border: 1px solid var(--sessions-border);
+    border-radius: 4px;
+  }
+
+  &__session-summary-line {
+    font-size: 13px;
+  }
+
+  &__on-leave-banner {
+    background: #FEF2F2;
+    border: 1px solid #FCA5A5;
+    border-radius: 4px;
+  }
+
+  &__on-leave-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #DC2626;
+    margin-bottom: 4px;
+  }
+
+  &__on-leave-email {
+    font-size: 12px;
+    color: #DC2626;
+  }
+
+  &__on-leave-hint {
+    font-size: 11px;
+    color: #991B1B;
+    margin-top: 4px;
+  }
+
+  &__scope-hint {
+    margin-top: -8px;
+    margin-bottom: 12px;
+  }
+
+  &__validation-error {
+    font-size: 12px;
+    color: #DC2626;
+    margin-top: 2px;
+  }
+}

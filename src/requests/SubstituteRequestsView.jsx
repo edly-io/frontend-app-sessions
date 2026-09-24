@@ -170,12 +170,31 @@ const SubstituteRequestsView = () => {
       Header: 'Substitute',
       id: 'substitute',
       Cell: ({ row }) => {
-        const { substitute_instructor_email: email, substitute_instructor_name: name } = row.original;
-        if (!email) { return <span className="text-muted">—</span>; }
+        const req = row.original;
+        const { substitute_instructor_email: primaryEmail, substitute_instructor_name: primaryName } = req;
+        const onLeaveEmail = req.leave_request?.submitter_email;
+        // The session's current instructor roster reflects every substitute an
+        // admin actually assigned (the modal updates instructor_emails). Filter
+        // out the original on-leave instructor so this column only lists covers.
+        const sessionEmails = req.session?.instructor_emails ?? [];
+        const sessionNames = req.session?.instructor_names ?? [];
+        const substitutes = sessionEmails
+          .map((email, i) => ({ email, name: sessionNames[i] || '' }))
+          .filter(({ email }) => email && email !== onLeaveEmail);
+
+        // Fallback for older rows where the session roster wasn't updated but
+        // the request has a `substitute_instructor_email` stored on itself.
+        if (substitutes.length === 0 && primaryEmail) {
+          substitutes.push({ email: primaryEmail, name: primaryName || '' });
+        }
+        if (substitutes.length === 0) { return <span className="text-muted">—</span>; }
         return (
           <div>
-            <div className="requests-view__cell-text">{name || email}</div>
-            {name && <div className="text-muted requests-view__cell-meta">{email}</div>}
+            {substitutes.map(({ email, name }) => (
+              <div key={email} className="requests-view__cell-text">
+                {name ? <>{name} <span className="text-muted">({email})</span></> : email}
+              </div>
+            ))}
           </div>
         );
       },
@@ -186,6 +205,7 @@ const SubstituteRequestsView = () => {
       Cell: ({ row }) => {
         const req = row.original;
         const isClosed = req.status === SUBSTITUTE_REQUEST_STATUS.CLOSED;
+        const isAssigned = req.status === SUBSTITUTE_REQUEST_STATUS.ASSIGNED;
 
         if (cancellingId === req.id) {
           return (
@@ -214,6 +234,12 @@ const SubstituteRequestsView = () => {
         }
 
         if (isClosed) { return null; }
+
+        // Once a substitute is on the row, the request is resolved: reassign
+        // through the calendar's session-edit flow instead. Cancelling here
+        // would also undo the arranged cover — a Cancel Session action is still
+        // reachable from the calendar.
+        if (isAssigned) { return null; }
 
         // Neither action is meaningful once the session is cancelled: assigning
         // is refused by the backend, and cancelling again returns
