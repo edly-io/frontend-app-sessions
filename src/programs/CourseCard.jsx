@@ -35,7 +35,7 @@ const CourseCard = ({ course, isInstructor = false, learnerData = null }) => {
   // Use the learning MFE URL format (/learning/course/...) when available.
   // Fall back to resolving the backend course_url against LMS_BASE_URL.
   const resolvedCourseUrl = learningBase && courseKey
-    ? `${learningBase.replace(/\/$/, '')}/course/${courseKey}/`
+    ? `${learningBase.replace(/\/$/, '')}/course/${courseKey}/home`
     : resolveUrl(courseUrl);
   const resolvedCourseAboutUrl = resolveUrl(courseAboutUrl);
   const metaParts = [org, run, targetAudience?.name].filter(Boolean);
