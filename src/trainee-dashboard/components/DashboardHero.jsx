@@ -5,18 +5,27 @@ import { LocationOn, MenuBook, Person } from '@openedx/paragon/icons';
 import { Link } from 'react-router-dom';
 import { useIntl } from '@edx/frontend-platform/i18n';
 import AccessibleProgressBar from '../../dashboard/AccessibleProgressBar';
+import { getCityHero } from '../../dashboard/cityHero';
 import messages from '../messages';
 import { formatDate } from '../utils';
 
 const DashboardHero = ({ trainee, programme, programKey = undefined }) => {
   const intl = useIntl();
   const { timeline } = programme;
+  const cityHero = getCityHero(programme.campus?.name);
 
   return (
-    <section className="trainee-dashboard__hero" aria-labelledby="trainee-dashboard-heading">
+    <section
+      className={`trainee-dashboard__hero dashboard-city-hero ${cityHero.className}`}
+      aria-labelledby="trainee-dashboard-heading"
+    >
+      <span className="dashboard-city-hero__glow" aria-hidden="true" />
+      {cityHero.artwork && (
+        <img className="dashboard-city-hero__art" src={cityHero.artwork} alt="" aria-hidden="true" />
+      )}
       <div className="trainee-dashboard__hero-copy">
         <h1 id="trainee-dashboard-heading">
-          {intl.formatMessage(messages.greeting, { name: trainee.first_name || trainee.full_name })}
+          {intl.formatMessage(messages.greeting, { name: trainee.full_name || trainee.first_name })}
         </h1>
         <p>{intl.formatMessage(messages.standing, { batch: programme.batch || programme.name })}</p>
         <div className="trainee-dashboard__identity" aria-label={intl.formatMessage(messages.traineeDetails)}>
@@ -54,6 +63,11 @@ const DashboardHero = ({ trainee, programme, programKey = undefined }) => {
         })}
         </small>
       </div>
+      {cityHero.monumentMessage && (
+        <span className="dashboard-city-hero__caption" aria-hidden="true">
+          {intl.formatMessage(cityHero.monumentMessage)}
+        </span>
+      )}
     </section>
   );
 };

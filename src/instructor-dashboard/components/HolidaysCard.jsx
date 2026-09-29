@@ -1,12 +1,16 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { Alert, Card } from '@openedx/paragon';
+import { Alert, Button, Card } from '@openedx/paragon';
 import { useIntl } from '@edx/frontend-platform/i18n';
+import useExpandableList from '../../dashboard/useExpandableList';
 import messages from '../messages';
 import { formatDate, parseDashboardDate } from '../utils';
 
 const HolidaysCard = ({ holidays }) => {
   const intl = useIntl();
+  const {
+    canExpand, isExpanded, toggleExpanded, visibleItems,
+  } = useExpandableList(holidays);
 
   return (
     <Card>
@@ -17,8 +21,15 @@ const HolidaysCard = ({ holidays }) => {
       <Card.Section>
         {!holidays.length ? <Alert variant="info">{intl.formatMessage(messages.noHolidays)}</Alert> : (
           <div className="instructor-dashboard__compact-list">
-            {holidays.map(holiday => {
+            {visibleItems.map(holiday => {
               const date = parseDashboardDate(holiday.start_date);
+              const isMultiDay = holiday.start_date !== holiday.end_date;
+              const dateDescription = isMultiDay
+                ? intl.formatMessage(messages.holidayDateRange, {
+                  startDate: formatDate(intl, holiday.start_date),
+                  endDate: formatDate(intl, holiday.end_date),
+                })
+                : formatDate(intl, holiday.start_date, { weekday: 'long' });
               return (
                 <article className="instructor-dashboard__holiday-row" key={holiday.id}>
                   <time dateTime={holiday.start_date} className="instructor-dashboard__holiday-date">
@@ -28,13 +39,20 @@ const HolidaysCard = ({ holidays }) => {
                   <div>
                     <strong>{holiday.name}</strong>
                     <p>
-                      {formatDate(intl, holiday.start_date, { weekday: 'long' })}
+                      {dateDescription}
                       {holiday.description && ` · ${holiday.description}`}
                     </p>
                   </div>
                 </article>
               );
             })}
+            {canExpand && (
+              <div className="dashboard-list-toggle">
+                <Button variant="link" size="sm" onClick={toggleExpanded}>
+                  {intl.formatMessage(isExpanded ? messages.showLess : messages.viewAll)}
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </Card.Section>

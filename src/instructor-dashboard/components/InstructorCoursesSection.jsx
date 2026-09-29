@@ -1,8 +1,11 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import {
-  Alert, Badge, Card, Col, Row,
+  Alert, Badge, Button, Card, Col, Icon, Row,
 } from '@openedx/paragon';
+import {
+  AccessTime, ArrowForward, People,
+} from '@openedx/paragon/icons';
 import { getConfig } from '@edx/frontend-platform';
 import { useIntl } from '@edx/frontend-platform/i18n';
 import AccessibleProgressBar from '../../dashboard/AccessibleProgressBar';
@@ -41,57 +44,75 @@ const InstructorCoursesSection = ({ courses }) => {
             const progress = course.average_progress_percentage;
             const metadata = [course.programme_name, course.campus?.name].filter(Boolean).join(' · ');
             const hasProgress = Number.isFinite(progress) && course.status !== 'unavailable';
+            const learningUrl = buildLearningUrl(course.course_id);
             return (
-              <Col xs={12} lg={4} className="mb-3" key={`${course.program_key}:${course.course_id}`}>
-                <Card className="instructor-dashboard__course-card">
+              <Col xs={12} lg={6} className="mb-3" key={`${course.program_key}:${course.course_id}`}>
+                <Card className={`instructor-dashboard__course-card instructor-dashboard__course-card--${course.status}`}>
                   <Card.Section>
                     <div className="instructor-dashboard__course-header">
-                      {course.course_code && (
-                        <span className="instructor-dashboard__course-code">{course.course_code}</span>
-                      )}
-                      <div>
+                      <div className="instructor-dashboard__course-heading">
+                        <div className="instructor-dashboard__course-eyebrow">
+                          {course.course_code && (
+                            <span className="instructor-dashboard__course-code">{course.course_code}</span>
+                          )}
+                          <Badge variant={getStatusVariant(course.status)}>
+                            {intl.formatMessage(STATUS_MESSAGES[course.status])}
+                          </Badge>
+                        </div>
                         <h3>{course.name}</h3>
                         {metadata && <p>{metadata}</p>}
                       </div>
-                      <Badge variant={getStatusVariant(course.status)}>
-                        {intl.formatMessage(STATUS_MESSAGES[course.status])}
-                      </Badge>
                     </div>
-                    <dl className="instructor-dashboard__course-stats">
+                    <div className="instructor-dashboard__course-stats">
                       <div>
-                        <dt>{intl.formatMessage(messages.traineesEnrolled)}</dt>
-                        <dd>{course.trainee_count}</dd>
+                        <span className="instructor-dashboard__course-stat-icon" aria-hidden="true">
+                          <Icon src={People} />
+                        </span>
+                        <span className="instructor-dashboard__course-stat-copy">
+                          <strong>{course.trainee_count}</strong>
+                          <span>{intl.formatMessage(messages.traineesEnrolled)}</span>
+                        </span>
                       </div>
                       <div>
-                        <dt>{intl.formatMessage(messages.hoursDelivered)}</dt>
-                        <dd>{intl.formatMessage(messages.hoursShort, { hours: course.delivered_hours })}</dd>
+                        <span className="instructor-dashboard__course-stat-icon" aria-hidden="true">
+                          <Icon src={AccessTime} />
+                        </span>
+                        <span className="instructor-dashboard__course-stat-copy">
+                          <strong>{intl.formatMessage(messages.hoursShort, { hours: course.delivered_hours })}</strong>
+                          <span>{intl.formatMessage(messages.hoursDelivered)}</span>
+                        </span>
                       </div>
-                    </dl>
-                    {hasProgress ? (
-                      <AccessibleProgressBar
-                        now={progress}
-                        label={intl.formatMessage(messages.courseAverageProgress, {
-                          course: course.name,
-                          percentage: progress,
-                        })}
-                      />
-                    ) : (
-                      <span className="text-muted">{intl.formatMessage(messages.progressUnavailable)}</span>
-                    )}
-                    <div className="instructor-dashboard__course-footer">
-                      <span>{intl.formatMessage(messages.averageLearnerProgress)}</span>
-                      {hasProgress && <strong>{progress}%</strong>}
                     </div>
-                    {buildLearningUrl(course.course_id) && (
+                    <div className="instructor-dashboard__course-progress">
+                      <div className="instructor-dashboard__course-progress-heading">
+                        <span>{intl.formatMessage(messages.averageLearnerProgress)}</span>
+                        {hasProgress && <strong>{progress}%</strong>}
+                      </div>
+                      {hasProgress ? (
+                        <AccessibleProgressBar
+                          now={progress}
+                          label={intl.formatMessage(messages.courseAverageProgress, {
+                            course: course.name,
+                            percentage: progress,
+                          })}
+                        />
+                      ) : (
+                        <span className="text-muted">{intl.formatMessage(messages.progressUnavailable)}</span>
+                      )}
+                    </div>
+                    {learningUrl && (
                       <div className="instructor-dashboard__course-actions">
-                        <a
-                          href={buildLearningUrl(course.course_id)}
+                        <Button
+                          as="a"
+                          href={learningUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="btn btn-outline-primary btn-sm"
+                          variant="outline-primary"
+                          size="sm"
+                          iconAfter={ArrowForward}
                         >
-                          Open in Learning →
-                        </a>
+                          {intl.formatMessage(messages.openInLearning)}
+                        </Button>
                       </div>
                     )}
                   </Card.Section>

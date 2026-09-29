@@ -41,6 +41,7 @@ const messages = defineMessages({
   progressUnavailable: { id: 'sessions.instructorDashboard.progressUnavailable', defaultMessage: 'Progress unavailable' },
   averageLearnerProgress: { id: 'sessions.instructorDashboard.averageLearnerProgress', defaultMessage: 'Average learner progress' },
   courseAverageProgress: { id: 'sessions.instructorDashboard.courseAverageProgress', defaultMessage: '{course}: {percentage}% average learner progress' },
+  openInLearning: { id: 'sessions.instructorDashboard.openInLearning', defaultMessage: 'Open in Learning' },
   deliverySummary: { id: 'sessions.instructorDashboard.deliverySummary', defaultMessage: 'Delivery so far' },
   deliverySubtitle: { id: 'sessions.instructorDashboard.deliverySubtitle', defaultMessage: 'Sessions completed and hours taught' },
   deliveryHeadline: { id: 'sessions.instructorDashboard.deliveryHeadline', defaultMessage: '{sessions} sessions delivered' },
@@ -48,7 +49,7 @@ const messages = defineMessages({
   decreaseFromLastMonth: { id: 'sessions.instructorDashboard.decreaseFromLastMonth', defaultMessage: '−{hours} hrs vs last month' },
   noChangeFromLastMonth: { id: 'sessions.instructorDashboard.noChangeFromLastMonth', defaultMessage: 'No change from last month' },
   weeklyHours: { id: 'sessions.instructorDashboard.weeklyHours', defaultMessage: 'Hours per week · last 8 weeks' },
-  teachingHoursWeek: { id: 'sessions.instructorDashboard.teachingHoursWeek', defaultMessage: 'Week {week}: {hours} teaching hours' },
+  teachingHoursWeek: { id: 'sessions.instructorDashboard.teachingHoursWeek', defaultMessage: '{startDate} – {endDate}: {hours} teaching hours' },
   hoursByCourse: { id: 'sessions.instructorDashboard.hoursByCourse', defaultMessage: 'Hours by course' },
   courseHours: { id: 'sessions.instructorDashboard.courseHours', defaultMessage: '{course}: {hours} hours delivered' },
   atAGlance: { id: 'sessions.instructorDashboard.atAGlance', defaultMessage: 'At a glance' },
@@ -79,6 +80,9 @@ const messages = defineMessages({
   upcomingHolidays: { id: 'sessions.instructorDashboard.upcomingHolidays', defaultMessage: 'Upcoming holidays' },
   noSessionsScheduled: { id: 'sessions.instructorDashboard.noSessionsScheduled', defaultMessage: 'No sessions scheduled' },
   noHolidays: { id: 'sessions.instructorDashboard.noHolidays', defaultMessage: 'There are no upcoming public holidays.' },
+  holidayDateRange: { id: 'sessions.instructorDashboard.holidayDateRange', defaultMessage: '{startDate} – {endDate}' },
+  viewAll: { id: 'sessions.instructorDashboard.viewAll', defaultMessage: 'View all' },
+  showLess: { id: 'sessions.instructorDashboard.showLess', defaultMessage: 'Show less' },
 });
 
 export default messages;

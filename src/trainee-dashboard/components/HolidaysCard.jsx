@@ -1,12 +1,16 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { Card } from '@openedx/paragon';
+import { Button, Card } from '@openedx/paragon';
 import { useIntl } from '@edx/frontend-platform/i18n';
+import useExpandableList from '../../dashboard/useExpandableList';
 import messages from '../messages';
 import { formatDate, getDateTile } from '../utils';
 
 const HolidaysCard = ({ holidays }) => {
   const intl = useIntl();
+  const {
+    canExpand, isExpanded, toggleExpanded, visibleItems,
+  } = useExpandableList(holidays);
 
   return (
     <section aria-labelledby="holidays-heading">
@@ -17,7 +21,7 @@ const HolidaysCard = ({ holidays }) => {
         />
         <Card.Section className="trainee-dashboard__compact-list">
           {holidays.length === 0 && <p>{intl.formatMessage(messages.noHolidays)}</p>}
-          {holidays.map(holiday => {
+          {visibleItems.map(holiday => {
             const date = getDateTile(intl, holiday.start_date);
             const isRange = holiday.end_date && holiday.end_date !== holiday.start_date;
             const description = holiday.description || (holiday.no_sessions
@@ -41,6 +45,13 @@ const HolidaysCard = ({ holidays }) => {
               </article>
             );
           })}
+          {canExpand && (
+            <div className="dashboard-list-toggle">
+              <Button variant="link" size="sm" onClick={toggleExpanded}>
+                {intl.formatMessage(isExpanded ? messages.showLess : messages.viewAll)}
+              </Button>
+            </div>
+          )}
         </Card.Section>
       </Card>
     </section>

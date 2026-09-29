@@ -3,15 +3,24 @@ import PropTypes from 'prop-types';
 import { Badge, Icon } from '@openedx/paragon';
 import { LocationOn, Person, School } from '@openedx/paragon/icons';
 import { useIntl } from '@edx/frontend-platform/i18n';
+import { getCityHero } from '../../dashboard/cityHero';
 import messages from '../messages';
 
 const InstructorHero = ({ instructor, week }) => {
   const intl = useIntl();
   const instructorName = instructor.full_name || instructor.first_name;
   const organization = [instructor.designation, instructor.department].filter(Boolean).join(' · ');
+  const cityHero = getCityHero(instructor.campus?.name);
 
   return (
-    <section className="instructor-dashboard__hero" aria-labelledby="instructor-dashboard-heading">
+    <section
+      className={`instructor-dashboard__hero dashboard-city-hero ${cityHero.className}`}
+      aria-labelledby="instructor-dashboard-heading"
+    >
+      <span className="dashboard-city-hero__glow" aria-hidden="true" />
+      {cityHero.artwork && (
+        <img className="dashboard-city-hero__art" src={cityHero.artwork} alt="" aria-hidden="true" />
+      )}
       <div className="instructor-dashboard__hero-copy">
         <h1 id="instructor-dashboard-heading">
           {intl.formatMessage(messages.greeting, { name: instructorName })}
@@ -40,6 +49,11 @@ const InstructorHero = ({ instructor, week }) => {
           <dd>{intl.formatMessage(messages.hoursShort, { hours: week.scheduled_hours })}</dd>
         </div>
       </dl>
+      {cityHero.monumentMessage && (
+        <span className="dashboard-city-hero__caption" aria-hidden="true">
+          {intl.formatMessage(cityHero.monumentMessage)}
+        </span>
+      )}
     </section>
   );
 };

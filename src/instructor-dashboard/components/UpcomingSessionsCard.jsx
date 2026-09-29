@@ -8,6 +8,7 @@ import {
   AccessTime, LocationOn, People, Videocam,
 } from '@openedx/paragon/icons';
 import { useIntl } from '@edx/frontend-platform/i18n';
+import useExpandableList from '../../dashboard/useExpandableList';
 import messages from '../messages';
 import { formatDate, formatTime, parseDashboardDate } from '../utils';
 
@@ -41,7 +42,10 @@ ModeBadge.propTypes = {
 
 const UpcomingSessionsCard = ({ sessions, timezone = undefined }) => {
   const intl = useIntl();
-  const [nextSession, ...laterSessions] = sessions;
+  const {
+    canExpand, isExpanded, toggleExpanded, visibleItems,
+  } = useExpandableList(sessions);
+  const [nextSession, ...laterSessions] = visibleItems;
 
   const renderDate = value => (
     <time dateTime={value} className="instructor-dashboard__session-date">
@@ -121,6 +125,13 @@ const UpcomingSessionsCard = ({ sessions, timezone = undefined }) => {
                   </article>
                 ))}
               </div>
+              {canExpand && (
+                <div className="dashboard-list-toggle">
+                  <Button variant="link" size="sm" onClick={toggleExpanded}>
+                    {intl.formatMessage(isExpanded ? messages.showLess : messages.viewAll)}
+                  </Button>
+                </div>
+              )}
             </>
           )}
         </Card.Section>

@@ -6,6 +6,7 @@ import {
 import { CheckCircle, Feedback } from '@openedx/paragon/icons';
 import { useIntl } from '@edx/frontend-platform/i18n';
 import '../../dashboard/feedback.scss';
+import useExpandableList from '../../dashboard/useExpandableList';
 import messages from '../messages';
 import { formatDate } from '../utils';
 
@@ -13,6 +14,9 @@ const initials = name => name.split(' ').map(part => part[0]).slice(0, 2).join('
 
 const FeedbackCard = ({ feedback, pendingCount, onOpenFeedback }) => {
   const intl = useIntl();
+  const {
+    canExpand, isExpanded, toggleExpanded, visibleItems,
+  } = useExpandableList(feedback);
 
   return (
     <section aria-labelledby="feedback-heading">
@@ -23,7 +27,7 @@ const FeedbackCard = ({ feedback, pendingCount, onOpenFeedback }) => {
         />
         <Card.Section className="dashboard-feedback-card__scroll trainee-dashboard__compact-list">
           {feedback.length === 0 && <p>{intl.formatMessage(messages.noFeedback)}</p>}
-          {feedback.map(item => {
+          {visibleItems.map(item => {
             const displayName = item.subject?.full_name || item.feedback_name;
             let action;
             if (item.status === 'submitted') {
@@ -59,6 +63,13 @@ const FeedbackCard = ({ feedback, pendingCount, onOpenFeedback }) => {
               </article>
             );
           })}
+          {canExpand && (
+            <div className="dashboard-list-toggle">
+              <Button variant="link" size="sm" onClick={toggleExpanded}>
+                {intl.formatMessage(isExpanded ? messages.showLess : messages.viewAll)}
+              </Button>
+            </div>
+          )}
         </Card.Section>
       </Card>
     </section>

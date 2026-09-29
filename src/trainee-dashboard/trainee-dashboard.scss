@@ -418,26 +418,70 @@
 }
 
 .trainee-dashboard__progress-summary {
+  --progress-color: var(--pgn-color-primary-500, #116CAB);
+
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   width: 8.25rem;
   height: 8.25rem;
-  border: .8125rem solid #116CAB;
   border-radius: 50%;
 
+  &::before,
+  &::after {
+    position: absolute;
+    border-radius: inherit;
+    content: '';
+  }
+
+  &::before {
+    inset: 0;
+    background: conic-gradient(
+      from -90deg,
+      var(--progress-color) var(--progress-percentage),
+      var(--sessions-surface-muted) var(--progress-percentage)
+    );
+  }
+
+  &::after {
+    inset: .8125rem;
+    background: var(--sessions-surface);
+  }
+
   strong {
+    position: relative;
+    z-index: 1;
+    color: var(--progress-color);
     font-size: 1.75rem;
     line-height: 1;
   }
 
   span {
+    position: relative;
+    z-index: 1;
     margin-top: .25rem;
     color: var(--pgn-color-gray-700, #6B7885);
     font-size: .6875rem;
     font-weight: 600;
     text-transform: uppercase;
+  }
+
+  &--low {
+    --progress-color: var(--pgn-color-danger-500, #AB0D02);
+  }
+
+  &--medium {
+    --progress-color: var(--pgn-color-warning-500, #B86400);
+  }
+
+  &--high {
+    --progress-color: var(--pgn-color-success-500, #0D7D4D);
+  }
+
+  &--empty {
+    box-shadow: 0 0 0 .125rem var(--progress-color);
   }
 }
 

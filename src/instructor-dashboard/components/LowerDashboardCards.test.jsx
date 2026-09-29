@@ -57,8 +57,42 @@ it('uses the summary pending count and opens only submittable feedback', async (
 
   expect(screen.getByText('7 pending')).toBeInTheDocument();
   expect(screen.getByText('Expired')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'View all' })).not.toBeInTheDocument();
   await user.click(screen.getByRole('button', { name: 'Fill form' }));
   expect(onOpenFeedback).toHaveBeenCalledWith(602);
+});
+
+it('shows five feedback requests by default and expands without fetching', async () => {
+  const user = userEvent.setup();
+  const feedback = Array.from({ length: 6 }, (_, index) => ({
+    id: index + 1,
+    feedback_name: `Feedback ${index + 1}`,
+    form_name: `Form ${index + 1}`,
+    type: 'course',
+    subject: null,
+    course_code: `TX-${index + 1}`,
+    course_name: `Course ${index + 1}`,
+    deadline: '2026-08-28',
+    status: 'pending',
+    urgent: false,
+    submitted_at: null,
+    can_submit: true,
+  }));
+
+  renderWithIntl(
+    <FeedbackToSubmitCard
+      pendingCount={6}
+      onOpenFeedback={jest.fn()}
+      feedback={feedback}
+    />,
+  );
+
+  expect(screen.getByText('Course 5')).toBeInTheDocument();
+  expect(screen.queryByText('Course 6')).not.toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'View all' }));
+  expect(screen.getByText('Course 6')).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Show less' }));
+  expect(screen.queryByText('Course 6')).not.toBeInTheDocument();
 });
 
 it('shows attendance as information without a marking action', () => {
@@ -100,4 +134,29 @@ it('accepts snake-case holidays with a nullable description', () => {
 
   expect(screen.getByText('Chehlum')).toBeInTheDocument();
   expect(screen.getByText(/Wednesday/)).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'View all' })).not.toBeInTheDocument();
+});
+
+it('expands holidays and displays multi-day date ranges', async () => {
+  const user = userEvent.setup();
+  const holidays = Array.from({ length: 6 }, (_, index) => ({
+    id: index + 1,
+    type: 'public_holiday',
+    name: `Holiday ${index + 1}`,
+    description: null,
+    start_date: `2026-08-${String(index + 20).padStart(2, '0')}`,
+    end_date: `2026-08-${String(index + 21).padStart(2, '0')}`,
+    no_sessions: true,
+    campus_ids: [2],
+  }));
+
+  renderWithIntl(<HolidaysCard holidays={holidays} />);
+
+  expect(screen.getByText('Aug 20 – Aug 21')).toBeInTheDocument();
+  expect(screen.getByText('Holiday 5')).toBeInTheDocument();
+  expect(screen.queryByText('Holiday 6')).not.toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'View all' }));
+  expect(screen.getByText('Holiday 6')).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Show less' }));
+  expect(screen.queryByText('Holiday 6')).not.toBeInTheDocument();
 });

@@ -13,10 +13,30 @@ const resultHeading = state => ({
   unavailable: messages.resultsUnavailable,
 }[state] || messages.resultsNotPublished);
 
+const getProgressTone = percentage => {
+  if (percentage < 40) {
+    return 'low';
+  }
+  if (percentage < 75) {
+    return 'medium';
+  }
+  return 'high';
+};
+
 const ProgressCard = ({ courses, summary, results }) => {
   const intl = useIntl();
-  const courseProgress = summary.course_progress.percentage;
+  const courseProgress = Math.min(100, Math.max(0, summary.course_progress.percentage));
+  const progressTone = getProgressTone(courseProgress);
   const hasVisibleResult = results.state === 'finalized' && results.is_visible;
+  const progressLabel = intl.formatMessage(messages.progressLabel, {
+    context: intl.formatMessage(messages.myProgress),
+    percentage: courseProgress,
+  });
+  const progressClassName = [
+    'trainee-dashboard__progress-summary',
+    `trainee-dashboard__progress-summary--${progressTone}`,
+    courseProgress === 0 ? 'trainee-dashboard__progress-summary--empty' : '',
+  ].filter(Boolean).join(' ');
 
   return (
     <section aria-labelledby="progress-heading" className="trainee-dashboard__section">
@@ -27,7 +47,11 @@ const ProgressCard = ({ courses, summary, results }) => {
         />
         <Card.Section>
           <div className="trainee-dashboard__progress-layout">
-            <div className="trainee-dashboard__progress-summary" aria-label={intl.formatMessage(messages.progressLabel, { context: intl.formatMessage(messages.myProgress), percentage: courseProgress })}>
+            <div
+              className={progressClassName}
+              style={{ '--progress-percentage': `${courseProgress}%` }}
+              aria-label={progressLabel}
+            >
               <strong>{courseProgress}%</strong>
               <span>{intl.formatMessage(messages.complete)}</span>
             </div>
