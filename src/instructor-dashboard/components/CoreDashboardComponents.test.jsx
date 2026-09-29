@@ -1,6 +1,7 @@
 import React from 'react';
 import { IntlProvider } from '@edx/frontend-platform/i18n';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 
 import DeliverySummaryCard from './DeliverySummaryCard';
@@ -49,10 +50,38 @@ it('renders nullable instructor and session metadata from the API contract', () 
   expect(screen.getByRole('heading', { name: 'Assalam-o-Alaikum, Ayesha Khan' })).toBeInTheDocument();
   expect(screen.getByText('3.5 hrs')).toBeInTheDocument();
   expect(screen.getByText('Location to be confirmed')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'View all' })).not.toBeInTheDocument();
   expect(screen.getByRole('link', { name: 'View details' })).toHaveAttribute(
     'href',
     '/program-v1:FBR+STP50+2026/calendar?modal=session&id=session-1',
   );
+});
+
+it('shows five upcoming sessions by default and expands the in-memory list', async () => {
+  const user = userEvent.setup();
+  const sessions = Array.from({ length: 6 }, (_, index) => ({
+    id: `session-${index + 1}`,
+    program_key: 'program-v1:FBR+STP50+2026',
+    scheduled_start: `2026-08-${String(index + 20).padStart(2, '0')}T09:30:00+05:00`,
+    duration_minutes: 60,
+    title: `Session ${index + 1}`,
+    course_code: 'TX-101',
+    trainee_count: 24,
+    mode: 'on_site',
+    location: null,
+    can_view_details: false,
+  }));
+
+  renderComponent(<UpcomingSessionsCard sessions={sessions} timezone="Asia/Karachi" />);
+
+  expect(screen.getByText('Session 5')).toBeInTheDocument();
+  expect(screen.queryByText('Session 6')).not.toBeInTheDocument();
+
+  await user.click(screen.getByRole('button', { name: 'View all' }));
+  expect(screen.getByText('Session 6')).toBeInTheDocument();
+
+  await user.click(screen.getByRole('button', { name: 'Show less' }));
+  expect(screen.queryByText('Session 6')).not.toBeInTheDocument();
 });
 
 it('uses average course progress and represents unavailable progress without module counts', () => {
@@ -127,6 +156,8 @@ it('renders snake_case delivery data and a signed negative monthly change', () =
   );
 
   expect(screen.getByText('−4 hrs vs last month')).toBeInTheDocument();
-  expect(screen.getByText('Week 1: 0 teaching hours')).toBeInTheDocument();
+  expect(screen.getByText('0 hrs')).toBeInTheDocument();
+  expect(screen.getByText('Aug 17')).toBeInTheDocument();
+  expect(screen.getByText('Aug 17 – Aug 23: 0 teaching hours')).toBeInTheDocument();
   expect(screen.getByText('20 of 24 present')).toBeInTheDocument();
 });

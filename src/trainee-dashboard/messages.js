@@ -81,6 +81,8 @@ const messages = defineMessages({
   noSessions: { id: 'sessions.traineeDashboard.noSessions', defaultMessage: 'No sessions scheduled' },
   campusClosed: { id: 'sessions.traineeDashboard.campusClosed', defaultMessage: 'No sessions scheduled' },
   noHolidays: { id: 'sessions.traineeDashboard.noHolidays', defaultMessage: 'There are no upcoming public holidays.' },
+  viewAll: { id: 'sessions.traineeDashboard.viewAll', defaultMessage: 'View all' },
+  showLess: { id: 'sessions.traineeDashboard.showLess', defaultMessage: 'Show less' },
   holidayRange: { id: 'sessions.traineeDashboard.holidayRange', defaultMessage: '{start} – {end}' },
   myCertificates: { id: 'sessions.traineeDashboard.myCertificates', defaultMessage: 'My certificates' },
   earnedUpcoming: { id: 'sessions.traineeDashboard.earnedUpcoming', defaultMessage: 'Programme certificates' },

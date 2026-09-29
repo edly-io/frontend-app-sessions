@@ -8,6 +8,7 @@ import {
   AccessTime, LocationOn, Person, Videocam,
 } from '@openedx/paragon/icons';
 import { useIntl } from '@edx/frontend-platform/i18n';
+import useExpandableList from '../../dashboard/useExpandableList';
 import messages from '../messages';
 import {
   formatTime, getDateTile, joinInstructorNames, parseApiDate,
@@ -70,7 +71,10 @@ SessionDate.propTypes = {
 
 const UpcomingSessionsCard = ({ sessions, programKey }) => {
   const intl = useIntl();
-  const [nextSession, ...laterSessions] = sessions;
+  const {
+    canExpand, isExpanded, toggleExpanded, visibleItems,
+  } = useExpandableList(sessions);
+  const [nextSession, ...laterSessions] = visibleItems;
 
   return (
     <section aria-labelledby="upcoming-sessions-heading" className="trainee-dashboard__section">
@@ -108,7 +112,7 @@ const UpcomingSessionsCard = ({ sessions, programKey }) => {
                 </div>
                 <div className="trainee-dashboard__session-actions">
                   <strong>{formatStartsIn(intl, nextSession.scheduled_start)}</strong>
-                  {nextSession.meeting_join_url && (
+                  {nextSession.can_join && (
                     <Button
                       variant="brand"
                       href={nextSession.meeting_join_url}
@@ -152,6 +156,13 @@ const UpcomingSessionsCard = ({ sessions, programKey }) => {
                   </article>
                 ))}
               </div>
+              {canExpand && (
+                <div className="dashboard-list-toggle">
+                  <Button variant="link" size="sm" onClick={toggleExpanded}>
+                    {intl.formatMessage(isExpanded ? messages.showLess : messages.viewAll)}
+                  </Button>
+                </div>
+              )}
             </>
           )}
         </Card.Section>
@@ -170,6 +181,7 @@ const sessionShape = PropTypes.shape({
   location: PropTypes.shape({ name: PropTypes.string.isRequired }),
   instructors: PropTypes.arrayOf(PropTypes.shape({ full_name: PropTypes.string.isRequired })).isRequired,
   meeting_join_url: PropTypes.string,
+  can_join: PropTypes.bool.isRequired,
   can_view_details: PropTypes.bool.isRequired,
 });
 

@@ -63,6 +63,7 @@ const dashboard = {
     location: { id: 'room-1', name: 'Lecture Hall B' },
     instructors: [{ id: 91, full_name: 'Ayesha Khan' }],
     meeting_join_url: null,
+    can_join: false,
     can_view_details: true,
   }],
   courses: [{
@@ -184,7 +185,9 @@ it('renders backend dashboard data and links existing detail flows', () => {
   renderDashboard();
 
   const main = screen.getByRole('main');
-  expect(within(main).getByRole('heading', { level: 1, name: 'Assalam-o-Alaikum, Ayesha' })).toBeInTheDocument();
+  const heading = within(main).getByRole('heading', { level: 1, name: 'Assalam-o-Alaikum, Ayesha Ahmed' });
+  expect(heading).toBeInTheDocument();
+  expect(heading.closest('section')).toHaveClass('dashboard-city-hero--karachi');
   expect(within(main).getByText('EMP-1042')).toBeInTheDocument();
   expect(within(main).getByText('Withholding Tax Regime')).toBeInTheDocument();
   expect(within(main).getByText('Results not published yet')).toBeInTheDocument();
@@ -208,6 +211,34 @@ it('uses API-provided percentages for accessible progress indicators', () => {
   expect(screen.getByRole('progressbar', {
     name: 'Income Tax Law: 63% complete',
   })).toHaveAttribute('aria-valuenow', '63');
+
+  const progressWheel = screen.getByLabelText('My progress: 63% complete');
+  expect(progressWheel).toHaveClass('trainee-dashboard__progress-summary--medium');
+  expect(progressWheel).toHaveStyle('--progress-percentage: 63%');
+});
+
+it('shows an empty red progress wheel when no modules are complete', () => {
+  useTraineeDashboard.mockReturnValue({
+    data: {
+      ...dashboard,
+      summary: {
+        ...dashboard.summary,
+        course_progress: { completed_modules: 0, total_modules: 3, percentage: 0 },
+      },
+    },
+    isLoading: false,
+    isError: false,
+    refetch: jest.fn(),
+  });
+
+  renderDashboard();
+
+  const progressWheel = screen.getByLabelText('My progress: 0% complete');
+  expect(progressWheel).toHaveClass(
+    'trainee-dashboard__progress-summary--low',
+    'trainee-dashboard__progress-summary--empty',
+  );
+  expect(progressWheel).toHaveStyle('--progress-percentage: 0%');
 });
 
 it('requests the selected programme when the switcher changes', async () => {

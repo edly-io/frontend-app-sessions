@@ -81,3 +81,108 @@
     }
   }
 }
+
+.dashboard-list-toggle {
+  display: flex;
+  justify-content: center;
+  margin-top: .5rem;
+  padding-top: .5rem;
+  border-top: 1px solid var(--sessions-border);
+
+  .btn {
+    font-weight: 600;
+  }
+}
+
+.dashboard-city-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background-color: #0D4D7D;
+  transition: background .5s ease;
+
+  > :not(.dashboard-city-hero__art, .dashboard-city-hero__glow, .dashboard-city-hero__caption) {
+    position: relative;
+    z-index: 2;
+  }
+}
+
+.dashboard-city-hero--karachi {
+  background: linear-gradient(120deg, #082C47 0%, #0D4D7D 55%, #1A7FC4 100%);
+
+  .dashboard-city-hero__glow {
+    background: radial-gradient(circle, rgb(255 255 255 / .22) 0%, transparent 66%);
+  }
+}
+
+.dashboard-city-hero--lahore {
+  background: linear-gradient(120deg, #0D4D7D 0%, #116CAB 55%, #5A7FA8 100%);
+
+  .dashboard-city-hero__glow {
+    background: radial-gradient(circle, rgb(217 178 98 / .34) 0%, transparent 66%);
+  }
+}
+
+.dashboard-city-hero--islamabad {
+  background: linear-gradient(120deg, #0A4A6E 0%, #0F6F86 55%, #2F8F8A 100%);
+
+  .dashboard-city-hero__glow {
+    background: radial-gradient(circle, rgb(160 220 200 / .28) 0%, transparent 66%);
+  }
+}
+
+.dashboard-city-hero--default {
+  background: linear-gradient(120deg, #0D4D7D, #116CAB 62%, #1A7FC4);
+}
+
+.dashboard-city-hero__art {
+  position: absolute;
+  z-index: 1;
+  right: clamp(0px, 24vw, 330px);
+  bottom: 0;
+  width: auto;
+  max-width: 60%;
+  height: 100%;
+  opacity: .17;
+  pointer-events: none;
+}
+
+.dashboard-city-hero__glow {
+  position: absolute;
+  z-index: 0;
+  right: clamp(-80px, 18vw, 250px);
+  bottom: -230px;
+  width: 420px;
+  height: 420px;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.dashboard-city-hero__caption {
+  position: absolute;
+  z-index: 2;
+  right: 22px;
+  bottom: 12px;
+  color: rgb(255 255 255 / .62);
+  font-size: .6563rem;
+  font-weight: 600;
+  letter-spacing: .075rem;
+  text-transform: uppercase;
+}
+
+@media (width <= 1000px) {
+  .dashboard-city-hero__art {
+    right: -20px;
+    opacity: .13;
+  }
+
+  .dashboard-city-hero__caption {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-city-hero {
+    transition: none;
+  }
+}

@@ -6,11 +6,15 @@ import {
 import { CheckCircle, Feedback, MenuBook } from '@openedx/paragon/icons';
 import { useIntl } from '@edx/frontend-platform/i18n';
 import '../../dashboard/feedback.scss';
+import useExpandableList from '../../dashboard/useExpandableList';
 import messages from '../messages';
 import { formatDate } from '../utils';
 
 const FeedbackToSubmitCard = ({ feedback, pendingCount, onOpenFeedback }) => {
   const intl = useIntl();
+  const {
+    canExpand, isExpanded, toggleExpanded, visibleItems,
+  } = useExpandableList(feedback);
   const getIcon = item => {
     if (item.status === 'submitted') { return CheckCircle; }
     return item.type === 'course' ? MenuBook : Feedback;
@@ -51,7 +55,7 @@ const FeedbackToSubmitCard = ({ feedback, pendingCount, onOpenFeedback }) => {
       <Card.Section className="dashboard-feedback-card__scroll">
         {!feedback.length ? <Alert variant="success">{intl.formatMessage(messages.noFeedback)}</Alert> : (
           <div className="instructor-dashboard__compact-list">
-            {feedback.map(item => (
+            {visibleItems.map(item => (
               <article className="instructor-dashboard__feedback-row" key={item.id}>
                 <span className={`instructor-dashboard__list-icon${item.status === 'submitted' ? ' instructor-dashboard__list-icon--complete' : ''}`}>
                   <Icon src={getIcon(item)} />
@@ -65,6 +69,13 @@ const FeedbackToSubmitCard = ({ feedback, pendingCount, onOpenFeedback }) => {
                 </div>
               </article>
             ))}
+            {canExpand && (
+              <div className="dashboard-list-toggle">
+                <Button variant="link" size="sm" onClick={toggleExpanded}>
+                  {intl.formatMessage(isExpanded ? messages.showLess : messages.viewAll)}
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </Card.Section>

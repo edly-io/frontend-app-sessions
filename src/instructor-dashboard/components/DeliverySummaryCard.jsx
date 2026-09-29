@@ -57,19 +57,38 @@ const DeliverySummaryCard = ({ courses, delivery, timezone = undefined }) => {
               </div>
               <h3 className="instructor-dashboard__subheading">{intl.formatMessage(messages.weeklyHours)}</h3>
               <ol className="instructor-dashboard__weekly-chart">
-                {delivery.weekly_hours.map((week, index) => (
-                  <li key={week.week_start}>
-                    <span
-                      className="instructor-dashboard__weekly-bar"
-                      // eslint-disable-next-line react/forbid-component-props
-                      style={{ height: `${Math.max(12, Math.round((week.hours / maxWeek) * 100))}%` }}
-                      aria-hidden="true"
-                    />
-                    <span className="sr-only">
-                      {intl.formatMessage(messages.teachingHoursWeek, { week: index + 1, hours: week.hours })}
-                    </span>
-                  </li>
-                ))}
+                {delivery.weekly_hours.map(week => {
+                  const weekStart = formatDate(intl, week.week_start);
+                  const weekEnd = formatDate(intl, week.week_end);
+                  const barHeight = week.hours > 0
+                    ? Math.max(8, Math.round((week.hours / maxWeek) * 100))
+                    : 0;
+
+                  return (
+                    <li key={week.week_start}>
+                      <strong className="instructor-dashboard__weekly-value">
+                        {intl.formatMessage(messages.hoursShort, { hours: week.hours })}
+                      </strong>
+                      <span className="instructor-dashboard__weekly-bar-track" aria-hidden="true">
+                        <span
+                          className="instructor-dashboard__weekly-bar"
+                          // eslint-disable-next-line react/forbid-component-props
+                          style={{ height: `${barHeight}%` }}
+                        />
+                      </span>
+                      <time className="instructor-dashboard__weekly-date" dateTime={week.week_start}>
+                        {weekStart}
+                      </time>
+                      <span className="sr-only">
+                        {intl.formatMessage(messages.teachingHoursWeek, {
+                          startDate: weekStart,
+                          endDate: weekEnd,
+                          hours: week.hours,
+                        })}
+                      </span>
+                    </li>
+                  );
+                })}
               </ol>
             </div>
             <div>
