@@ -342,9 +342,10 @@ const SessionPopover = ({
             </>
           )}
         </div>
-        {session.status === 'scheduled' && (
+        {session.status !== 'cancelled' && (!isPast || session.marking_window_open) && (
           <div className="d-flex align-items-center calendar-popover__actions flex-wrap">
-            {/* Admin: full edit. Instructor: description-only edit on own future sessions. */}
+            {/* Admin: full edit (past sessions open in correction mode, gated by the
+                marking window). Instructor: description-only edit on own future sessions. */}
             {(canManageSessions || (isInstructor
               && session.user_role === USER_ROLE.INSTRUCTOR
               && new Date(session.scheduled_start_time) > new Date())) && (
@@ -596,9 +597,11 @@ const DayPopover = ({
                   {session.status !== 'cancelled' && session.user_role === USER_ROLE.INSTRUCTOR && (
                     <div className="mt-1"><InstructingBadge /></div>
                   )}
-                  {session.status === 'scheduled' && (
+                  {session.status !== 'cancelled' && (!isPast || session.marking_window_open) && (
                   <div className="mt-1 d-flex align-items-center calendar-day-session__actions flex-wrap">
-                    {/* Admin: full edit. Instructor: description-only edit on own future sessions. */}
+                    {/* Admin: full edit (past sessions open in correction mode, gated by the
+                        marking window). Instructor: description-only edit on own future
+                        sessions. */}
                     {(canManageSessions || (isInstructor
                       && session.user_role === USER_ROLE.INSTRUCTOR
                       && new Date(session.scheduled_start_time) > new Date())) && (
@@ -1665,6 +1668,7 @@ const sessionShape = PropTypes.shape({
   status: PropTypes.string,
   scheduled_start_time: PropTypes.string,
   scheduled_end_time: PropTypes.string,
+  marking_window_open: PropTypes.bool,
   meeting_id: PropTypes.string,
   meeting_join_url: PropTypes.string,
   my_join_url: PropTypes.string,
