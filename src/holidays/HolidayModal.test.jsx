@@ -55,8 +55,8 @@ describe('create mode', () => {
   it('shows an error when end date is missing', async () => {
     wrap();
     fireEvent.change(screen.getByPlaceholderText(/eid al-fitr/i), { target: { value: 'Eid' } });
-    const dateInputs = document.querySelectorAll('input[type="date"]');
-    fireEvent.change(dateInputs[0], { target: { value: '2026-04-01' } });
+    const dateInputs = [screen.getByLabelText(/start date/i), screen.getByLabelText(/end date/i)];
+    fireEvent.change(dateInputs[0], { target: { value: '01/04/2026' } });
     // Clear end date to simulate missing end date (it auto-syncs, so clear it)
     fireEvent.change(dateInputs[1], { target: { value: '' } });
     fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
@@ -68,9 +68,9 @@ describe('create mode', () => {
     createHoliday.mockResolvedValue({ id: 1, name: 'Eid' });
     wrap({ onSuccess });
     fireEvent.change(screen.getByPlaceholderText(/eid al-fitr/i), { target: { value: 'Eid' } });
-    const dateInputs = document.querySelectorAll('input[type="date"]');
-    fireEvent.change(dateInputs[0], { target: { value: '2026-04-01' } });
-    fireEvent.change(dateInputs[1], { target: { value: '2026-04-02' } });
+    const dateInputs = [screen.getByLabelText(/start date/i), screen.getByLabelText(/end date/i)];
+    fireEvent.change(dateInputs[0], { target: { value: '01/04/2026' } });
+    fireEvent.change(dateInputs[1], { target: { value: '02/04/2026' } });
     fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
     await waitFor(() => expect(createHoliday).toHaveBeenCalledWith({
       name: 'Eid',
@@ -83,10 +83,10 @@ describe('create mode', () => {
 
   it('auto-syncs end date to start date when start is set later', () => {
     wrap();
-    const dateInputs = document.querySelectorAll('input[type="date"]');
-    fireEvent.change(dateInputs[0], { target: { value: '2026-04-10' } });
+    const dateInputs = [screen.getByLabelText(/start date/i), screen.getByLabelText(/end date/i)];
+    fireEvent.change(dateInputs[0], { target: { value: '10/04/2026' } });
     // End date should auto-advance to match start date
-    expect(dateInputs[1].value).toBe('2026-04-10');
+    expect(dateInputs[1].value).toBe('10/04/2026');
   });
 });
 
@@ -128,9 +128,9 @@ describe('API error handling', () => {
     createHoliday.mockRejectedValue({ response: { data: { detail: 'Server error' } } });
     wrap();
     fireEvent.change(screen.getByPlaceholderText(/eid al-fitr/i), { target: { value: 'Eid' } });
-    const dateInputs = document.querySelectorAll('input[type="date"]');
-    fireEvent.change(dateInputs[0], { target: { value: '2026-04-01' } });
-    fireEvent.change(dateInputs[1], { target: { value: '2026-04-01' } });
+    const dateInputs = [screen.getByLabelText(/start date/i), screen.getByLabelText(/end date/i)];
+    fireEvent.change(dateInputs[0], { target: { value: '01/04/2026' } });
+    fireEvent.change(dateInputs[1], { target: { value: '01/04/2026' } });
     fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
     await waitFor(() => expect(screen.getByText('Server error')).toBeInTheDocument());
   });

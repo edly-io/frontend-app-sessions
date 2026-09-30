@@ -66,8 +66,8 @@ describe('full-day leave', () => {
   it('enables Submit once dates and reason are entered (no sessions required)', () => {
     renderModal();
     switchToLeave();
-    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2026-07-01' } });
-    fireEvent.change(screen.getByLabelText('End date'), { target: { value: '2026-07-03' } });
+    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '01/07/2026' } });
+    fireEvent.change(screen.getByLabelText('End date'), { target: { value: '03/07/2026' } });
     fireEvent.change(
       screen.getByPlaceholderText(/explain why you are making this request/i),
       { target: { value: 'Travelling' } },
@@ -102,8 +102,8 @@ describe('full-day leave session notice', () => {
     });
     renderModal();
     switchToLeave();
-    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2026-07-13' } });
-    fireEvent.change(screen.getByLabelText('End date'), { target: { value: '2026-07-14' } });
+    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '13/07/2026' } });
+    fireEvent.change(screen.getByLabelText('End date'), { target: { value: '14/07/2026' } });
     expect(
       await screen.findByText(/you have 2 scheduled sessions during this leave period/i),
     ).toBeInTheDocument();
@@ -112,8 +112,8 @@ describe('full-day leave session notice', () => {
   it('shows no notice when the range covers no sessions', async () => {
     renderModal(); // default mock resolves { sessions: [] }
     switchToLeave();
-    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2026-07-13' } });
-    fireEvent.change(screen.getByLabelText('End date'), { target: { value: '2026-07-14' } });
+    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '13/07/2026' } });
+    fireEvent.change(screen.getByLabelText('End date'), { target: { value: '14/07/2026' } });
     await waitFor(() => expect(getCalendarSessions).toHaveBeenCalled());
     expect(screen.queryByText(/during this leave period/i)).not.toBeInTheDocument();
   });
@@ -156,16 +156,16 @@ describe('session fetch window', () => {
   it('sends end_date as an exclusive bound (+1 day) for a single-day selection', async () => {
     renderModal();
     switchToSessionSpecific();
-    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2026-07-13' } });
-    fireEvent.change(screen.getByLabelText('End date'), { target: { value: '2026-07-13' } });
+    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '13/07/2026' } });
+    fireEvent.change(screen.getByLabelText('End date'), { target: { value: '13/07/2026' } });
     await waitFor(() => expect(getCalendarSessions).toHaveBeenCalledWith('2026-07-13', '2026-07-14', 'program-v1:TEST+PROG+2026'));
   });
 
   it('advances the exclusive end across a month boundary', async () => {
     renderModal();
     switchToSessionSpecific();
-    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2026-07-30' } });
-    fireEvent.change(screen.getByLabelText('End date'), { target: { value: '2026-07-31' } });
+    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '30/07/2026' } });
+    fireEvent.change(screen.getByLabelText('End date'), { target: { value: '31/07/2026' } });
     await waitFor(() => expect(getCalendarSessions).toHaveBeenCalledWith('2026-07-30', '2026-08-01', 'program-v1:TEST+PROG+2026'));
   });
 });
@@ -183,8 +183,8 @@ describe('attachment requirement for MED/EMER categories', () => {
   };
 
   const fillDatesAndReason = () => {
-    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2026-07-01' } });
-    fireEvent.change(screen.getByLabelText('End date'), { target: { value: '2026-07-03' } });
+    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '01/07/2026' } });
+    fireEvent.change(screen.getByLabelText('End date'), { target: { value: '03/07/2026' } });
     fireEvent.change(
       screen.getByPlaceholderText(/explain why you are making this request/i),
       { target: { value: 'Medical visit' } },
@@ -245,8 +245,8 @@ describe('attachment requirement for MED/EMER categories', () => {
 describe('threshold exceeded confirmation', () => {
   const switchToLeaveAndFill = () => {
     fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: 'leave' } });
-    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2026-07-01' } });
-    fireEvent.change(screen.getByLabelText('End date'), { target: { value: '2026-07-03' } });
+    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '01/07/2026' } });
+    fireEvent.change(screen.getByLabelText('End date'), { target: { value: '03/07/2026' } });
     fireEvent.change(
       screen.getByPlaceholderText(/explain why you are making this request/i),
       { target: { value: 'Sick leave' } },
@@ -365,8 +365,8 @@ describe('instructor full-day leave warning', () => {
   it('shows a warning and submit anyway action before creating the leave', async () => {
     renderModal();
     fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: 'leave' } });
-    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2026-07-02' } });
-    fireEvent.change(screen.getByLabelText('End date'), { target: { value: '2026-07-02' } });
+    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '02/07/2026' } });
+    fireEvent.change(screen.getByLabelText('End date'), { target: { value: '02/07/2026' } });
     fireEvent.change(
       screen.getByPlaceholderText(/explain why you are making this request/i),
       { target: { value: 'Need a day off' } },
@@ -398,8 +398,8 @@ describe('instructor full-day leave warning', () => {
 describe('overlapping leave rejection', () => {
   const switchToLeaveAndFill = () => {
     fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: 'leave' } });
-    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2026-08-05' } });
-    fireEvent.change(screen.getByLabelText('End date'), { target: { value: '2026-08-10' } });
+    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '05/08/2026' } });
+    fireEvent.change(screen.getByLabelText('End date'), { target: { value: '10/08/2026' } });
     fireEvent.change(
       screen.getByPlaceholderText(/explain why you are making this request/i),
       { target: { value: 'Need leave' } },

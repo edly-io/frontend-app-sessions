@@ -15,6 +15,7 @@ import {
   USER_ROLE,
 } from '../shared/constants';
 import { extractApiError, formatDateTime } from '../shared/utils';
+import DatepickerControl from '../shared/date-picker-control/DatepickerControl';
 import { useConfig } from '../app/useConfig';
 
 const TYPE_OPTIONS = [
@@ -634,21 +635,19 @@ const CreateRequestModal = ({
       <Form.Group className="mb-3">
         <Form.Label>Date range</Form.Label>
         <div className="d-flex align-items-center" style={{ gap: 8 }}>
-          <Form.Control
-            type="date"
+          <DatepickerControl
             value={startDate}
-            onChange={(e) => handleStartDateChange(e.target.value)}
-            style={{ flex: 1 }}
-            aria-label="Start date"
+            onChange={handleStartDateChange}
+            className="flex-fill"
+            ariaLabel="Start date"
           />
           <span style={{ color: '#6c757d' }}>–</span>
-          <Form.Control
-            type="date"
+          <DatepickerControl
             value={endDate}
-            min={startDate || undefined}
-            onChange={(e) => handleEndDateChange(e.target.value)}
-            style={{ flex: 1 }}
-            aria-label="End date"
+            minDate={startDate}
+            onChange={handleEndDateChange}
+            className="flex-fill"
+            ariaLabel="End date"
           />
           {sessionsLoading && <Spinner animation="border" size="sm" />}
         </div>

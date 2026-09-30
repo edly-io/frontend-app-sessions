@@ -7,6 +7,7 @@ import {
 } from '@openedx/paragon';
 import { History } from '@openedx/paragon/icons';
 import { getAuditLogs } from './auditLogApi';
+import DatepickerControl from './date-picker-control/DatepickerControl';
 import './AuditLogTable.scss';
 
 const PAGE_SIZE = 20;
@@ -462,13 +463,13 @@ const AuditLogTable = ({
     setPage(1);
   };
 
-  const handleDateFromChange = (e) => {
-    setDateFrom(e.target.value);
+  const handleDateFromChange = (value) => {
+    setDateFrom(value);
     setPage(1);
   };
 
-  const handleDateToChange = (e) => {
-    setDateTo(e.target.value);
+  const handleDateToChange = (value) => {
+    setDateTo(value);
     setPage(1);
   };
 
@@ -689,9 +690,8 @@ const AuditLogTable = ({
         <div className="audit-log__date-range d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center">
           <div className="audit-log__date-field d-flex align-items-center">
             <Form.Label htmlFor="audit-date-from-sessions" className="audit-log__date-label">From</Form.Label>
-            <Form.Control
+            <DatepickerControl
               id="audit-date-from-sessions"
-              type="date"
               value={dateFrom}
               onChange={handleDateFromChange}
               className="audit-log__date-input"
@@ -699,11 +699,10 @@ const AuditLogTable = ({
           </div>
           <div className="audit-log__date-field d-flex align-items-center">
             <Form.Label htmlFor="audit-date-to-sessions" className="audit-log__date-label">To</Form.Label>
-            <Form.Control
+            <DatepickerControl
               id="audit-date-to-sessions"
-              type="date"
               value={dateTo}
-              min={dateFrom || undefined}
+              minDate={dateFrom}
               onChange={handleDateToChange}
               className="audit-log__date-input"
             />

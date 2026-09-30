@@ -100,7 +100,9 @@ const selectFromSearchable = async (getInput, optionLabel) => {
   fireEvent.mouseDown(option);
 };
 
-const dateInputs = () => document.querySelectorAll('input[type="date"]');
+// The date fields are DatepickerControls, which take typed input as DD/MM/YYYY.
+const displayDate = (isoDate) => isoDate.split('-').reverse().join('/');
+const recurrenceEndDateInput = () => screen.getByLabelText('Recurrence end date');
 
 const fillRequiredFields = async ({
   startDate = MONDAY, startTime = '10:00', endDate = startDate, endTime = '11:00',
@@ -111,9 +113,9 @@ const fillRequiredFields = async ({
   await selectFromSearchable(courseInput, COURSE.display_name);
   await selectFromSearchable(instructorInput, 'Alice Smith');
   await selectFromSearchable(locationInput, LOCATION.name);
-  fireEvent.change(screen.getByLabelText('Start date'), { target: { value: startDate } });
+  fireEvent.change(screen.getByLabelText('Start date'), { target: { value: displayDate(startDate) } });
   fireEvent.change(screen.getByLabelText('Start time'), { target: { value: startTime } });
-  fireEvent.change(screen.getByLabelText('End date'), { target: { value: endDate } });
+  fireEvent.change(screen.getByLabelText('End date'), { target: { value: displayDate(endDate) } });
   fireEvent.change(screen.getByLabelText('End time'), { target: { value: endTime } });
 };
 
@@ -268,7 +270,7 @@ describe('create mode — recurring', () => {
     wrap();
     await fillRequiredFields();
     toggleRecurring();
-    fireEvent.change(dateInputs()[2], { target: { value: endDate } });
+    fireEvent.change(recurrenceEndDateInput(), { target: { value: displayDate(endDate) } });
     submitCreate();
 
     await waitFor(() => expect(createSession).toHaveBeenCalledTimes(1));
@@ -306,7 +308,7 @@ describe('recurrence validation', () => {
     wrap();
     await fillRequiredFields();
     toggleRecurring();
-    fireEvent.change(dateInputs()[2], { target: { value: past } });
+    fireEvent.change(recurrenceEndDateInput(), { target: { value: displayDate(past) } });
     submitCreate();
 
     await waitFor(() => expect(screen.getByText('End date must be after the start date')).toBeInTheDocument());
@@ -319,7 +321,7 @@ describe('recurrence validation', () => {
     wrap();
     await fillRequiredFields();
     toggleRecurring();
-    fireEvent.change(dateInputs()[2], { target: { value: far.toLocaleDateString('en-CA') } });
+    fireEvent.change(recurrenceEndDateInput(), { target: { value: displayDate(far.toLocaleDateString('en-CA')) } });
     submitCreate();
 
     await waitFor(() => expect(
@@ -379,9 +381,9 @@ describe('duration policy by session type', () => {
     fireEvent.change(screen.getByPlaceholderText('e.g., Week 5 Live Session'), {
       target: { name: 'title', value: 'Graduation Workshop' },
     });
-    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: MONDAY } });
+    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: displayDate(MONDAY) } });
     fireEvent.change(screen.getByLabelText('Start time'), { target: { value: '10:00' } });
-    fireEvent.change(screen.getByLabelText('End date'), { target: { value: endDate } });
+    fireEvent.change(screen.getByLabelText('End date'), { target: { value: displayDate(endDate) } });
     fireEvent.change(screen.getByLabelText('End time'), { target: { value: endTime } });
   };
 

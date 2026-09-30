@@ -605,3 +605,9 @@ $month-gap: 4px;
 .calendar-strikethrough {
   text-decoration: line-through;
 }
+
+// Recurrence "Ends on" date: a compact field sized for DD/MM/YYYY and its icon.
+.schedule-meeting__recurrence-end-date {
+  flex: 0 0 auto;
+  width: 9.5rem;
+}

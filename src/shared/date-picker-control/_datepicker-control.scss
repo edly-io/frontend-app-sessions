@@ -1,0 +1,154 @@
+// ─── Date/time picker (shared DatepickerControl / react-datepicker) ──────────
+// The popup keeps react-datepicker's default look in light mode (matching the
+// authoring and admin MFEs); only the input's icon, sizing and the dark theme
+// are styled here.
+.datepicker-control {
+  position: relative;
+  min-width: 0;
+
+  // react-datepicker wraps the <input> in an inline-block of its own; filling
+  // the control keeps the native `Form.Control` block/100% width behaviour.
+  .react-datepicker-wrapper {
+    display: block;
+    width: 100%;
+  }
+
+  // Qualified past the compact-field rule above, whose padding shorthand
+  // would otherwise remove the room reserved for the icon.
+  .form-control.datepicker-custom-control {
+    padding-inline-end: 2.25rem;
+
+    @media (--pgn-size-breakpoint-min-width-lg) {
+      padding-inline-end: 2.75rem;
+    }
+  }
+
+  &.datepicker-control--sm .form-control.datepicker-custom-control {
+    padding-inline-end: 2rem;
+  }
+
+  // Phones: a slimmer icon and padding leave room for "DD/MM/YYYY" and
+  // "10:00 AM" in the narrow columns a modal row gives them.
+  @media (--pgn-size-breakpoint-max-width-xs) {
+    .form-control.datepicker-custom-control {
+      padding-inline: .5rem 1.75rem;
+    }
+  }
+}
+
+.datepicker-custom-control-icon {
+  position: absolute;
+  z-index: 2;
+  inset-inline-end: .625rem;
+  top: 50%;
+  width: 1.125rem;
+  height: 1.125rem;
+  transform: translateY(-50%);
+  color: var(--pgn-color-black);
+  pointer-events: none;
+
+  @media (--pgn-size-breakpoint-min-width-lg) {
+    inset-inline-end: .75rem;
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  .datepicker-control--sm & {
+    inset-inline-end: .5rem;
+    width: 1rem;
+    height: 1rem;
+  }
+
+  @media (--pgn-size-breakpoint-max-width-xs) {
+    inset-inline-end: .5rem;
+    width: 1rem;
+    height: 1rem;
+  }
+}
+
+.react-datepicker-popper {
+  z-index: 3;
+  max-width: calc(100vw - 1rem);
+}
+
+// Keep the popup above a modal's sticky header and close button.
+.pgn__modal .react-datepicker-popper {
+  z-index: 11;
+}
+
+// Paragon has no breakpoint below xs (576px), so the narrowest phones need their own query.
+@media (width <= 360px) {
+  .react-datepicker__day,
+  .react-datepicker__day-name {
+    width: 1.6rem;
+    line-height: 1.6rem;
+    margin: .1rem;
+  }
+}
+
+// react-datepicker's default CSS hard-codes a light popup; dark mode repaints it
+// from this app's palette, and the selection reuses the primary button tokens.
+[data-paragon-theme-variant="dark"] {
+  .react-datepicker {
+    background-color: var(--sessions-surface);
+    border-color: var(--sessions-border);
+    color: var(--sessions-text);
+  }
+
+  .react-datepicker__header {
+    background-color: var(--sessions-surface-muted);
+    border-bottom-color: var(--sessions-border);
+  }
+
+  .react-datepicker__current-month,
+  .react-datepicker-time__header,
+  .react-datepicker__day-name,
+  .react-datepicker__day {
+    color: var(--sessions-text);
+  }
+
+  .react-datepicker__day:hover,
+  .react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list li.react-datepicker__time-list-item:hover {
+    background-color: var(--sessions-hover-tint-strong);
+  }
+
+  .react-datepicker__day--keyboard-selected {
+    background-color: var(--sessions-status-info-bg);
+    color: var(--sessions-status-info-text);
+  }
+
+  .react-datepicker__day--selected,
+  .react-datepicker__day--in-range,
+  .react-datepicker__day--in-selecting-range,
+  .react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list li.react-datepicker__time-list-item--selected {
+    background-color: var(--pgn-color-btn-bg-primary);
+    color: var(--pgn-color-btn-text-primary);
+
+    &:hover {
+      background-color: var(--pgn-color-btn-hover-bg-primary);
+      color: var(--pgn-color-btn-hover-text-primary);
+    }
+  }
+
+  .react-datepicker__day--disabled,
+  .react-datepicker__day--disabled:hover {
+    background-color: transparent;
+    color: var(--sessions-text-subtle);
+  }
+
+  .react-datepicker__time-container {
+    border-left-color: var(--sessions-border);
+
+    .react-datepicker__time {
+      background-color: var(--sessions-surface);
+    }
+  }
+
+  .react-datepicker__navigation-icon::before {
+    border-color: var(--sessions-text-muted);
+  }
+
+  .react-datepicker__navigation:hover *::before {
+    border-color: var(--sessions-text);
+  }
+}

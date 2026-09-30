@@ -15,6 +15,7 @@ import { Routes } from 'react-router-dom';
 import messages from './i18n';
 import { sessionsAdminRoutes } from './app/routes';
 
+import 'react-datepicker/dist/react-datepicker.css';
 import './index.scss';
 
 const queryClient = new QueryClient();

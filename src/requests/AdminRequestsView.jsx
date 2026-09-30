@@ -23,6 +23,7 @@ import {
   extractApiError, formatDateTime, isLeaveStartDatePast, formatLeaveRange,
 } from '../shared/utils';
 import SectionHeading from '../shared/SectionHeading';
+import DatepickerControl from '../shared/date-picker-control/DatepickerControl';
 import './requests.scss';
 import RequestDetailCell from './RequestDetailCell';
 import CreateRequestModal from './CreateRequestModal';
@@ -521,11 +522,10 @@ const AdminRequestsView = ({ readOnly, showNewRequest, lockedType }) => {
                 <Form.Label htmlFor="admin-requests-date-from" className="requests-filters__date-label">
                   From
                 </Form.Label>
-                <Form.Control
+                <DatepickerControl
                   id="admin-requests-date-from"
-                  type="date"
                   value={filterStartDate}
-                  onChange={(e) => setFilterStartDate(e.target.value)}
+                  onChange={setFilterStartDate}
                   className="requests-filters__date"
                 />
               </div>
@@ -533,12 +533,11 @@ const AdminRequestsView = ({ readOnly, showNewRequest, lockedType }) => {
                 <Form.Label htmlFor="admin-requests-date-to" className="requests-filters__date-label">
                   To
                 </Form.Label>
-                <Form.Control
+                <DatepickerControl
                   id="admin-requests-date-to"
-                  type="date"
                   value={filterEndDate}
-                  min={filterStartDate || undefined}
-                  onChange={(e) => setFilterEndDate(e.target.value)}
+                  minDate={filterStartDate}
+                  onChange={setFilterEndDate}
                   className="requests-filters__date"
                 />
               </div>

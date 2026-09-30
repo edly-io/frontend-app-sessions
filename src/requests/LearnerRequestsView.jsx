@@ -19,6 +19,7 @@ import {
 } from '../shared/constants';
 import { extractApiError, formatDateTime } from '../shared/utils';
 import SectionHeading from '../shared/SectionHeading';
+import DatepickerControl from '../shared/date-picker-control/DatepickerControl';
 import './requests.scss';
 import CreateRequestModal from './CreateRequestModal';
 import RequestDetailCell from './RequestDetailCell';
@@ -339,11 +340,10 @@ const LearnerRequestsView = ({ lockedType }) => {
               <Form.Label htmlFor="my-requests-date-from" className="requests-filters__date-label">
                 From
               </Form.Label>
-              <Form.Control
+              <DatepickerControl
                 id="my-requests-date-from"
-                type="date"
                 value={filterStartDate}
-                onChange={(e) => setFilterStartDate(e.target.value)}
+                onChange={setFilterStartDate}
                 className="requests-filters__date"
               />
             </div>
@@ -351,12 +351,11 @@ const LearnerRequestsView = ({ lockedType }) => {
               <Form.Label htmlFor="my-requests-date-to" className="requests-filters__date-label">
                 To
               </Form.Label>
-              <Form.Control
+              <DatepickerControl
                 id="my-requests-date-to"
-                type="date"
                 value={filterEndDate}
-                min={filterStartDate || undefined}
-                onChange={(e) => setFilterEndDate(e.target.value)}
+                minDate={filterStartDate}
+                onChange={setFilterEndDate}
                 className="requests-filters__date"
               />
             </div>

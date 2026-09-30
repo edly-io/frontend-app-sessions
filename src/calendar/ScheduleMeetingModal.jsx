@@ -13,6 +13,7 @@ import { getLocations } from '../locations/api';
 import { getApprovedLeaves } from '../requests/api';
 import { toISOString, toDateTimeLocal, extractApiError } from '../shared/utils';
 import SearchableSelect from '../shared/SearchableSelect';
+import DatepickerControl, { DATEPICKER_TYPES } from '../shared/date-picker-control/DatepickerControl';
 
 // ─── Recurrence constants ─────────────────────────────────────────────────────
 
@@ -514,8 +515,7 @@ const ScheduleMeetingModal = ({
     });
   };
 
-  const handleStartDateChange = (e) => {
-    const date = e.target.value;
+  const handleStartDateChange = (date) => {
     setStartDateInput(date);
     setFormData((prev) => ({
       ...prev,
@@ -523,8 +523,7 @@ const ScheduleMeetingModal = ({
     }));
   };
 
-  const handleStartTimeChange = (e) => {
-    const time = e.target.value;
+  const handleStartTimeChange = (time) => {
     setStartTimeInput(time);
     setFormData((prev) => ({
       ...prev,
@@ -532,8 +531,7 @@ const ScheduleMeetingModal = ({
     }));
   };
 
-  const handleEndDateChange = (e) => {
-    const date = e.target.value;
+  const handleEndDateChange = (date) => {
     setEndDateInput(date);
     setFormData((prev) => ({
       ...prev,
@@ -541,8 +539,7 @@ const ScheduleMeetingModal = ({
     }));
   };
 
-  const handleEndTimeChange = (e) => {
-    const time = e.target.value;
+  const handleEndTimeChange = (time) => {
     setEndTimeInput(time);
     setFormData((prev) => ({
       ...prev,
@@ -1100,26 +1097,24 @@ const ScheduleMeetingModal = ({
             <Form.Label>Start date and time {!isPastSession && '*'}</Form.Label>
             <div className="row g-2">
               <div className="col-7">
-                <Form.Control
-                  type="date"
+                <DatepickerControl
                   value={startDateInput}
                   onChange={handleStartDateChange}
-                  aria-label="Start date"
+                  ariaLabel="Start date"
                   required={!isPastSession && !descriptionOnly}
-                  disabled={isPastSession || descriptionOnly}
-                  style={(fieldErrors.startDate || fieldErrors.startTime) ? { borderColor: '#dc3545' } : undefined}
+                  readonly={isPastSession || descriptionOnly}
+                  isInvalid={!!(fieldErrors.startDate || fieldErrors.startTime)}
                 />
               </div>
               <div className="col-5">
-                <Form.Control
-                  type="time"
+                <DatepickerControl
+                  type={DATEPICKER_TYPES.time}
                   value={startTimeInput}
                   onChange={handleStartTimeChange}
-                  aria-label="Start time"
-                  step="60"
+                  ariaLabel="Start time"
                   required={!isPastSession && !descriptionOnly}
-                  disabled={isPastSession || descriptionOnly}
-                  style={fieldErrors.startTime ? { borderColor: '#dc3545' } : undefined}
+                  readonly={isPastSession || descriptionOnly}
+                  isInvalid={!!fieldErrors.startTime}
                 />
               </div>
             </div>
@@ -1135,26 +1130,24 @@ const ScheduleMeetingModal = ({
             <Form.Label>End date and time {!isPastSession && '*'}</Form.Label>
             <div className="row g-2">
               <div className="col-7">
-                <Form.Control
-                  type="date"
+                <DatepickerControl
                   value={endDateInput}
                   onChange={handleEndDateChange}
-                  aria-label="End date"
+                  ariaLabel="End date"
                   required={!isPastSession && !descriptionOnly}
-                  disabled={isPastSession || descriptionOnly}
-                  style={fieldErrors.endTime ? { borderColor: '#dc3545' } : undefined}
+                  readonly={isPastSession || descriptionOnly}
+                  isInvalid={!!fieldErrors.endTime}
                 />
               </div>
               <div className="col-5">
-                <Form.Control
-                  type="time"
+                <DatepickerControl
+                  type={DATEPICKER_TYPES.time}
                   value={endTimeInput}
                   onChange={handleEndTimeChange}
-                  aria-label="End time"
-                  step="60"
+                  ariaLabel="End time"
                   required={!isPastSession && !descriptionOnly}
-                  disabled={isPastSession || descriptionOnly}
-                  style={fieldErrors.endTime ? { borderColor: '#dc3545' } : undefined}
+                  readonly={isPastSession || descriptionOnly}
+                  isInvalid={!!fieldErrors.endTime}
                 />
               </div>
             </div>
@@ -1300,14 +1293,14 @@ const ScheduleMeetingModal = ({
                     <input type="radio" id="end-date" name="endType" checked={endType === 'date'} onChange={() => setEndType('date')} />
                     <label htmlFor="end-date" className="mb-0" style={{ minWidth: '42px' }}>On</label>
                     <div className="d-flex align-items-center" style={{ gap: '0.4rem' }}>
-                      <Form.Control
-                        type="date"
+                      <DatepickerControl
                         value={endDate}
-                        onChange={(e) => { setEndType('date'); setEndDate(e.target.value); }}
-                        onClick={() => setEndType('date')}
+                        onChange={(value) => { setEndType('date'); setEndDate(value); }}
+                        onFocus={() => setEndType('date')}
+                        ariaLabel="Recurrence end date"
                         size="sm"
-                        style={{ width: '150px', flexShrink: 0, flexGrow: 0 }}
-                        max={getMaxEndDate(formData.scheduled_start_time)}
+                        className="schedule-meeting__recurrence-end-date"
+                        maxDate={getMaxEndDate(formData.scheduled_start_time)}
                       />
                       <small style={{ color: '#6c757d', whiteSpace: 'nowrap' }}>(max {MAX_END_MONTHS} months)</small>
                     </div>
