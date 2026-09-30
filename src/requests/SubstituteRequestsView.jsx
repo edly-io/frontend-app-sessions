@@ -16,6 +16,7 @@ import {
   USER_ROLE,
 } from '../shared/constants';
 import { extractApiError, formatDateTime } from '../shared/utils';
+import DatepickerControl from '../shared/date-picker-control/DatepickerControl';
 import './requests.scss';
 import { cancelSession } from '../calendar/api';
 import { getSubstituteRequests, closeSubstituteRequest, getSubstituteRequest } from './api';
@@ -326,11 +327,10 @@ const SubstituteRequestsView = () => {
               <Form.Label htmlFor="substitute-date-from" className="requests-filters__date-label">
                 From
               </Form.Label>
-              <Form.Control
+              <DatepickerControl
                 id="substitute-date-from"
-                type="date"
                 value={filterDateFrom}
-                onChange={(e) => setFilterDateFrom(e.target.value)}
+                onChange={setFilterDateFrom}
                 className="requests-filters__date"
               />
             </div>
@@ -338,12 +338,11 @@ const SubstituteRequestsView = () => {
               <Form.Label htmlFor="substitute-date-to" className="requests-filters__date-label">
                 To
               </Form.Label>
-              <Form.Control
+              <DatepickerControl
                 id="substitute-date-to"
-                type="date"
                 value={filterDateTo}
-                min={filterDateFrom || undefined}
-                onChange={(e) => setFilterDateTo(e.target.value)}
+                minDate={filterDateFrom}
+                onChange={setFilterDateTo}
                 className="requests-filters__date"
               />
             </div>

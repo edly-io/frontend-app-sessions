@@ -33,7 +33,7 @@
   }
 
   // Appearance comes from Paragon's `Form.Control`; only sizing is set here.
-  // Each selector is qualified with `.form-control` so these widths outrank
+  // The input selectors are qualified with `.form-control` so these widths outrank
   // its own `width: 100%` regardless of stylesheet order.
   &__search-input.form-control {
     width: 100%;
@@ -76,13 +76,19 @@
     margin-bottom: 0;
   }
 
-  &__date-input.form-control {
+  // The date picker's wrapper: wide enough for DD/MM/YYYY plus its calendar icon.
+  &__date-input {
     flex: 1 1 auto;
     min-width: 0;
 
     @media (--pgn-size-breakpoint-min-width-sm) {
       flex: 0 0 auto;
-      width: 10.25rem;
+      width: 11rem;
+    }
+
+    // Fields switch to the larger base type from `lg` up.
+    @media (--pgn-size-breakpoint-min-width-lg) {
+      width: 12rem;
     }
   }
 

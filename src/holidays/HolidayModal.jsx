@@ -8,6 +8,7 @@ import {
 
 import { createHoliday, updateHoliday } from './api';
 import { extractApiError } from '../shared/utils';
+import DatepickerControl from '../shared/date-picker-control/DatepickerControl';
 
 const emptyForm = {
   name: '', startDate: '', endDate: '', description: '',
@@ -32,8 +33,7 @@ const HolidayModal = ({
     } : emptyForm);
   }, [isOpen, holiday]);
 
-  const handleChange = (field) => (e) => {
-    const { value } = e.target;
+  const updateField = (field, value) => {
     setForm((prev) => {
       const next = { ...prev, [field]: value };
       // Auto-sync: keep end_date >= start_date
@@ -43,6 +43,8 @@ const HolidayModal = ({
       return next;
     });
   };
+
+  const handleChange = (field) => (e) => updateField(field, e.target.value);
 
   const handleSave = async () => {
     if (!form.name.trim()) {
@@ -112,22 +114,22 @@ const HolidayModal = ({
         />
       </Form.Group>
 
-      <Form.Group className="mb-3">
+      <Form.Group className="mb-3" controlId="holiday-start-date">
         <Form.Label>Start Date *</Form.Label>
-        <Form.Control
-          type="date"
+        <DatepickerControl
+          id="holiday-start-date"
           value={form.startDate}
-          onChange={handleChange('startDate')}
+          onChange={(value) => updateField('startDate', value)}
         />
       </Form.Group>
 
-      <Form.Group className="mb-3">
+      <Form.Group className="mb-3" controlId="holiday-end-date">
         <Form.Label>End Date *</Form.Label>
-        <Form.Control
-          type="date"
+        <DatepickerControl
+          id="holiday-end-date"
           value={form.endDate}
-          onChange={handleChange('endDate')}
-          min={form.startDate}
+          onChange={(value) => updateField('endDate', value)}
+          minDate={form.startDate}
         />
       </Form.Group>
 

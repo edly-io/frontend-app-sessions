@@ -161,13 +161,19 @@
     min-width: 0;
   }
 
-  // A date needs about ten characters and no more.
-  &__date.form-control {
+  // The date picker's wrapper: wide enough for DD/MM/YYYY plus its calendar icon.
+  &__date {
+    flex: 1 1 auto;
     min-width: 0;
 
     @media (--pgn-size-breakpoint-min-width-sm) {
       flex: 0 0 auto;
-      width: 10.25rem;
+      width: 11rem;
+    }
+
+    // Fields switch to the larger base type from `lg` up.
+    @media (--pgn-size-breakpoint-min-width-lg) {
+      width: 12rem;
     }
   }
 

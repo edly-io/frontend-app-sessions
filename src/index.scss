@@ -4,6 +4,7 @@
 @import "~@edx/frontend-component-header/dist/index";
 @import "~@edx/frontend-component-footer/dist/footer";
 @import "./programs/programs";
+@import "./shared/date-picker-control/datepicker-control";
 
 body {
   min-width: 320px;
