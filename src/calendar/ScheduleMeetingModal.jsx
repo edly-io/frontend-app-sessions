@@ -1186,7 +1186,7 @@ const ScheduleMeetingModal = ({
               name="is_recurring"
               checked={isRecurring}
               onChange={(e) => setIsRecurring(e.target.checked)}
-              disabled={isPastSession || descriptionOnly || Boolean(session?.is_recurring)}
+              disabled={isPastSession || descriptionOnly || Boolean(session)}
             >
               Recurring meeting
             </Form.Checkbox>

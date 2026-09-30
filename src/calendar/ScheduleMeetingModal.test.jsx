@@ -509,6 +509,14 @@ describe('edit mode', () => {
     expect(checkbox).toBeDisabled();
   });
 
+  it('locks the Recurring checkbox on an existing non-recurring session', async () => {
+    wrap({ session: { ...futureSession(), is_recurring: false, recurrence: {} } });
+    await screen.findByText('Alice Smith');
+    const checkbox = document.getElementById('recurring-meeting-toggle');
+    expect(checkbox).not.toBeChecked();
+    expect(checkbox).toBeDisabled();
+  });
+
   it('prefills the recurrence panel from the session rules', async () => {
     wrap({ session: futureSession() });
     await screen.findByText('Alice Smith');
