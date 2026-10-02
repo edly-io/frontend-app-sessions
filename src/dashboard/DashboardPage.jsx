@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  Alert, ButtonGroup, Button, Spinner, Tab, Tabs,
+  Alert, ButtonGroup, Button, Spinner,
 } from '@openedx/paragon';
 import './dashboard.scss';
 import DashboardShell from './DashboardShell';
