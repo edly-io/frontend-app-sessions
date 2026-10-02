@@ -18,9 +18,9 @@ const HolidaysCard = ({ holidays }) => {
         title={<h2 id="instructor-holidays-heading">{intl.formatMessage(messages.upcomingHolidays)}</h2>}
         subtitle={intl.formatMessage(messages.noSessionsScheduled)}
       />
-      <Card.Section>
+      <Card.Section tabIndex={0} role="group" aria-labelledby="instructor-holidays-heading">
         {!holidays.length ? <Alert variant="info">{intl.formatMessage(messages.noHolidays)}</Alert> : (
-          <div className="instructor-dashboard__compact-list">
+          <div className="instructor-dashboard__compact-list dashboard-scroll-list">
             {visibleItems.map(holiday => {
               const date = parseDashboardDate(holiday.start_date);
               const isMultiDay = holiday.start_date !== holiday.end_date;
@@ -46,16 +46,16 @@ const HolidaysCard = ({ holidays }) => {
                 </article>
               );
             })}
-            {canExpand && (
-              <div className="dashboard-list-toggle">
-                <Button variant="link" size="sm" onClick={toggleExpanded}>
-                  {intl.formatMessage(isExpanded ? messages.showLess : messages.viewAll)}
-                </Button>
-              </div>
-            )}
           </div>
         )}
       </Card.Section>
+      {canExpand && (
+        <Card.Section className="dashboard-list-footer">
+          <Button variant="link" size="sm" onClick={toggleExpanded}>
+            {intl.formatMessage(isExpanded ? messages.showLess : messages.viewAll)}
+          </Button>
+        </Card.Section>
+      )}
     </Card>
   );
 };

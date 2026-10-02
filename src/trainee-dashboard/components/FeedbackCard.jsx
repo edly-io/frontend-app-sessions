@@ -25,52 +25,58 @@ const FeedbackCard = ({ feedback, pendingCount, onOpenFeedback }) => {
           title={<h2 id="feedback-heading">{intl.formatMessage(messages.feedback)}</h2>}
           subtitle={intl.formatMessage(messages.pending, { count: pendingCount })}
         />
-        <Card.Section className="dashboard-feedback-card__scroll trainee-dashboard__compact-list">
+        <Card.Section tabIndex={0} role="group" aria-labelledby="feedback-heading">
           {feedback.length === 0 && <p>{intl.formatMessage(messages.noFeedback)}</p>}
-          {visibleItems.map(item => {
-            const displayName = item.subject?.full_name || item.feedback_name;
-            let action;
-            if (item.status === 'submitted') {
-              action = <Badge variant="success">{intl.formatMessage(messages.submitted)}</Badge>;
-            } else if (item.status === 'expired') {
-              action = <Badge variant="light">{intl.formatMessage(messages.expired)}</Badge>;
-            } else {
-              action = (
-                <div className="trainee-dashboard__feedback-action">
-                  <small className={item.urgent ? 'text-danger' : ''}>
-                    {intl.formatMessage(messages.due, { date: formatDate(intl, item.deadline) })}
-                  </small>
-                  <Button
-                    size="sm"
-                    variant="outline-primary"
-                    iconBefore={Feedback}
-                    disabled={!item.can_submit}
-                    title={item.can_submit ? undefined : intl.formatMessage(messages.formUnavailable)}
-                    onClick={() => onOpenFeedback(item.id)}
-                  >
-                    {intl.formatMessage(messages.giveFeedback)}
-                  </Button>
-                </div>
+          <div className="trainee-dashboard__compact-list dashboard-scroll-list">
+            {visibleItems.map(item => {
+              const displayName = item.subject?.full_name || item.feedback_name;
+              let action;
+              if (item.status === 'submitted') {
+                action = <Badge variant="success">{intl.formatMessage(messages.submitted)}</Badge>;
+              } else if (item.status === 'expired') {
+                action = <Badge variant="light">{intl.formatMessage(messages.expired)}</Badge>;
+              } else {
+                action = (
+                  <div className="trainee-dashboard__feedback-action">
+                    {/* Urgency was red text and nothing else, so it did not reach
+                        anyone who cannot see the colour. The badge carries it in
+                        words, matching the instructor card. */}
+                    {item.urgent && <Badge variant="danger">{intl.formatMessage(messages.urgent)}</Badge>}
+                    <small className={item.urgent ? 'text-danger' : ''}>
+                      {intl.formatMessage(messages.due, { date: formatDate(intl, item.deadline) })}
+                    </small>
+                    <Button
+                      size="sm"
+                      variant="outline-primary"
+                      iconBefore={Feedback}
+                      disabled={!item.can_submit}
+                      title={item.can_submit ? undefined : intl.formatMessage(messages.formUnavailable)}
+                      onClick={() => onOpenFeedback(item.id)}
+                    >
+                      {intl.formatMessage(messages.giveFeedback)}
+                    </Button>
+                  </div>
+                );
+              }
+              return (
+                <article className="trainee-dashboard__feedback-row" key={item.id}>
+                  <span className={`trainee-dashboard__avatar${item.status === 'submitted' ? ' trainee-dashboard__avatar--complete' : ''}`} aria-hidden="true">
+                    {item.status === 'submitted' ? <Icon src={CheckCircle} /> : initials(displayName)}
+                  </span>
+                  <div><h3>{displayName}</h3><p>{item.course_name || item.form_name}</p></div>
+                  {action}
+                </article>
               );
-            }
-            return (
-              <article className="trainee-dashboard__feedback-row" key={item.id}>
-                <span className={`trainee-dashboard__avatar${item.status === 'submitted' ? ' trainee-dashboard__avatar--complete' : ''}`} aria-hidden="true">
-                  {item.status === 'submitted' ? <Icon src={CheckCircle} /> : initials(displayName)}
-                </span>
-                <div><h3>{displayName}</h3><p>{item.course_name || item.form_name}</p></div>
-                {action}
-              </article>
-            );
-          })}
-          {canExpand && (
-            <div className="dashboard-list-toggle">
-              <Button variant="link" size="sm" onClick={toggleExpanded}>
-                {intl.formatMessage(isExpanded ? messages.showLess : messages.viewAll)}
-              </Button>
-            </div>
-          )}
+            })}
+          </div>
         </Card.Section>
+        {canExpand && (
+          <Card.Section className="dashboard-list-footer">
+            <Button variant="link" size="sm" onClick={toggleExpanded}>
+              {intl.formatMessage(isExpanded ? messages.showLess : messages.viewAll)}
+            </Button>
+          </Card.Section>
+        )}
       </Card>
     </section>
   );

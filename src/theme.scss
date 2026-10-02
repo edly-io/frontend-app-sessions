@@ -77,6 +77,32 @@
   --sessions-cal-onleave-text: #6B7280;
   --sessions-cal-popover-header-bg: #E7F1FF;
   --sessions-cal-popover-header-border: #C5D9F2;
+  --sessions-card-shadow: 0 .125rem .75rem rgb(16 40 64 / .05);
+  --sessions-card-shadow-raised: 0 .25rem 1rem rgb(16 40 64 / .08);
+  --sessions-card-shadow-hover: 0 .5rem 1.5rem rgb(16 40 64 / .1);
+  --sessions-tile-shadow: 0 .125rem .5rem rgb(16 40 64 / .07);
+  --sessions-row-stripe: rgb(16 40 64 / .04);
+  --sessions-on-brand: #FFFFFF;
+  --sessions-on-brand-muted: rgb(255 255 255 / .82);
+  --sessions-on-brand-subtle: rgb(255 255 255 / .72);
+  --sessions-on-brand-fill: rgb(255 255 255 / .16);
+  --sessions-on-brand-fill-strong: rgb(255 255 255 / .28);
+  --sessions-on-brand-border: rgb(255 255 255 / .3);
+  --sessions-tint-brand-bg: #EEF5FB;
+  --sessions-tint-brand-text: #116CAB;
+  --sessions-tint-success-bg: #E8F5EE;
+  --sessions-tint-success-text: #0F7A48;
+  --sessions-tint-warning-bg: #FBF2DD;
+  --sessions-tint-warning-text: #9C6B0A;
+  --sessions-tint-danger-bg: #FCECEB;
+  --sessions-tint-danger-text: #B3261E;
+  --sessions-tint-danger-border: #F28B82;
+  --sessions-tint-violet-bg: #F2ECFF;
+  --sessions-tint-violet-text: #5A32A3;
+  --sessions-tint-gold-bg: #F7F0DF;
+  --sessions-tint-gold-text: #8A6410;
+  --sessions-tint-gold-border: #DDC77D;
+
 }
 
 [data-paragon-theme-variant="dark"] {
@@ -129,6 +155,32 @@
   --sessions-cal-onleave-text: #A8ABB0;
   --sessions-cal-popover-header-bg: rgb(13 110 253 / .2);
   --sessions-cal-popover-header-border: rgb(13 110 253 / .4);
+  --sessions-card-shadow: none;
+  --sessions-card-shadow-raised: 0 .25rem 1rem rgb(0 0 0 / .5);
+  --sessions-card-shadow-hover: 0 .5rem 1.5rem rgb(0 0 0 / .6);
+  --sessions-tile-shadow: 0 .125rem .5rem rgb(0 0 0 / .45);
+  --sessions-row-stripe: rgb(255 255 255 / .04);
+  --sessions-on-brand: #FFFFFF;
+  --sessions-on-brand-muted: rgb(255 255 255 / .82);
+  --sessions-on-brand-subtle: rgb(255 255 255 / .72);
+  --sessions-on-brand-fill: rgb(255 255 255 / .16);
+  --sessions-on-brand-fill-strong: rgb(255 255 255 / .28);
+  --sessions-on-brand-border: rgb(255 255 255 / .3);
+  --sessions-tint-brand-bg: rgb(13 110 253 / .22);
+  --sessions-tint-brand-text: #9EC5FE;
+  --sessions-tint-success-bg: rgb(25 135 84 / .25);
+  --sessions-tint-success-text: #75B798;
+  --sessions-tint-warning-bg: rgb(255 193 7 / .2);
+  --sessions-tint-warning-text: #FFDA6A;
+  --sessions-tint-danger-bg: rgb(220 38 38 / .22);
+  --sessions-tint-danger-text: #F1959B;
+  --sessions-tint-danger-border: rgb(241 149 155 / .5);
+  --sessions-tint-violet-bg: rgb(139 92 246 / .24);
+  --sessions-tint-violet-text: #C4B5FD;
+  --sessions-tint-gold-bg: rgb(217 178 98 / .2);
+  --sessions-tint-gold-text: #E8C66B;
+  --sessions-tint-gold-border: rgb(221 199 125 / .45);
+
 }
 
 // Bootstrap's `.bg-light` is a named colour rather than a themed surface: it

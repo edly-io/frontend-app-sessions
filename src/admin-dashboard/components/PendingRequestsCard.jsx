@@ -73,10 +73,10 @@ const PendingRequestsCard = ({ requests }) => {
   return (
     <Card>
       <Card.Header
-        title={<h2>Pending Requests</h2>}
+        title={<h2 id="admin-requests-heading">Pending Requests</h2>}
         subtitle={`${total} request${total !== 1 ? 's' : ''} awaiting review`}
       />
-      <Card.Section>
+      <Card.Section className="dashboard-scroll-list" tabIndex={0} role="group" aria-labelledby="admin-requests-heading">
         {total === 0 ? (
           <Alert variant="success" icon={CheckCircle}>
             <Alert.Heading>All caught up</Alert.Heading>

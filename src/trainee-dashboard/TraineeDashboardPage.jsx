@@ -108,7 +108,7 @@ const TraineeDashboardPage = ({ profileSwitcher = null, asTab = false, initialPr
       <DashboardStats summary={data.summary} onFeedbackClick={scrollToFeedback} />
       <UpcomingSessionsCard sessions={data.upcoming_sessions ?? []} programKey={data.selected_program_key ?? ''} />
       <ProgressCard courses={data.courses} summary={data.summary} results={data.results} />
-      <Row className="trainee-dashboard__lower-grid">
+      <Row className="trainee-dashboard__lower-grid dashboard-equal-height">
         <Col xs={12} lg={7} className="mb-3" id="trainee-feedback-section">
           <FeedbackCard
             feedback={data.feedback}
@@ -116,7 +116,7 @@ const TraineeDashboardPage = ({ profileSwitcher = null, asTab = false, initialPr
             onOpenFeedback={setFeedbackRequestId}
           />
         </Col>
-        <Col xs={12} lg={5}>
+        <Col xs={12} lg={5} className="mb-3">
           <div className="trainee-dashboard__side-column">
             <HolidaysCard holidays={data.holidays} />
           </div>

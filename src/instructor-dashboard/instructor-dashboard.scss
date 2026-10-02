@@ -1,8 +1,9 @@
+@use "@openedx/paragon/styles/css/core/custom-media-breakpoints" as paragonCustomMediaBreakpoints;
+
 .instructor-dashboard {
   flex: 1 0 auto;
   padding: 1.5rem 0 4rem;
   font-family: inherit;
-  background: var(--sessions-surface-subtle);
 
   h2 {
     margin: 0;
@@ -12,13 +13,6 @@
   h3 {
     margin: 0;
     font-size: .95rem;
-  }
-
-  .pgn__card {
-    height: 100%;
-    border: 1px solid var(--pgn-color-light-300, #E9ECEF);
-    border-radius: .875rem;
-    box-shadow: 0 .125rem .75rem rgb(16 40 64 / .05);
   }
 
   .pgn__card-header {
@@ -43,10 +37,10 @@
   justify-content: space-between;
   margin-bottom: 1rem;
   padding: 1.5rem 1.625rem;
-  color: #FFFFFF;
+  color: var(--sessions-on-brand);
   background: linear-gradient(120deg, #153D68, #155F91 62%, #1976A8);
   border-radius: .875rem;
-  box-shadow: 0 .25rem 1rem rgb(16 40 64 / .08);
+  box-shadow: var(--sessions-card-shadow-raised);
 
   h1 {
     margin: 0 0 .3125rem;
@@ -57,7 +51,7 @@
 
   p {
     margin-bottom: .75rem;
-    color: rgb(255 255 255 / .82);
+    color: var(--sessions-on-brand-muted);
   }
 
   .badge {
@@ -65,8 +59,8 @@
     gap: .375rem;
     align-items: center;
     padding: .375rem .625rem;
-    color: #FFFFFF;
-    background: rgb(255 255 255 / .16);
+    color: var(--sessions-on-brand);
+    background: var(--sessions-on-brand-fill);
     border: 0;
 
     .pgn__icon {
@@ -102,8 +96,8 @@
   margin: 0;
   overflow: hidden;
   text-align: center;
-  background: rgb(255 255 255 / .12);
-  border: 1px solid rgb(255 255 255 / .2);
+  background: var(--sessions-on-brand-fill);
+  border: 1px solid var(--sessions-on-brand-border);
   border-radius: .75rem;
 
   div {
@@ -112,13 +106,13 @@
     padding: 1rem;
 
     + div {
-      border-left: 1px solid rgb(255 255 255 / .2);
+      border-left: 1px solid var(--sessions-on-brand-border);
     }
   }
 
   dt {
     margin-top: .25rem;
-    color: rgb(255 255 255 / .75);
+    color: var(--sessions-on-brand-subtle);
     font-size: .6875rem;
     font-weight: 500;
   }
@@ -131,12 +125,6 @@
   }
 }
 
-.instructor-dashboard__stat-card .pgn__card-section {
-  display: flex;
-  gap: .875rem;
-  align-items: center;
-}
-
 .instructor-dashboard__stat-icon,
 .instructor-dashboard__list-icon {
   display: inline-flex;
@@ -146,24 +134,24 @@
   width: 2.75rem;
   height: 2.75rem;
   color: var(--pgn-color-primary-700, #116CAB);
-  background: #EEF5FB;
+  background: var(--sessions-tint-brand-bg);
   border-radius: .75rem;
 }
 
 .instructor-dashboard__stat-icon--success,
 .instructor-dashboard__list-icon--complete {
-  color: #0F7A48;
-  background: #E8F5EE;
+  color: var(--sessions-tint-success-text);
+  background: var(--sessions-tint-success-bg);
 }
 
 .instructor-dashboard__stat-icon--violet {
-  color: #5A32A3;
-  background: #F2ECFF;
+  color: var(--sessions-tint-violet-text);
+  background: var(--sessions-tint-violet-bg);
 }
 
 .instructor-dashboard__stat-icon--warning {
-  color: #9C6B0A;
-  background: #FBF2DD;
+  color: var(--sessions-tint-warning-text);
+  background: var(--sessions-tint-warning-bg);
 }
 
 .instructor-dashboard__stat-value,
@@ -189,7 +177,7 @@
   align-items: center;
   margin-bottom: .375rem;
   padding: 1.25rem;
-  background: #EEF5FB;
+  background: var(--sessions-tint-brand-bg);
   border-radius: .75rem;
 }
 
@@ -199,9 +187,9 @@
   flex-direction: column;
   align-items: center;
   padding: .625rem .75rem;
-  background: #FFFFFF;
+  background: var(--sessions-surface);
   border-radius: .625rem;
-  box-shadow: 0 .125rem .5rem rgb(16 40 64 / .07);
+  box-shadow: var(--sessions-tile-shadow);
 
   strong {
     font-size: 1.4rem;
@@ -210,7 +198,7 @@
 
   span {
     margin-top: .25rem;
-    color: #116CAB;
+    color: var(--sessions-tint-brand-text);
     font-size: .65rem;
     font-weight: 700;
     text-transform: uppercase;
@@ -262,7 +250,7 @@
   border-radius: .5rem;
 
   &:nth-child(odd) {
-    background: rgb(16 40 64 / .04);
+    background: var(--sessions-row-stripe);
   }
 
   .instructor-dashboard__session-date {
@@ -308,7 +296,7 @@
   }
 
   &:hover {
-    box-shadow: 0 .5rem 1.5rem rgb(16 40 64 / .1), var(--sessions-card-ring);
+    box-shadow: var(--sessions-card-shadow-hover), var(--sessions-card-ring);
     transform: translateY(-.125rem);
   }
 
@@ -321,7 +309,7 @@
 }
 
 .instructor-dashboard__course-card--completed::before {
-  background: var(--pgn-color-success-500, #0F7A48);
+  background: var(--pgn-color-success-500, var(--sessions-tint-success-text));
 }
 
 .instructor-dashboard__course-card--unavailable::before,
@@ -459,6 +447,11 @@
   .btn {
     border-radius: .5rem;
   }
+}
+
+.instructor-dashboard__session-list {
+  max-height: 20rem;
+  overflow-y: auto;
 }
 
 .instructor-dashboard__glance-grid {
@@ -635,7 +628,7 @@
   border-radius: .5rem;
 
   &:nth-child(odd) {
-    background: rgb(16 40 64 / .04);
+    background: var(--sessions-row-stripe);
   }
 
   > div {
@@ -685,8 +678,8 @@
   flex-direction: column;
   align-items: center;
   padding: .45rem 0;
-  color: #B3261E;
-  background: #FCECEB;
+  color: var(--sessions-tint-danger-text);
+  background: var(--sessions-tint-danger-bg);
   border-radius: .5rem;
 
   span {
@@ -696,7 +689,7 @@
   }
 }
 
-@media (width <= 991.98px) {
+@media (--pgn-size-breakpoint-max-width-md) {
   .instructor-dashboard__hero {
     flex-wrap: wrap;
   }
@@ -710,7 +703,7 @@
   }
 }
 
-@media (width <= 767.98px) {
+@media (--pgn-size-breakpoint-max-width-sm) {
   .instructor-dashboard {
     padding-top: 1rem;
   }
@@ -728,7 +721,7 @@
   }
 }
 
-@media (width <= 575.98px) {
+@media (--pgn-size-breakpoint-max-width-xs) {
   .instructor-dashboard__hero {
     padding: 1.25rem;
   }
@@ -737,7 +730,7 @@
     grid-template-columns: 1fr;
 
     div + div {
-      border-top: 1px solid rgb(255 255 255 / .2);
+      border-top: 1px solid var(--sessions-on-brand-border);
       border-left: 0;
     }
   }
@@ -776,7 +769,7 @@
   .instructor-dashboard__list-action,
   .instructor-dashboard__attendance-row .btn {
     width: 100%;
-    margin-left: 3rem;
+    padding-left: 3rem;
     align-items: flex-start;
   }
 }

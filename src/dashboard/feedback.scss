@@ -15,18 +15,6 @@
   transform-origin: center;
 }
 
-.instructor-dashboard .pgn__card.dashboard-feedback-card,
-.trainee-dashboard .pgn__card.dashboard-feedback-card {
-  height: 24rem;
-}
-
-.dashboard-feedback-card__scroll {
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-gutter: stable;
-}
-
 .feedback-rating {
   display: flex;
   gap: .25rem;

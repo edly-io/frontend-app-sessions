@@ -1,8 +1,9 @@
+@use "@openedx/paragon/styles/css/core/custom-media-breakpoints" as paragonCustomMediaBreakpoints;
+
 .trainee-dashboard {
   flex: 1 0 auto;
   padding: 1.5rem 0 4rem;
   font-family: inherit;
-  background: var(--sessions-surface-subtle);
 
   h2 {
     margin: 0;
@@ -12,12 +13,6 @@
   h3 {
     margin: 0;
     font-size: .95rem;
-  }
-
-  .pgn__card {
-    border: 1px solid var(--pgn-color-light-300, #E9ECEF);
-    border-radius: .875rem;
-    box-shadow: 0 .125rem .75rem rgb(16 40 64 / .05);
   }
 
   .pgn__card-header {
@@ -36,10 +31,10 @@
   align-items: center;
   margin-bottom: 1rem;
   padding: 1.5rem 1.625rem;
-  color: #FFFFFF;
+  color: var(--sessions-on-brand);
   background: linear-gradient(120deg, #0D4D7D, #116CAB 62%, #1A7FC4);
   border-radius: .875rem;
-  box-shadow: 0 .25rem 1rem rgb(16 40 64 / .08);
+  box-shadow: var(--sessions-card-shadow-raised);
 
   h1 {
     margin: 0 0 .3125rem;
@@ -50,7 +45,7 @@
 
   p {
     margin-bottom: .75rem;
-    color: rgb(255 255 255 / .82);
+    color: var(--sessions-on-brand-muted);
   }
 
   .badge {
@@ -58,8 +53,8 @@
     gap: .375rem;
     align-items: center;
     padding: .375rem .625rem;
-    color: #FFFFFF;
-    background: rgb(255 255 255 / .16);
+    color: var(--sessions-on-brand);
+    background: var(--sessions-on-brand-fill);
     border: 0;
 
     .pgn__icon {
@@ -77,7 +72,7 @@
 
 .trainee-dashboard__active-label {
   align-self: center;
-  color: rgb(255 255 255 / .72);
+  color: var(--sessions-on-brand-subtle);
   font-size: .75rem;
   font-weight: 500;
   white-space: nowrap;
@@ -87,19 +82,19 @@
   display: inline-flex;
   align-items: center;
   padding: .3rem .75rem;
-  color: #FFFFFF;
+  color: var(--sessions-on-brand);
   font-size: .8125rem;
   font-weight: 600;
-  background: rgb(255 255 255 / .16);
-  border: 1px solid rgb(255 255 255 / .3);
+  background: var(--sessions-on-brand-fill);
+  border: 1px solid var(--sessions-on-brand-border);
   border-radius: 999px;
   text-decoration: none;
   transition: background .15s ease;
 
   &:hover,
   &:focus {
-    color: #FFFFFF;
-    background: rgb(255 255 255 / .28);
+    color: var(--sessions-on-brand);
+    background: var(--sessions-on-brand-fill-strong);
     text-decoration: none;
   }
 }
@@ -116,13 +111,13 @@
   min-width: 15rem;
 
   .progress {
-    background: rgb(255 255 255 / .22);
+    background: var(--sessions-on-brand-fill);
   }
 
   small {
     display: block;
     margin-top: .5rem;
-    color: rgb(255 255 255 / .72);
+    color: var(--sessions-on-brand-subtle);
   }
 }
 
@@ -130,11 +125,11 @@
   display: flex;
   justify-content: space-between;
   margin-bottom: .5rem;
-  color: rgb(255 255 255 / .82);
+  color: var(--sessions-on-brand-muted);
   font-size: .8125rem;
 
   strong {
-    color: #FFFFFF;
+    color: var(--sessions-on-brand);
   }
 }
 
@@ -142,12 +137,6 @@
 .trainee-dashboard__course-card .pgn__card-section,
 .trainee-dashboard__certificate .pgn__card-section {
   height: 100%;
-}
-
-.trainee-dashboard__stat-card .pgn__card-section {
-  display: flex;
-  gap: .875rem;
-  align-items: center;
 }
 
 .trainee-dashboard__stat-icon {
@@ -158,22 +147,22 @@
   width: 2.75rem;
   height: 2.75rem;
   color: var(--pgn-color-primary-700, #116CAB);
-  background: #EEF5FB;
+  background: var(--sessions-tint-brand-bg);
   border-radius: .75rem;
 
   &--success {
-    color: #0F7A48;
-    background: #E8F5EE;
+    color: var(--sessions-tint-success-text);
+    background: var(--sessions-tint-success-bg);
   }
 
   &--warning {
-    color: #9C6B0A;
-    background: #FBF2DD;
+    color: var(--sessions-tint-warning-text);
+    background: var(--sessions-tint-warning-bg);
   }
 
   &--gold {
-    color: #8A6410;
-    background: #F7F0DF;
+    color: var(--sessions-tint-gold-text);
+    background: var(--sessions-tint-gold-bg);
   }
 }
 
@@ -232,7 +221,7 @@
   align-items: center;
   margin-bottom: .375rem;
   padding: 1.25rem;
-  background: #EEF5FB;
+  background: var(--sessions-tint-brand-bg);
   border-radius: .75rem;
 }
 
@@ -240,9 +229,9 @@
   min-width: 4.25rem;
   padding: .75rem 1rem;
   text-align: center;
-  background: #FFFFFF;
+  background: var(--sessions-surface);
   border-radius: .75rem;
-  box-shadow: 0 .125rem .5rem rgb(16 40 64 / .07);
+  box-shadow: var(--sessions-tile-shadow);
 
   strong,
   span {
@@ -256,7 +245,7 @@
 
   span {
     margin-top: .25rem;
-    color: #116CAB;
+    color: var(--sessions-tint-brand-text);
     font-size: .6875rem;
     font-weight: 700;
     letter-spacing: .05rem;
@@ -300,7 +289,7 @@
   align-items: center;
 
   strong {
-    color: #116CAB;
+    color: var(--sessions-tint-brand-text);
     font-size: .75rem;
   }
 
@@ -318,7 +307,7 @@
   border-radius: .5rem;
 
   &:nth-child(odd) {
-    background: rgb(16 40 64 / .04);
+    background: var(--sessions-row-stripe);
   }
 
   p {
@@ -351,6 +340,11 @@
   }
 }
 
+.trainee-dashboard__session-list {
+  max-height: 20rem;
+  overflow-y: auto;
+}
+
 .trainee-dashboard__session-time {
   display: flex;
   gap: .625rem;
@@ -362,7 +356,7 @@
   transition: box-shadow .15s ease, transform .15s ease;
 
   &:hover {
-    box-shadow: 0 .5rem 1.5rem rgb(16 40 64 / .1);
+    box-shadow: var(--sessions-card-shadow-hover);
     transform: translateY(-1px);
   }
 }
@@ -380,10 +374,10 @@
   align-items: center;
   justify-content: center;
   height: 3rem;
-  color: #0D4D7D;
+  color: var(--sessions-tint-brand-text);
   font-size: .6875rem;
   font-weight: 700;
-  background: #EEF5FB;
+  background: var(--sessions-tint-brand-bg);
   border-radius: .6875rem;
 }
 
@@ -551,7 +545,7 @@
   }
 
   strong {
-    color: #116CAB;
+    color: var(--sessions-tint-brand-text);
     font-size: 1.25rem;
   }
 
@@ -561,9 +555,9 @@
     font-size: .75rem;
   }
 
-  &--success strong { color: #0F7A48; }
-  &--danger strong { color: #B3261E; }
-  &--warning strong { color: #9C6B0A; }
+  &--success strong { color: var(--sessions-tint-success-text); }
+  &--danger strong { color: var(--sessions-tint-danger-text); }
+  &--warning strong { color: var(--sessions-tint-warning-text); }
 }
 
 .trainee-dashboard__subheading {
@@ -581,7 +575,7 @@
   border-radius: .5rem;
 
   &:nth-child(odd) {
-    background: rgb(16 40 64 / .04);
+    background: var(--sessions-row-stripe);
   }
 }
 
@@ -629,15 +623,15 @@
   align-items: center;
   justify-content: center;
   height: 2.25rem;
-  color: #0D4D7D;
+  color: var(--sessions-tint-brand-text);
   font-size: .75rem;
   font-weight: 700;
-  background: #EEF5FB;
+  background: var(--sessions-tint-brand-bg);
   border-radius: 50%;
 
   &--complete {
-    color: #0F7A48;
-    background: #E8F5EE;
+    color: var(--sessions-tint-success-text);
+    background: var(--sessions-tint-success-bg);
   }
 }
 
@@ -659,8 +653,8 @@
   flex-direction: column;
   align-items: center;
   padding: .45rem 0;
-  color: #B3261E;
-  background: #FCECEB;
+  color: var(--sessions-tint-danger-text);
+  background: var(--sessions-tint-danger-bg);
   border-radius: .5rem;
 
   span {
@@ -670,8 +664,8 @@
   }
 
   &--observed {
-    color: #5A32A3;
-    background: #F2ECFF;
+    color: var(--sessions-tint-violet-text);
+    background: var(--sessions-tint-violet-bg);
   }
 }
 
@@ -687,8 +681,8 @@
   }
 
   &--earned {
-    background: linear-gradient(135deg, #FFFDF7, #F9F2E2);
-    border-color: #DDC77D !important;
+    background: var(--sessions-tint-gold-bg);
+    border-color: var(--sessions-tint-gold-border) !important;
   }
 }
 
@@ -698,8 +692,8 @@
   justify-content: center;
   width: 2.75rem;
   height: 2.75rem;
-  color: #8A6410;
-  background: #F7F0DF;
+  color: var(--sessions-tint-gold-text);
+  background: var(--sessions-tint-gold-bg);
   border-radius: 50%;
 }
 
@@ -727,7 +721,7 @@
   margin: .75rem 0 !important;
 }
 
-@media (width <= 991.98px) {
+@media (--pgn-size-breakpoint-max-width-md) {
   .trainee-dashboard__hero {
     flex-wrap: wrap;
   }
@@ -737,7 +731,7 @@
   }
 }
 
-@media (width <= 767.98px) {
+@media (--pgn-size-breakpoint-max-width-sm) {
   .trainee-dashboard {
     padding-top: 1rem;
   }
@@ -757,7 +751,7 @@
   }
 }
 
-@media (width <= 575.98px) {
+@media (--pgn-size-breakpoint-max-width-xs) {
   .trainee-dashboard__hero {
     padding: 1.25rem;
   }
@@ -795,7 +789,7 @@
 
   .trainee-dashboard__feedback-action {
     width: 100%;
-    margin-left: 3rem;
+    padding-left: 3rem;
     align-items: flex-start;
   }
 }

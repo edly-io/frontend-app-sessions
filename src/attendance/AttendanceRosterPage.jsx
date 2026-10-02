@@ -131,7 +131,16 @@ const NoteCell = ({ row }) => {
         trigger={['hover', 'focus']}
         overlay={<Tooltip id={`note-tip-${userId}`}>Mark attendance before adding a note</Tooltip>}
       >
-        <span><Button variant="outline-primary" size="sm" disabled>Add note</Button></span>
+        <span>
+          <Button
+            variant="outline-primary"
+            size="sm"
+            disabled
+            className="text-nowrap"
+          >
+            Add note
+          </Button>
+        </span>
       </OverlayTrigger>
     );
   }
@@ -445,7 +454,7 @@ const AttendanceRosterPage = () => {
             {formatDateTime(sessionMeta.scheduled_start_time)}
           </div>
         )}
-        <div className="d-flex flex-column flex-sm-row justify-content-sm-between align-items-start align-items-sm-center mt-2">
+        <div className="d-flex flex-column flex-sm-row justify-content-sm-between align-items-start align-items-sm-center">
           <div className="mb-2 mb-sm-0">
             {windowOpen ? (
               <strong className="attendance-meta text-success">
@@ -468,16 +477,17 @@ const AttendanceRosterPage = () => {
       </div>
 
       {canSyncFromZoom && (
-        <div className="d-flex align-items-center mb-3">
+        <div className="d-flex flex-column flex-md-row align-items-start align-items-md-center mb-3">
           <Button
             variant="outline-primary"
             size="sm"
             onClick={handleSync}
             disabled={syncing}
+            className="text-nowrap"
           >
             {syncing ? 'Syncing…' : 'Sync attendance from Zoom'}
           </Button>
-          {syncMessage && <span className="small text-muted ml-2">{syncMessage}</span>}
+          {syncMessage && <span className="small text-muted mt-2 mt-sm-0 ml-sm-2">{syncMessage}</span>}
         </div>
       )}
 
@@ -556,6 +566,7 @@ const AttendanceRosterPage = () => {
         isOpen={!!noteModal}
         onClose={() => { setNoteModal(null); setNoteText(''); setNoteError(''); }}
         hasCloseButton
+        isFullscreenOnMobile
         footerNode={(
           <Stack direction="horizontal" gap={2} className="justify-content-end">
             <Button

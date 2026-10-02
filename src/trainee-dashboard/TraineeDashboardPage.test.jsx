@@ -318,3 +318,22 @@ it('shows finalized results without inventing a hidden score', () => {
   expect(screen.getByText('492 of 600')).toBeInTheDocument();
   expect(screen.getByText('Passed')).toBeInTheDocument();
 });
+
+it('keeps the cards in a shared row on one stretch chain', () => {
+  renderDashboard();
+
+  const row = document.querySelector('.trainee-dashboard__lower-grid');
+  expect(row).toHaveClass('dashboard-equal-height');
+
+  [...row.children].forEach(col => {
+    expect(col.className).toMatch(/\bcol(-|\b)/);
+    const card = col.querySelector('.pgn__card');
+    expect(card).toBeTruthy();
+
+    let node = card.parentElement;
+    while (node !== col) {
+      expect(['SECTION', 'DIV']).toContain(node.tagName);
+      node = node.parentElement;
+    }
+  });
+});

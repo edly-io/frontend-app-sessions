@@ -137,7 +137,7 @@ const AdminDashboardView = () => {
         ))}
       </Row>
 
-      <Row className="mb-3">
+      <Row className="mb-3 dashboard-equal-height">
         <Col xs={12} lg={6} className="mb-3" id="admin-attendance-section">
           <AttendanceToMarkCard
             sessions={data.pending_attendance ?? []}
@@ -183,8 +183,8 @@ const AdminDashboardView = () => {
         </Card>
       </section>
 
-      <Row className="mb-3">
-        <Col xs={12} lg={7} className="mb-3" id="admin-feedback-section">
+      <Row className="mb-3 dashboard-equal-height">
+        <Col xs={12} lg={7} className="mb-3 mb-lg-0" id="admin-feedback-section">
           <FeedbackToSubmitCard
             feedback={data.feedback ?? []}
             pendingCount={pendingCount}

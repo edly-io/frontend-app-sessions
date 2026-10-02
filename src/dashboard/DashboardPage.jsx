@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  Alert, Spinner, Tab, Tabs,
+  Alert, ButtonGroup, Button, Spinner,
 } from '@openedx/paragon';
 import './dashboard.scss';
 import DashboardShell from './DashboardShell';
@@ -14,6 +14,11 @@ import { USER_ROLE } from '../shared/constants';
 const DashboardPage = () => {
   const { roles, isLoading: rolesLoading } = useMyFbrRoles();
   const { data: config, isLoading: configLoading, isError: configError } = useConfig();
+  const [activeView, setActiveView] = useState('instructor');
+
+  const handleViewChange = (view) => {
+    setActiveView(view);
+  };
 
   const isAdmin = config?.user_role === USER_ROLE.ADMIN;
   const isInstructor = roles.includes('instructor');
@@ -55,14 +60,31 @@ const DashboardPage = () => {
   if (isDualRole) {
     return (
       <DashboardShell className="user-dashboard">
-        <Tabs id="dashboard-role-tabs" defaultActiveKey="instructor" className="mb-4">
-          <Tab eventKey="instructor" title="As Instructor">
-            <InstructorDashboardPage asTab />
-          </Tab>
-          <Tab eventKey="trainee" title="As Trainee">
-            <TraineeDashboardPage asTab />
-          </Tab>
-        </Tabs>
+        <div className="d-flex justify-content-end pt-3">
+          <ButtonGroup size="sm">
+            <Button
+              variant={activeView === 'instructor' ? 'primary' : 'outline-primary'}
+              size="sm"
+              aria-pressed={activeView === 'instructor'}
+              onClick={() => handleViewChange('instructor')}
+            >
+              As Instructor
+            </Button>
+            <Button
+              variant={activeView === 'trainee' ? 'primary' : 'outline-primary'}
+              size="sm"
+              aria-pressed={activeView === 'trainee'}
+              onClick={() => handleViewChange('trainee')}
+            >
+              As Trainee
+            </Button>
+          </ButtonGroup>
+        </div>
+        <div>
+          {
+            activeView === 'instructor' ? <InstructorDashboardPage asTab /> : <TraineeDashboardPage asTab />
+          }
+        </div>
       </DashboardShell>
     );
   }

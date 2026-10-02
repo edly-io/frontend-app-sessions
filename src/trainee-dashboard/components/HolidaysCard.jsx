@@ -19,7 +19,7 @@ const HolidaysCard = ({ holidays }) => {
           title={<h2 id="holidays-heading">{intl.formatMessage(messages.holidays)}</h2>}
           subtitle={intl.formatMessage(messages.noSessions)}
         />
-        <Card.Section className="trainee-dashboard__compact-list">
+        <Card.Section className="trainee-dashboard__compact-list dashboard-scroll-list" tabIndex={0} role="group" aria-labelledby="holidays-heading">
           {holidays.length === 0 && <p>{intl.formatMessage(messages.noHolidays)}</p>}
           {visibleItems.map(holiday => {
             const date = getDateTile(intl, holiday.start_date);
@@ -45,14 +45,14 @@ const HolidaysCard = ({ holidays }) => {
               </article>
             );
           })}
-          {canExpand && (
-            <div className="dashboard-list-toggle">
-              <Button variant="link" size="sm" onClick={toggleExpanded}>
-                {intl.formatMessage(isExpanded ? messages.showLess : messages.viewAll)}
-              </Button>
-            </div>
-          )}
         </Card.Section>
+        {canExpand && (
+          <Card.Section className="dashboard-list-footer">
+            <Button variant="link" size="sm" onClick={toggleExpanded}>
+              {intl.formatMessage(isExpanded ? messages.showLess : messages.viewAll)}
+            </Button>
+          </Card.Section>
+        )}
       </Card>
     </section>
   );
