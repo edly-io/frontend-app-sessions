@@ -506,18 +506,62 @@ $month-gap: 4px;
   &__label {
     font-weight: 600;
     font-size: 16px;
-    min-width: 180px;
   }
 
   &__actions {
+    width: 100%;
+    margin-left: 0 !important;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  &__group {
+    width: 100%;
     gap: 4px;
+
+    > .btn {
+      flex: 1 1 0;
+      min-width: 0;
+    }
   }
 
   &__divider {
+    display: none;
     width: 1px;
     height: 24px;
     background: var(--sessions-border);
     margin: 0 4px;
+  }
+
+  &__divider--inline {
+    display: block;
+    flex: 0 0 auto;
+  }
+
+  @media (--pgn-size-breakpoint-min-width-sm) {
+    &__label {
+      min-width: 180px;
+    }
+
+    &__actions {
+      width: auto;
+      margin-left: auto !important;
+      flex-wrap: nowrap;
+      gap: 4px;
+    }
+
+    &__group {
+      width: auto;
+      gap: 4px;
+
+      > .btn {
+        flex: 0 0 auto;
+      }
+    }
+
+    &__divider {
+      display: block;
+    }
   }
 }
 

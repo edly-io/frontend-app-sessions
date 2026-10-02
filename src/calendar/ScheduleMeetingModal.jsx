@@ -866,10 +866,7 @@ const ScheduleMeetingModal = ({
         </>
       )}
     >
-      <div style={{
-        maxHeight: 'calc(80vh - 10rem)', overflowY: 'auto', overflowX: 'hidden', padding: '0 4px',
-      }}
-      >
+      <div>
         {error && (
           <Alert
             variant="danger"

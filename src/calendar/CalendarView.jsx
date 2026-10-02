@@ -13,12 +13,16 @@ import {
 } from '@openedx/paragon';
 import {
   ChevronLeft, ChevronRight, Launch, Add, EditOutline, DeleteOutline, EventBusy, InfoOutline,
+  FactCheck, History,
 } from '@openedx/paragon/icons';
-import { bucketSessionsByDay, getStatusVariant } from '../shared/utils';
+import {
+  bucketSessionsByDay, formatInstructorNames, getSessionTypeLabel, getStatusVariant,
+} from '../shared/utils';
 import { SESSION_STATUS_LABELS, USER_ROLE, REQUEST_STATUS } from '../shared/constants';
 import RequestStatusBadge from '../shared/RequestStatusBadge';
 import ScopeBadge from '../shared/ScopeBadge';
 import InstructingBadge from '../shared/InstructingBadge';
+import CalendarPdfDownloadButton from './CalendarPdfDownloadButton';
 import './calendar.scss';
 import { getSessionStartLink } from './api';
 
@@ -148,17 +152,6 @@ const dayVariant = (isToday, isWeekend) => {
 // Weekend = Saturday (6) or Sunday (0) in JS getDay()
 const isWeekendDay = (date) => date.getDay() === 0 || date.getDay() === 6;
 
-const getSessionTypeLabel = (session, sessionTypeLabels = {}) => {
-  const rawType = session?.session_type;
-  if (!rawType) { return ''; }
-  if (sessionTypeLabels[rawType]) { return sessionTypeLabels[rawType]; }
-  return rawType
-    .split(/[_-]+/)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
-};
-
 const SessionTypeBadge = ({ session, sessionTypeLabels }) => {
   const label = getSessionTypeLabel(session, sessionTypeLabels);
   if (!label) { return null; }
@@ -207,16 +200,6 @@ const formatTimeRange = (session) => {
   return `${startLabel} – ${endLabel}`;
 };
 
-/**
- * Format the instructor display string from the new plural `instructor_names`
- * field, falling back to the legacy `instructor_name` singular for old payloads.
- */
-const formatInstructors = (session) => {
-  const names = session.instructor_names;
-  if (Array.isArray(names) && names.length) { return names.join(', '); }
-  return session.instructor_name || '';
-};
-
 // Paragon's link Button, restyled by .calendar-link-button as an always-underlined
 // hyperlink that darkens on hover/focus. Used by both popovers for the
 // session-title click target.
@@ -256,7 +239,7 @@ const SessionPopover = ({
   const isPast = new Date(session.scheduled_end_time || session.scheduled_start_time) <= new Date();
   const displayStatus = (isPast && session.status === 'scheduled') ? 'completed' : session.status;
   const statusLabel = SESSION_STATUS_LABELS[displayStatus] || displayStatus;
-  const instructorDisplay = formatInstructors(session);
+  const instructorDisplay = formatInstructorNames(session);
   // Prefer the per-session `my_request` returned by the API; fall back to the
   // window-level studentRequestMap for backward compatibility with older payloads.
   const myRequest = learnerRequest || session.my_request;
@@ -409,12 +392,12 @@ const SessionPopover = ({
         )}
         {/* Admin-only: quick links to attendance roster and audit history. */}
         {canManageSessions && session.id && (
-          <div className="mt-2">
+          <div className="d-flex align-items-center calendar-popover__actions flex-wrap mt-2">
             <Button
               as={Link}
               variant="tertiary"
               size="sm"
-              className="p-0"
+              iconBefore={FactCheck}
               to={`/${programId}/attendance/sessions/${session.id}?course_id=${encodeURIComponent(session.course_id || '')}`}
               state={{
                 sessionTitle: session.title,
@@ -423,17 +406,17 @@ const SessionPopover = ({
               }}
               onClick={() => onOpenChange(false)}
             >
-              View attendance
+              Attendance
             </Button>
             <Button
               as={Link}
               variant="tertiary"
               size="sm"
-              className="p-0 d-block"
+              iconBefore={History}
               to={`/${programId}/calendar?view=audit-log&record_id=${session.id}`}
               onClick={() => onOpenChange(false)}
             >
-              View history
+              History
             </Button>
           </div>
         )}
@@ -533,7 +516,7 @@ const DayPopover = ({
           className="calendar-popover__scroll overflow-auto p-2"
         >
           {sessions.map((session) => {
-            const instructorDisplay = formatInstructors(session);
+            const instructorDisplay = formatInstructorNames(session);
             const myRequest = studentRequestMap?.get(session.id) || session.my_request;
             const hasMeeting = Boolean(session.meeting_id || session.meeting_join_url);
             const learnerCanJoin = (
@@ -1427,7 +1410,7 @@ const CalendarView = ({
   onScheduleNew, onEditSession, onDeleteSession, onCancelSession, onSessionDetail,
   loading = false, canManageSessions = false, isInstructor = false,
   isLearner = false, studentRequestMap, leaveDateMap = null, holidays = [],
-  programDates = [], sessionTypeColors = {}, sessionTypeLabels,
+  programDates = [], sessionTypeColors = {}, sessionTypeLabels, programName = '',
 }) => {
   // Only one popover open at a time; null = none. Chip clicks and outside
   // clicks flip this; Edit/Delete actions also reset it before bubbling up.
@@ -1537,31 +1520,43 @@ const CalendarView = ({
           {formatRangeLabel(view, currentDate)}
         </span>
 
-        {/* View toggles + New session — pushed to the right */}
+        {/* View toggles + export + New session — pushed to the right */}
         <div className="ml-auto d-flex align-items-center calendar-toolbar__actions">
-          {Object.values(VIEWS).map((v) => (
-            <Button
-              key={v}
-              variant={view === v ? 'primary' : 'outline-primary'}
-              size="sm"
-              onClick={() => handleViewChange(v)}
-            >
-              {v.charAt(0).toUpperCase() + v.slice(1)}
-            </Button>
-          ))}
-          {canManageSessions && (
-            <>
-              <span className="calendar-toolbar__divider" />
+          <div className="d-flex align-items-center calendar-toolbar__group">
+            {Object.values(VIEWS).map((v) => (
               <Button
-                variant="success"
+                key={v}
+                variant={view === v ? 'primary' : 'outline-primary'}
                 size="sm"
-                iconBefore={Add}
-                onClick={handleScheduleNew}
+                onClick={() => handleViewChange(v)}
               >
-                New session
+                {v.charAt(0).toUpperCase() + v.slice(1)}
               </Button>
-            </>
-          )}
+            ))}
+          </div>
+          <span className="calendar-toolbar__divider" />
+          <div className="d-flex align-items-center calendar-toolbar__group">
+            <CalendarPdfDownloadButton
+              sessions={sessions}
+              rangeLabel={formatRangeLabel(view, currentDate)}
+              viewLabel={view.charAt(0).toUpperCase() + view.slice(1)}
+              programName={programName}
+              sessionTypeLabels={sessionTypeLabels}
+            />
+            {canManageSessions && (
+              <>
+                <span className="calendar-toolbar__divider calendar-toolbar__divider--inline" />
+                <Button
+                  variant="primary"
+                  size="sm"
+                  iconBefore={Add}
+                  onClick={handleScheduleNew}
+                >
+                  New session
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1954,6 +1949,7 @@ DayView.defaultProps = {
 
 CalendarView.propTypes = {
   sessions: PropTypes.arrayOf(sessionShape).isRequired,
+  programName: PropTypes.string,
   view: PropTypes.oneOf(['month', 'week', 'day']).isRequired,
   currentDate: PropTypes.instanceOf(Date).isRequired,
   onViewChange: PropTypes.func.isRequired,
