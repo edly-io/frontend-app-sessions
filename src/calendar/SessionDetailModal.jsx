@@ -99,6 +99,7 @@ const SessionDetailModal = ({
       isOpen={isOpen}
       onClose={onClose}
       title={session.title}
+      isFullscreenOnMobile
       footerNode={(
         <Button variant="tertiary" onClick={onClose}>Close</Button>
       )}

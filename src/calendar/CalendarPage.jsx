@@ -412,6 +412,7 @@ const CalendarPage = () => {
           programDates={programDates}
           sessionTypeColors={sessionTypeColors}
           sessionTypeLabels={sessionTypeLabels}
+          programName={programInfo?.name || ''}
         />
       </Container>
     );

@@ -122,3 +122,20 @@ export const bucketSessionsByDay = (sessions) => {
   });
   return map;
 };
+
+export const formatInstructorNames = (session) => {
+  const names = session?.instructor_names;
+  if (Array.isArray(names) && names.length) { return names.join(', '); }
+  return session?.instructor_name || '';
+};
+
+export const getSessionTypeLabel = (session, sessionTypeLabels = {}) => {
+  const rawType = session?.session_type;
+  if (!rawType) { return ''; }
+  if (sessionTypeLabels[rawType]) { return sessionTypeLabels[rawType]; }
+  return rawType
+    .split(/[_-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+};
