@@ -1,6 +1,7 @@
 import { defineMessages } from '@edx/frontend-platform/i18n';
 
 const messages = defineMessages({
+  urgent: { id: 'sessions.traineeDashboard.urgent', defaultMessage: 'Urgent' },
   loading: { id: 'sessions.traineeDashboard.loading', defaultMessage: 'Loading trainee dashboard' },
   loadError: { id: 'sessions.traineeDashboard.loadError', defaultMessage: 'We could not load your trainee dashboard.' },
   tryAgain: { id: 'sessions.traineeDashboard.tryAgain', defaultMessage: 'Try again' },

@@ -47,14 +47,14 @@ const FeedbackToSubmitCard = ({ feedback, pendingCount, onOpenFeedback }) => {
   };
 
   return (
-    <Card className="dashboard-feedback-card instructor-dashboard__fill-card">
+    <Card className="dashboard-feedback-card">
       <Card.Header
         title={<h2 id="instructor-feedback-heading">{intl.formatMessage(messages.feedbackToSubmit)}</h2>}
         subtitle={intl.formatMessage(messages.pendingCount, { count: pendingCount })}
       />
-      <Card.Section className="dashboard-feedback-card__scroll">
+      <Card.Section tabIndex={0} role="group" aria-labelledby="instructor-feedback-heading">
         {!feedback.length ? <Alert variant="success">{intl.formatMessage(messages.noFeedback)}</Alert> : (
-          <div className="instructor-dashboard__compact-list">
+          <div className="instructor-dashboard__compact-list dashboard-scroll-list">
             {visibleItems.map(item => (
               <article className="instructor-dashboard__feedback-row" key={item.id}>
                 <span className={`instructor-dashboard__list-icon${item.status === 'submitted' ? ' instructor-dashboard__list-icon--complete' : ''}`}>
@@ -69,16 +69,16 @@ const FeedbackToSubmitCard = ({ feedback, pendingCount, onOpenFeedback }) => {
                 </div>
               </article>
             ))}
-            {canExpand && (
-              <div className="dashboard-list-toggle">
-                <Button variant="link" size="sm" onClick={toggleExpanded}>
-                  {intl.formatMessage(isExpanded ? messages.showLess : messages.viewAll)}
-                </Button>
-              </div>
-            )}
           </div>
         )}
       </Card.Section>
+      {canExpand && (
+        <Card.Section className="dashboard-list-footer">
+          <Button variant="link" size="sm" onClick={toggleExpanded}>
+            {intl.formatMessage(isExpanded ? messages.showLess : messages.viewAll)}
+          </Button>
+        </Card.Section>
+      )}
     </Card>
   );
 };

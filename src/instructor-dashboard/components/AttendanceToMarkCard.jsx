@@ -23,14 +23,14 @@ const AttendanceToMarkCard = ({ sessions, getSessionLink = null }) => {
         title={<h2 id="instructor-attendance-heading">{intl.formatMessage(messages.attendanceToMark)}</h2>}
         subtitle={intl.formatMessage(messages.waitingCount, { count: sessions.length })}
       />
-      <Card.Section>
+      <Card.Section tabIndex={0} role="group" aria-labelledby="instructor-attendance-heading">
         {!sessions.length ? (
           <Alert variant="success" icon={CheckCircle}>
             <Alert.Heading>{intl.formatMessage(messages.allAttendanceRecorded)}</Alert.Heading>
             {intl.formatMessage(messages.nothingWaiting)}
           </Alert>
         ) : (
-          <div className="instructor-dashboard__compact-list">
+          <div className="instructor-dashboard__compact-list dashboard-scroll-list">
             {sessions.map(session => (
               <article className="instructor-dashboard__attendance-row" key={session.session_id}>
                 <span className="instructor-dashboard__list-icon"><Icon src={FactCheck} /></span>

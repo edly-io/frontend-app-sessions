@@ -134,6 +134,7 @@ const FeedbackFormModal = ({
       title={title}
       footerNode={footerNode}
       size="lg"
+      isFullscreenOnMobile
       className="feedback-form-modal"
     >
       {isLoading && (

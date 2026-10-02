@@ -47,7 +47,7 @@ const DashboardStats = ({ summary, onFeedbackClick = undefined }) => {
     <section aria-label={intl.formatMessage(messages.dashboardSummary)} className="trainee-dashboard__stats">
       <Row>
         {stats.map(stat => (
-          <Col xs={12} sm={6} lg={3} key={stat.label} className="mb-3">
+          <Col xs={6} sm={6} lg={3} key={stat.label} className="mb-3">
             <Card
               className={`trainee-dashboard__stat-card h-100${stat.onClick ? ' dashboard-stat-card--clickable' : ''}`}
               onClick={stat.onClick}

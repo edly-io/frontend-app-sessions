@@ -103,7 +103,7 @@ const UpcomingSessionsCard = ({ sessions, timezone = undefined }) => {
                   </Button>
                 </div>
               </article>
-              <div>
+              <div className="instructor-dashboard__session-list">
                 {laterSessions.map(session => (
                   <article className="instructor-dashboard__session-row" key={session.id}>
                     {renderDate(session.scheduled_start)}

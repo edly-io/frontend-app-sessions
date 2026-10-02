@@ -80,7 +80,7 @@ const InstructorDashboardPage = ({ profileSwitcher = null, asTab = false }) => {
       <UpcomingSessionsCard sessions={data.upcoming_sessions} timezone={data.timezone} />
       <InstructorCoursesSection courses={data.courses} />
       <DeliverySummaryCard delivery={data.delivery} courses={data.courses} timezone={data.timezone} />
-      <Row className="instructor-dashboard__lower-grid">
+      <Row className="instructor-dashboard__lower-grid dashboard-equal-height">
         <Col xs={12} lg={7} className="mb-3" id="instructor-feedback-section">
           <FeedbackToSubmitCard
             feedback={data.feedback}
@@ -88,7 +88,7 @@ const InstructorDashboardPage = ({ profileSwitcher = null, asTab = false }) => {
             onOpenFeedback={setFeedbackRequestId}
           />
         </Col>
-        <Col xs={12} lg={5}>
+        <Col xs={12} lg={5} className="mb-3">
           <div className="instructor-dashboard__side-column">
             <HolidaysCard holidays={data.holidays} />
           </div>

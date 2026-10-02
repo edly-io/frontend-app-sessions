@@ -1,18 +1,13 @@
+@use "@openedx/paragon/styles/css/core/custom-media-breakpoints" as paragonCustomMediaBreakpoints;
+
 .admin-dashboard {
   flex: 1 0 auto;
-  padding: 1.5rem 0 4rem;
+  padding: 1.5rem 0;
   font-family: inherit;
-  background: var(--sessions-surface-subtle);
 
   h2 {
     margin: 0;
     font-size: 1.125rem;
-  }
-
-  .pgn__card {
-    border: 1px solid var(--pgn-color-light-300, #E9ECEF);
-    border-radius: .875rem;
-    box-shadow: 0 .125rem .75rem rgb(16 40 64 / .05);
   }
 
   .pgn__card-header {
@@ -27,10 +22,10 @@
   justify-content: space-between;
   margin-bottom: 1.25rem;
   padding: 1.5rem 1.625rem;
-  color: #FFFFFF;
+  color: var(--sessions-on-brand);
   background: linear-gradient(120deg, #0D3B6E, #154F82 62%, #1A5F96);
   border-radius: .875rem;
-  box-shadow: 0 .25rem 1rem rgb(16 40 64 / .1);
+  box-shadow: var(--sessions-card-shadow-raised);
 
   h1 {
     margin: 0 0 .3125rem;
@@ -41,7 +36,7 @@
 
   p {
     margin: 0;
-    color: rgb(255 255 255 / .82);
+    color: var(--sessions-on-brand-muted);
   }
 }
 
@@ -61,11 +56,11 @@
   display: inline-flex;
   align-items: center;
   padding: .375rem .875rem;
-  color: #FFFFFF;
+  color: var(--sessions-on-brand);
   font-size: .8125rem;
   font-weight: 600;
-  background: rgb(255 255 255 / .14);
-  border: 1px solid rgb(255 255 255 / .25);
+  background: var(--sessions-on-brand-fill);
+  border: 1px solid var(--sessions-on-brand-border);
   border-radius: 999px;
   white-space: nowrap;
 }
@@ -75,12 +70,6 @@
 }
 
 
-.admin-dashboard__stat-card {
-  display: flex;
-  gap: .875rem;
-  align-items: center;
-}
-
 .admin-dashboard__stat-icon {
   display: inline-flex;
   flex: 0 0 2.75rem;
@@ -89,22 +78,22 @@
   width: 2.75rem;
   height: 2.75rem;
   color: var(--pgn-color-primary-700, #116CAB);
-  background: #EEF5FB;
+  background: var(--sessions-tint-brand-bg);
   border-radius: .75rem;
 
   &--warning {
-    color: #9C6B0A;
-    background: #FBF2DD;
+    color: var(--sessions-tint-warning-text);
+    background: var(--sessions-tint-warning-bg);
   }
 
   &--feedback {
-    color: #B3261E;
-    background: #FEF0EF;
+    color: var(--sessions-tint-danger-text);
+    background: var(--sessions-tint-danger-bg);
   }
 
   &--violet {
-    color: #5A32A3;
-    background: #F2ECFF;
+    color: var(--sessions-tint-violet-text);
+    background: var(--sessions-tint-violet-bg);
   }
 }
 
@@ -127,6 +116,8 @@
 
 .admin-dashboard__session-list {
   padding-top: .25rem;
+  max-height: 20rem;
+  overflow-y: auto;
 }
 
 .admin-dashboard__session-row {
@@ -137,7 +128,7 @@
   border-radius: .5rem;
 
   &:nth-child(odd) {
-    background: rgb(16 40 64 / .04);
+    background: var(--sessions-row-stripe);
   }
 
   > div {
@@ -190,7 +181,7 @@
   width: 2rem;
   height: 2rem;
   color: var(--pgn-color-primary-700, #116CAB);
-  background: #EEF5FB;
+  background: var(--sessions-tint-brand-bg);
   border-radius: .5rem;
 }
 
@@ -209,7 +200,7 @@
   border-radius: .5rem;
 
   &:nth-child(odd) {
-    background: rgb(16 40 64 / .04);
+    background: var(--sessions-row-stripe);
   }
 }
 
@@ -229,7 +220,7 @@
   white-space: nowrap;
 }
 
-@media (width <= 767.98px) {
+@media (--pgn-size-breakpoint-max-width-sm) {
   .admin-dashboard__hero {
     flex-wrap: wrap;
   }
@@ -240,8 +231,14 @@
   }
 }
 
-@media (width <= 575.98px) {
+@media (--pgn-size-breakpoint-max-width-xs) {
   .admin-dashboard__hero {
     padding: 1.25rem;
+  }
+
+  .admin-dashboard__session-row,
+  .admin-dashboard__request-program-row {
+    flex-wrap: wrap;
+    gap: .5rem;
   }
 }

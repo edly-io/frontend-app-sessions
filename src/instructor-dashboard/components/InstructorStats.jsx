@@ -37,7 +37,7 @@ const InstructorStats = ({ summary, onFeedbackClick = undefined }) => {
     <section className="instructor-dashboard__stats instructor-dashboard__section" aria-label={intl.formatMessage(messages.dashboardSummary)}>
       <Row>
         {stats.map(stat => (
-          <Col xs={12} sm={4} className="mb-3" key={stat.label}>
+          <Col xs={6} sm={4} className="mb-3" key={stat.label}>
             <Card
               className={`instructor-dashboard__stat-card${stat.onClick ? ' dashboard-stat-card--clickable' : ''}`}
               onClick={stat.onClick}
