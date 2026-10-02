@@ -4,8 +4,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import {
   Alert, Badge, Button, DataTable, Form, Icon, IconButtonWithTooltip, Pagination, Spinner,
+  StandardModal,
 } from '@openedx/paragon';
 import { History } from '@openedx/paragon/icons';
+import { UserIdentity } from '@edly-io/frontend-component-fbr';
 import { getAuditLogs } from './auditLogApi';
 import DatepickerControl from './date-picker-control/DatepickerControl';
 import './AuditLogTable.scss';
@@ -20,51 +22,9 @@ const ROLE_LABELS = {
   trainee: 'Trainee',
 };
 
-const ROLE_TONES = {
-  'Super Admin': 'super-admin',
-  'Middle Admin': 'middle-admin',
-  'Data Admin': 'data-admin',
-  Instructor: 'instructor',
-  Trainee: 'trainee',
-};
-
-const ROLE_CODES = {
-  'Super Admin': 'SA',
-  'Middle Admin': 'MA',
-  'Data Admin': 'DA',
-  Instructor: 'IN',
-  Trainee: 'TR',
-};
-
-const getInitials = (name) => (name || '?')
-  .split(/\s+/).filter(Boolean).slice(0, 2)
-  .map(p => p[0])
-  .join('')
-  .toUpperCase();
-
 const ActorBadge = ({ name, role }) => {
   const label = ROLE_LABELS[role] || '';
-  const tone = ROLE_TONES[label] || 'default';
-  const code = ROLE_CODES[label] || '';
-  const initials = getInitials(name);
-  return (
-    <div className="user-identity user-identity--compact">
-      <div className="user-identity__avatar-wrap user-identity__avatar-wrap--compact">
-        <div className={`user-identity__avatar-shell user-identity__avatar-shell--compact user-identity__avatar-shell--${tone}`}>
-          <span className="user-identity__avatar-initials">{initials}</span>
-        </div>
-        {code && (
-          <span className={`user-identity__corner-badge user-identity__corner-badge--${tone}`}>{code}</span>
-        )}
-      </div>
-      <div className="user-identity__content">
-        <div className="user-identity__name">{name}</div>
-        {label && (
-          <div className={`user-identity__role-label user-identity__role-label--${tone}`}>{label}</div>
-        )}
-      </div>
-    </div>
-  );
+  return <UserIdentity name={name} badges={label ? [label] : []} size="compact" />;
 };
 
 const ACTION_VARIANT = {
@@ -205,36 +165,32 @@ const ChangesModal = ({ entry, onClose }) => {
     changes, object_repr: repr, timestamp, actor_name: actorName, actor_email: actorEmail, action,
   } = entry;
   const date = new Date(timestamp);
+  const hasChanges = changes && Object.keys(changes).length > 0;
 
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      className="audit-modal__overlay"
-      onClick={(e) => { if (e.target === e.currentTarget) { onClose(); } }}
-      onKeyDown={(e) => { if (e.key === 'Escape') { onClose(); } }}
+    <StandardModal
+      isOpen
+      onClose={onClose}
+      title={`Change Details — ${repr}`}
+      size="lg"
+      isFullscreenOnMobile
+      footerNode={<Button variant="tertiary" onClick={onClose}>Close</Button>}
     >
-      <div className="audit-modal__panel">
-        <div className="audit-modal__header">
-          <div>
-            <h5 className="audit-modal__title">Change Details — {repr}</h5>
-            <small className="audit-modal__subtitle">
-              {date.toLocaleString('en-GB', {
-                day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
-              })}
-              {' · '}
-              <Badge variant={ACTION_VARIANT[action] || 'light'}>{action}</Badge>
-              {' · '}
-              {actorName || 'System'}
-              {actorEmail && ` (${actorEmail})`}
-            </small>
-          </div>
-          <Button variant="tertiary" onClick={onClose} className="audit-modal__close-btn">×</Button>
-        </div>
+      <p className="audit-modal__meta">
+        {date.toLocaleString('en-GB', {
+          day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+        })}
+        {' · '}
+        <Badge variant={ACTION_VARIANT[action] || 'light'}>{action}</Badge>
+        {' · '}
+        {actorName || 'System'}
+        {actorEmail && ` (${actorEmail})`}
+      </p>
 
-        {!changes || Object.keys(changes).length === 0 ? (
-          <p className="audit-modal__empty">No field-level diff recorded for this entry.</p>
-        ) : (
+      {!hasChanges ? (
+        <p className="audit-modal__empty">No field-level diff recorded for this entry.</p>
+      ) : (
+        <div className="audit-modal__table-scroll">
           <table className="audit-modal__table">
             <thead>
               <tr>
@@ -253,9 +209,9 @@ const ChangesModal = ({ entry, onClose }) => {
               ))}
             </tbody>
           </table>
-        )}
-      </div>
-    </div>
+        </div>
+      )}
+    </StandardModal>
   );
 };
 
@@ -309,21 +265,16 @@ const RecordHistoryModal = ({
   const pageCount = Math.ceil(count / PAGE_SIZE);
 
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      className="audit-modal__overlay"
-      onClick={(e) => { if (e.target === e.currentTarget) { onClose(); } }}
-      onKeyDown={(e) => { if (e.key === 'Escape') { onClose(); } }}
-    >
-      <div className="audit-modal__panel audit-modal__panel--wide">
-        <div className="audit-modal__header">
-          <div>
-            <h5 className="audit-modal__title">Full History</h5>
-            <small className="audit-modal__subtitle">{objectRepr}</small>
-          </div>
-          <Button variant="tertiary" onClick={onClose} className="audit-modal__close-btn">×</Button>
-        </div>
+    <>
+      <StandardModal
+        isOpen
+        onClose={onClose}
+        title="Full History"
+        size="lg"
+        isFullscreenOnMobile
+        footerNode={<Button variant="tertiary" onClick={onClose}>Close</Button>}
+      >
+        <p className="audit-modal__meta">{objectRepr}</p>
 
         {loading && (
           <div className="text-center py-4">
@@ -333,61 +284,63 @@ const RecordHistoryModal = ({
         {!loading && error && <Alert variant="danger">{error}</Alert>}
         {!loading && !error && (
           <>
-            <table className="audit-modal__table">
-              <thead>
-                <tr>
-                  {['Timestamp', 'Actor', 'Action', 'Fields changed'].map(h => (
-                    <th key={h} className="audit-modal__th">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {logs.length === 0 ? (
-                  <tr className="audit-modal__empty-row">
-                    <td colSpan={4} className="audit-modal__td audit-modal__td--center">
-                      No history recorded yet.
-                    </td>
+            <div className="audit-modal__table-scroll">
+              <table className="audit-modal__table">
+                <thead>
+                  <tr>
+                    {['Timestamp', 'Actor', 'Action', 'Fields changed'].map(h => (
+                      <th key={h} className="audit-modal__th">{h}</th>
+                    ))}
                   </tr>
-                ) : logs.map((entry, i) => {
-                  const date = new Date(entry.timestamp);
-                  const fieldCount = entry.changes ? Object.keys(entry.changes).length : 0;
-                  return (
-                    <tr key={entry.id} className={i % 2 === 0 ? 'audit-modal__tr--even' : 'audit-modal__tr--odd'}>
-                      <td className="audit-modal__td">
-                        {date.toLocaleString('en-GB', {
-                          day: '2-digit',
-                          month: 'short',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </td>
-                      <td className="audit-modal__td">
-                        {entry.actor_name ? (
-                          <ActorBadge name={entry.actor_name} role={entry.actor_role} />
-                        ) : (
-                          <span className="text-muted">System</span>
-                        )}
-                      </td>
-                      <td className="audit-modal__td">
-                        <Badge variant={ACTION_VARIANT[entry.action] || 'light'}>{entry.action}</Badge>
-                      </td>
-                      <td className="audit-modal__td">
-                        {fieldCount > 0 ? (
-                          <Button
-                            variant="link"
-                            onClick={() => setChangesEntry(entry)}
-                            className="audit-modal__fields-btn"
-                          >
-                            {fieldCount} field{fieldCount !== 1 ? 's' : ''} changed
-                          </Button>
-                        ) : '—'}
+                </thead>
+                <tbody>
+                  {logs.length === 0 ? (
+                    <tr className="audit-modal__empty-row">
+                      <td colSpan={4} className="audit-modal__td audit-modal__td--center">
+                        No history recorded yet.
                       </td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  ) : logs.map((entry, i) => {
+                    const date = new Date(entry.timestamp);
+                    const fieldCount = entry.changes ? Object.keys(entry.changes).length : 0;
+                    return (
+                      <tr key={entry.id} className={i % 2 === 0 ? 'audit-modal__tr--even' : 'audit-modal__tr--odd'}>
+                        <td className="audit-modal__td">
+                          {date.toLocaleString('en-GB', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </td>
+                        <td className="audit-modal__td">
+                          {entry.actor_name ? (
+                            <ActorBadge name={entry.actor_name} role={entry.actor_role} />
+                          ) : (
+                            <span className="text-muted">System</span>
+                          )}
+                        </td>
+                        <td className="audit-modal__td">
+                          <Badge variant={ACTION_VARIANT[entry.action] || 'light'}>{entry.action}</Badge>
+                        </td>
+                        <td className="audit-modal__td">
+                          {fieldCount > 0 ? (
+                            <Button
+                              variant="link"
+                              onClick={() => setChangesEntry(entry)}
+                              className="audit-modal__fields-btn"
+                            >
+                              {fieldCount} field{fieldCount !== 1 ? 's' : ''} changed
+                            </Button>
+                          ) : '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
             {pageCount > 1 && (
               <Pagination
                 paginationLabel="History pagination"
@@ -400,9 +353,9 @@ const RecordHistoryModal = ({
             )}
           </>
         )}
-      </div>
+      </StandardModal>
       {changesEntry && <ChangesModal entry={changesEntry} onClose={() => setChangesEntry(null)} />}
-    </div>
+    </>
   );
 };
 
