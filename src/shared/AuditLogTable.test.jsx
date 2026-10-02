@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { IntlProvider } from 'react-intl';
 import AuditLogTable from './AuditLogTable';
@@ -53,5 +54,47 @@ describe('AuditLogTable', () => {
     // The select is rendered immediately (before the async load resolves).
     const select = document.querySelector('select');
     expect(select).not.toBeNull();
+  });
+
+  const entryWithChanges = {
+    id: 7,
+    timestamp: '2026-09-01T10:00:00Z',
+    actor_name: 'Farah Naz',
+    actor_email: 'farah@fbr.gov',
+    actor_role: 'super_admin',
+    action: 'updated',
+    record_type: 'session',
+    object_repr: 'Session 42',
+    changes: { title: ['Old title', 'New title'] },
+    object_pk: '42',
+  };
+
+  it('opens the full history modal as a Paragon dialog', async () => {
+    const user = userEvent.setup();
+    getAuditLogs.mockResolvedValue({ results: [entryWithChanges], count: 1 });
+    wrap();
+
+    await waitFor(() => expect(screen.getByText('Session 42')).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: /full history/i }));
+
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toBeInTheDocument();
+    expect(screen.getByText('Full History')).toBeInTheDocument();
+  });
+
+  it('stacks the change-details dialog over the history dialog', async () => {
+    const user = userEvent.setup();
+    getAuditLogs.mockResolvedValue({ results: [entryWithChanges], count: 1 });
+    wrap();
+
+    await waitFor(() => expect(screen.getByText('Session 42')).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: /full history/i }));
+    await screen.findByText('Full History');
+
+    await user.click(await screen.findByRole('button', { name: /1 field changed/i }));
+
+    await screen.findByText(/Change Details/);
+    expect(screen.getByText('Full History')).toBeInTheDocument();
+    expect(screen.getAllByText('New title').length).toBeGreaterThan(1);
   });
 });
