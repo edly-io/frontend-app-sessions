@@ -597,6 +597,7 @@ const PerLearnerView = () => {
         isOpen={!!noteModal}
         onClose={() => { setNoteModal(null); setNoteText(''); setNoteError(''); }}
         hasCloseButton
+        isFullscreenOnMobile
         footerNode={(
           <div className="d-flex justify-content-end" style={{ gap: 8 }}>
             <Button

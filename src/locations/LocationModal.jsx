@@ -63,6 +63,7 @@ const LocationModal = ({
       isOpen={isOpen}
       onClose={onClose}
       title={isEdit ? 'Edit location' : 'New location'}
+      isFullscreenOnMobile
       footerNode={(
         <>
           <Button variant="tertiary" onClick={onClose} disabled={saving}>Cancel</Button>
