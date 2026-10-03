@@ -92,6 +92,53 @@
     }
   }
 
+  &__record-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin-top: .375rem;
+  }
+
+  &__changes {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: .25rem;
+  }
+
+  &__changes-fields {
+    font-size: .75rem;
+    color: var(--pgn-color-gray-500);
+  }
+
+  &__changes-btn,
+  &__history-btn {
+    white-space: nowrap;
+    min-height: 1.5rem;
+    padding: .125rem .5rem;
+    font-size: .75rem;
+    line-height: 1.5;
+
+    .pgn__icon {
+      width: .875rem;
+      height: .875rem;
+    }
+  }
+
+  &__table-scroll {
+    max-width: 100%;
+    overflow-x: auto;
+
+    .pgn__data-table {
+      min-width: 62rem;
+    }
+
+    &--narrow .pgn__data-table {
+      min-width: 36rem;
+    }
+  }
+
   &__count {
     color: var(--sessions-text-muted);
     font-size: .8rem;
@@ -130,10 +177,6 @@
     font-size: .75rem;
     color: var(--sessions-text-muted);
     margin-top: 2px;
-  }
-
-  &__history-btn {
-    margin-top: 4px;
   }
 
   &__changes-list {
@@ -177,8 +220,9 @@
 }
 
 .audit-modal {
-  &__meta {
-    margin-bottom: 1rem;
+  &__subtitle {
+    display: block;
+    margin-top: .25rem;
     color: var(--sessions-text-muted);
     font-size: .8125rem;
   }
@@ -186,27 +230,6 @@
   &__empty {
     color: var(--sessions-text-muted);
     margin: 0;
-  }
-
-  &__table-scroll {
-    max-width: 100%;
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-  }
-
-  &__table {
-    width: 100%;
-    min-width: 34rem;
-    border-collapse: collapse;
-    font-size: .875rem;
-  }
-
-  &__th {
-    text-align: left;
-    padding: .5rem .75rem;
-    border-bottom: 2px solid var(--sessions-border);
-    font-weight: 600;
-    white-space: nowrap;
   }
 
   &__td {
@@ -233,23 +256,6 @@
     }
   }
 
-  &__tr--even {
-    background: var(--sessions-surface-muted);
-  }
-
-  &__tr--odd {
-    background: var(--sessions-surface);
-  }
-
-  &__fields-btn {
-    background: none;
-    border: none;
-    padding: 0;
-    cursor: pointer;
-    color: var(--pgn-color-primary-base, #0D6EFD);
-    text-decoration: underline;
-    font-size: .875rem;
-  }
 }
 
 // ── Actor identity (mirrors fbr-admin UserIdentity) ───────────────────────────
