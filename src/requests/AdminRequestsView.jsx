@@ -8,6 +8,7 @@ import {
 } from '@openedx/paragon';
 
 import { Add } from '@openedx/paragon/icons';
+import { UserIdentity } from '@edly-io/frontend-component-fbr';
 import {
   getRequests, reviewRequest, bulkApproveLeaves,
 } from './api';
@@ -31,7 +32,6 @@ import ThresholdControl from './ThresholdControl';
 import useModalParams from '../shared/useModalParams';
 import LeaveUsagePanel from './LeaveUsagePanel';
 import SessionLeavesPanel from './SessionLeavesPanel';
-import UserIdentity from './UserIdentity';
 import { getProgram } from '../app/api';
 
 const PAGE_SIZE = 15;
