@@ -3,10 +3,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import {
-  Alert, Badge, Button, DataTable, Form, Icon, IconButtonWithTooltip, Pagination, Spinner,
-  StandardModal,
+  ActionRow, Alert, Badge, Button, DataTable, Form, ModalDialog, Pagination, Spinner,
 } from '@openedx/paragon';
-import { History } from '@openedx/paragon/icons';
+import { Difference, History } from '@openedx/paragon/icons';
 import { UserIdentity } from '@edly-io/frontend-component-fbr';
 import { getAuditLogs } from './auditLogApi';
 import DatepickerControl from './date-picker-control/DatepickerControl';
@@ -165,53 +164,61 @@ const ChangesModal = ({ entry, onClose }) => {
     changes, object_repr: repr, timestamp, actor_name: actorName, actor_email: actorEmail, action,
   } = entry;
   const date = new Date(timestamp);
-  const hasChanges = changes && Object.keys(changes).length > 0;
+
+  const changeRows = Object.entries(changes || {}).map(([field, [oldVal, newVal]]) => ({
+    field, oldValue: String(oldVal ?? '—'), newValue: String(newVal ?? '—'),
+  }));
 
   return (
-    <StandardModal
+    <ModalDialog
       isOpen
       onClose={onClose}
       title={`Change Details — ${repr}`}
       size="lg"
+      hasCloseButton
       isFullscreenOnMobile
-      footerNode={<Button variant="tertiary" onClick={onClose}>Close</Button>}
+      className="audit-modal"
     >
-      <p className="audit-modal__meta">
-        {date.toLocaleString('en-GB', {
-          day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
-        })}
-        {' · '}
-        <Badge variant={ACTION_VARIANT[action] || 'light'}>{action}</Badge>
-        {' · '}
-        {actorName || 'System'}
-        {actorEmail && ` (${actorEmail})`}
-      </p>
+      <ModalDialog.Header>
+        <ModalDialog.Title>Change Details — {repr}</ModalDialog.Title>
+        <small className="audit-modal__subtitle">
+          {date.toLocaleString('en-GB', {
+            day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+          })}
+          {' · '}
+          <Badge variant={ACTION_VARIANT[action] || 'light'}>{action}</Badge>
+          {' · '}
+          {actorName || 'System'}
+          {actorEmail && ` (${actorEmail})`}
+        </small>
+      </ModalDialog.Header>
 
-      {!hasChanges ? (
-        <p className="audit-modal__empty">No field-level diff recorded for this entry.</p>
-      ) : (
-        <div className="audit-modal__table-scroll">
-          <table className="audit-modal__table">
-            <thead>
-              <tr>
-                {['Field', 'Old Value', 'New Value'].map(h => (
-                  <th key={h} className="audit-modal__th">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {Object.entries(changes).map(([field, [oldVal, newVal]], i) => (
-                <tr key={field} className={i % 2 === 0 ? 'audit-modal__tr--even' : 'audit-modal__tr--odd'}>
-                  <td className="audit-modal__td audit-modal__td--field">{field}</td>
-                  <td className="audit-modal__td audit-modal__td--old">{String(oldVal ?? '—')}</td>
-                  <td className="audit-modal__td audit-modal__td--new">{String(newVal ?? '—')}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </StandardModal>
+      <ModalDialog.Body>
+        {changeRows.length === 0 ? (
+          <p className="audit-modal__empty">No field-level diff recorded for this entry.</p>
+        ) : (
+          <div className="audit-log__table-scroll audit-log__table-scroll--narrow">
+            <DataTable
+              data={changeRows}
+              itemCount={changeRows.length}
+              columns={[
+                { Header: 'Field', accessor: 'field', cellClassName: 'audit-modal__td--field' },
+                { Header: 'Old value', accessor: 'oldValue', cellClassName: 'audit-modal__td--old' },
+                { Header: 'New value', accessor: 'newValue', cellClassName: 'audit-modal__td--new' },
+              ]}
+            >
+              <DataTable.Table />
+            </DataTable>
+          </div>
+        )}
+      </ModalDialog.Body>
+
+      <ModalDialog.Footer>
+        <ActionRow>
+          <Button variant="outline-primary" onClick={onClose}>Close</Button>
+        </ActionRow>
+      </ModalDialog.Footer>
+    </ModalDialog>
   );
 };
 
@@ -265,17 +272,21 @@ const RecordHistoryModal = ({
   const pageCount = Math.ceil(count / PAGE_SIZE);
 
   return (
-    <>
-      <StandardModal
-        isOpen
-        onClose={onClose}
-        title="Full History"
-        size="lg"
-        isFullscreenOnMobile
-        footerNode={<Button variant="tertiary" onClick={onClose}>Close</Button>}
-      >
-        <p className="audit-modal__meta">{objectRepr}</p>
+    <ModalDialog
+      isOpen
+      onClose={onClose}
+      title="Full History"
+      size="lg"
+      hasCloseButton
+      isFullscreenOnMobile
+      className="audit-modal"
+    >
+      <ModalDialog.Header>
+        <ModalDialog.Title>Full History</ModalDialog.Title>
+        <small className="audit-modal__subtitle">{objectRepr}</small>
+      </ModalDialog.Header>
 
+      <ModalDialog.Body>
         {loading && (
           <div className="text-center py-4">
             <Spinner animation="border" screenReaderText="Loading history" />
@@ -284,62 +295,63 @@ const RecordHistoryModal = ({
         {!loading && error && <Alert variant="danger">{error}</Alert>}
         {!loading && !error && (
           <>
-            <div className="audit-modal__table-scroll">
-              <table className="audit-modal__table">
-                <thead>
-                  <tr>
-                    {['Timestamp', 'Actor', 'Action', 'Fields changed'].map(h => (
-                      <th key={h} className="audit-modal__th">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {logs.length === 0 ? (
-                    <tr className="audit-modal__empty-row">
-                      <td colSpan={4} className="audit-modal__td audit-modal__td--center">
-                        No history recorded yet.
-                      </td>
-                    </tr>
-                  ) : logs.map((entry, i) => {
-                    const date = new Date(entry.timestamp);
-                    const fieldCount = entry.changes ? Object.keys(entry.changes).length : 0;
-                    return (
-                      <tr key={entry.id} className={i % 2 === 0 ? 'audit-modal__tr--even' : 'audit-modal__tr--odd'}>
-                        <td className="audit-modal__td">
-                          {date.toLocaleString('en-GB', {
-                            day: '2-digit',
-                            month: 'short',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </td>
-                        <td className="audit-modal__td">
-                          {entry.actor_name ? (
-                            <ActorBadge name={entry.actor_name} role={entry.actor_role} />
-                          ) : (
-                            <span className="text-muted">System</span>
-                          )}
-                        </td>
-                        <td className="audit-modal__td">
-                          <Badge variant={ACTION_VARIANT[entry.action] || 'light'}>{entry.action}</Badge>
-                        </td>
-                        <td className="audit-modal__td">
-                          {fieldCount > 0 ? (
-                            <Button
-                              variant="link"
-                              onClick={() => setChangesEntry(entry)}
-                              className="audit-modal__fields-btn"
-                            >
-                              {fieldCount} field{fieldCount !== 1 ? 's' : ''} changed
-                            </Button>
-                          ) : '—'}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div className="audit-log__table-scroll audit-log__table-scroll--narrow">
+              <DataTable
+                data={logs}
+                itemCount={count}
+                columns={[
+                  {
+                    Header: 'Timestamp',
+                    id: 'timestamp',
+                    Cell: ({ row }) => new Date(row.original.timestamp).toLocaleString('en-GB', {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    }),
+                  },
+                  {
+                    Header: 'Actor',
+                    id: 'actor',
+                    Cell: ({ row }) => (row.original.actor_name ? (
+                      <ActorBadge name={row.original.actor_name} role={row.original.actor_role} />
+                    ) : <span className="text-muted">System</span>),
+                  },
+                  {
+                    Header: 'Action',
+                    id: 'action',
+                    Cell: ({ row }) => (
+                      <Badge variant={ACTION_VARIANT[row.original.action] || 'light'}>
+                        {row.original.action}
+                      </Badge>
+                    ),
+                  },
+                  {
+                    Header: 'Fields changed',
+                    id: 'fields',
+                    Cell: ({ row }) => {
+                      const fieldCount = row.original.changes
+                        ? Object.keys(row.original.changes).length : 0;
+                      if (fieldCount === 0) { return '—'; }
+                      return (
+                        <Button
+                          variant="outline-primary"
+                          size="sm"
+                          onClick={() => setChangesEntry(row.original)}
+                          className="audit-log__changes-btn"
+                          iconBefore={Difference}
+                        >
+                          {fieldCount} field{fieldCount !== 1 ? 's' : ''} changed
+                        </Button>
+                      );
+                    },
+                  },
+                ]}
+              >
+                <DataTable.Table />
+                <DataTable.EmptyTable content="No history recorded yet." />
+              </DataTable>
             </div>
             {pageCount > 1 && (
               <Pagination
@@ -353,9 +365,16 @@ const RecordHistoryModal = ({
             )}
           </>
         )}
-      </StandardModal>
+      </ModalDialog.Body>
+
+      <ModalDialog.Footer>
+        <ActionRow>
+          <Button variant="outline-primary" onClick={onClose}>Close</Button>
+        </ActionRow>
+      </ModalDialog.Footer>
+
       {changesEntry && <ChangesModal entry={changesEntry} onClose={() => setChangesEntry(null)} />}
-    </>
+    </ModalDialog>
   );
 };
 
@@ -546,21 +565,23 @@ const AuditLogTable = ({
         return (
           <div className={entry.rowType === 'batch-child' ? 'audit-log__record--child' : ''}>
             <div className="audit-log__record-repr">{prefix}{entry.object_repr || '—'}</div>
-            {entry.object_pk && (
-              <div className="audit-log__record-id">ID: {entry.object_pk}</div>
-            )}
-            {entry.rowType !== 'batch-child' && (
-              <IconButtonWithTooltip
-                tooltipContent="Full history"
-                tooltipPlacement="top"
-                src={History}
-                iconAs={Icon}
-                alt="Full history"
-                onClick={() => setHistoryModal(entry)}
-                className="audit-log__history-btn"
-                size="sm"
-              />
-            )}
+            <div className="audit-log__record-meta">
+              {entry.object_pk && (
+                <span className="audit-log__record-id">ID: {entry.object_pk}</span>
+              )}
+              {entry.rowType !== 'batch-child' && (
+                <Button
+                  variant="outline-primary"
+                  size="sm"
+                  onClick={() => setHistoryModal(entry)}
+                  className="audit-log__history-btn"
+                  iconBefore={History}
+                  aria-label={`Full history for ${entry.object_repr || `record ${entry.object_pk}`}`}
+                >
+                  Full history
+                </Button>
+              )}
+            </div>
           </div>
         );
       },
@@ -576,27 +597,22 @@ const AuditLogTable = ({
           return <span className="text-muted audit-log__record-type">—</span>;
         }
         return (
-          <div>
-            <ul className="audit-log__changes-list">
-              {Object.entries(changes).slice(0, 3).map(([field, [oldVal, newVal]]) => (
-                <li key={field} className="audit-log__change-item">
-                  <span className="audit-log__change-field">{field}:</span>{' '}
-                  <span className="audit-log__change-old">{String(oldVal ?? '—')}</span>
-                  {' → '}
-                  <span className="audit-log__change-new">{String(newVal ?? '—')}</span>
-                </li>
-              ))}
-              {fieldCount > 3 && (
-                <li className="audit-log__changes-more">+{fieldCount - 3} more…</li>
-              )}
-            </ul>
+          <div className="audit-log__changes">
             <Button
-              variant="link"
+              variant="outline-primary"
+              size="sm"
               onClick={() => setChangesModal(row.original)}
-              className="audit-log__view-changes-btn"
+              className="audit-log__changes-btn"
+              iconBefore={Difference}
+              aria-label={`${fieldCount} field${fieldCount !== 1 ? 's' : ''} changed`
+                + `, view details for ${row.original.object_repr || 'this record'}`}
             >
-              View all changes
+              {fieldCount} field{fieldCount !== 1 ? 's' : ''} changed
             </Button>
+            <span className="audit-log__changes-fields">
+              {Object.keys(changes).slice(0, 3).join(', ')}
+              {fieldCount > 3 ? ` +${fieldCount - 3} more` : ''}
+            </span>
           </div>
         );
       },
