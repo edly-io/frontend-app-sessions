@@ -59,6 +59,7 @@ const MyFeedbackSummaryCard = () => {
             onClose={() => setIsListOpen(false)}
             title={intl.formatMessage(messages.summaryTitle)}
             size="md"
+            isFullscreenOnMobile
             className="feedback-form-modal"
           >
             <div className="my-feedback-modal-list">

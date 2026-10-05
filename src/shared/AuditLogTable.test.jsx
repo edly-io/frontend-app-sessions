@@ -95,6 +95,7 @@ describe('AuditLogTable', () => {
 
     await screen.findByText(/Change Details/);
     expect(screen.getByText('Full History')).toBeInTheDocument();
-    expect(screen.getAllByText('New title').length).toBeGreaterThan(1);
+    expect(screen.getByText('New title')).toBeInTheDocument();
+    expect(screen.getByText('Old title')).toBeInTheDocument();
   });
 });
