@@ -78,7 +78,7 @@ const messages = defineMessages({
   allAttendanceRecorded: { id: 'sessions.instructorDashboard.allAttendanceRecorded', defaultMessage: 'All attendance recorded' },
   nothingWaiting: { id: 'sessions.instructorDashboard.nothingWaiting', defaultMessage: 'Nothing is waiting on you.' },
   upcomingHolidays: { id: 'sessions.instructorDashboard.upcomingHolidays', defaultMessage: 'Upcoming holidays' },
-  noSessionsScheduled: { id: 'sessions.instructorDashboard.noSessionsScheduled', defaultMessage: 'No sessions scheduled' },
+  noSessionsScheduled: { id: 'sessions.instructorDashboard.noSessionsScheduled', defaultMessage: 'No sessions scheduled on this day' },
   noHolidays: { id: 'sessions.instructorDashboard.noHolidays', defaultMessage: 'There are no upcoming public holidays.' },
   holidayDateRange: { id: 'sessions.instructorDashboard.holidayDateRange', defaultMessage: '{startDate} – {endDate}' },
   viewAll: { id: 'sessions.instructorDashboard.viewAll', defaultMessage: 'View all' },

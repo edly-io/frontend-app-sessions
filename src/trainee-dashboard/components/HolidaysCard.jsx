@@ -4,7 +4,7 @@ import { Button, Card } from '@openedx/paragon';
 import { useIntl } from '@edx/frontend-platform/i18n';
 import useExpandableList from '../../dashboard/useExpandableList';
 import messages from '../messages';
-import { formatDate, getDateTile } from '../utils';
+import { formatDate, formatTime, getDateTile } from '../utils';
 
 const HolidaysCard = ({ holidays }) => {
   const intl = useIntl();
@@ -17,15 +17,13 @@ const HolidaysCard = ({ holidays }) => {
       <Card>
         <Card.Header
           title={<h2 id="holidays-heading">{intl.formatMessage(messages.holidays)}</h2>}
-          subtitle={intl.formatMessage(messages.noSessions)}
         />
         <Card.Section className="trainee-dashboard__compact-list dashboard-scroll-list" tabIndex={0} role="group" aria-labelledby="holidays-heading">
           {holidays.length === 0 && <p>{intl.formatMessage(messages.noHolidays)}</p>}
           {visibleItems.map(holiday => {
             const date = getDateTile(intl, holiday.start_date);
             const isRange = holiday.end_date && holiday.end_date !== holiday.start_date;
-            const description = holiday.description || (holiday.no_sessions
-              ? intl.formatMessage(messages.campusClosed) : '');
+            const sessions = holiday.sessions || [];
             return (
               <article className="trainee-dashboard__holiday-row" key={holiday.id}>
                 <time className="trainee-dashboard__holiday-date" dateTime={holiday.start_date}>
@@ -40,7 +38,23 @@ const HolidaysCard = ({ holidays }) => {
                     })}
                     </p>
                   )}
-                  {description && <p>{description}</p>}
+                  {holiday.description && <p>{holiday.description}</p>}
+                  {sessions.length > 0 ? (
+                    <ul className="trainee-dashboard__holiday-sessions">
+                      {sessions.map(session => (
+                        <li key={session.id}>
+                          <strong>{formatTime(intl, session.scheduled_start)}</strong>
+                          {' · '}
+                          {session.title}
+                          {session.course_code && ` (${session.course_code})`}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="trainee-dashboard__holiday-no-sessions">
+                      {intl.formatMessage(messages.noSessions)}
+                    </p>
+                  )}
                 </div>
               </article>
             );
@@ -66,6 +80,12 @@ HolidaysCard.propTypes = {
     start_date: PropTypes.string.isRequired,
     end_date: PropTypes.string.isRequired,
     no_sessions: PropTypes.bool.isRequired,
+    sessions: PropTypes.arrayOf(PropTypes.shape({
+      id: PropTypes.string.isRequired,
+      title: PropTypes.string.isRequired,
+      course_code: PropTypes.string,
+      scheduled_start: PropTypes.string.isRequired,
+    })),
   })).isRequired,
 };
 

@@ -669,6 +669,23 @@
   }
 }
 
+.trainee-dashboard__holiday-sessions {
+  margin: .375rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: .75rem;
+  color: var(--pgn-color-gray-700, #6B7885);
+
+  li {
+    padding: .125rem 0;
+  }
+}
+
+.trainee-dashboard__holiday-no-sessions {
+  margin: .375rem 0 0 !important;
+  font-style: italic;
+}
+
 .trainee-dashboard__certificate {
   h3 {
     margin: .75rem 0 .25rem;

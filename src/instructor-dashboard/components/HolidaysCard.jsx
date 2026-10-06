@@ -4,7 +4,7 @@ import { Alert, Button, Card } from '@openedx/paragon';
 import { useIntl } from '@edx/frontend-platform/i18n';
 import useExpandableList from '../../dashboard/useExpandableList';
 import messages from '../messages';
-import { formatDate, parseDashboardDate } from '../utils';
+import { formatDate, formatTime, parseDashboardDate } from '../utils';
 
 const HolidaysCard = ({ holidays }) => {
   const intl = useIntl();
@@ -16,7 +16,6 @@ const HolidaysCard = ({ holidays }) => {
     <Card>
       <Card.Header
         title={<h2 id="instructor-holidays-heading">{intl.formatMessage(messages.upcomingHolidays)}</h2>}
-        subtitle={intl.formatMessage(messages.noSessionsScheduled)}
       />
       <Card.Section tabIndex={0} role="group" aria-labelledby="instructor-holidays-heading">
         {!holidays.length ? <Alert variant="info">{intl.formatMessage(messages.noHolidays)}</Alert> : (
@@ -30,6 +29,7 @@ const HolidaysCard = ({ holidays }) => {
                   endDate: formatDate(intl, holiday.end_date),
                 })
                 : formatDate(intl, holiday.start_date, { weekday: 'long' });
+              const sessions = holiday.sessions || [];
               return (
                 <article className="instructor-dashboard__holiday-row" key={holiday.id}>
                   <time dateTime={holiday.start_date} className="instructor-dashboard__holiday-date">
@@ -42,6 +42,22 @@ const HolidaysCard = ({ holidays }) => {
                       {dateDescription}
                       {holiday.description && ` · ${holiday.description}`}
                     </p>
+                    {sessions.length > 0 ? (
+                      <ul className="instructor-dashboard__holiday-sessions">
+                        {sessions.map(session => (
+                          <li key={session.id}>
+                            <strong>{formatTime(intl, session.scheduled_start)}</strong>
+                            {' · '}
+                            {session.title}
+                            {session.course_code && ` (${session.course_code})`}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="instructor-dashboard__holiday-no-sessions">
+                        {intl.formatMessage(messages.noSessionsScheduled)}
+                      </p>
+                    )}
                   </div>
                 </article>
               );
@@ -69,6 +85,12 @@ HolidaysCard.propTypes = {
     description: PropTypes.string,
     no_sessions: PropTypes.bool.isRequired,
     campus_ids: PropTypes.arrayOf(PropTypes.number),
+    sessions: PropTypes.arrayOf(PropTypes.shape({
+      id: PropTypes.string.isRequired,
+      title: PropTypes.string.isRequired,
+      course_code: PropTypes.string,
+      scheduled_start: PropTypes.string.isRequired,
+    })),
   })).isRequired,
 };
 

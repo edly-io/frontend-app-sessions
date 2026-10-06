@@ -124,3 +124,44 @@ it('expands and collapses the complete holidays array', async () => {
   await user.click(screen.getByRole('button', { name: 'Show less' }));
   expect(screen.queryByText('Holiday 6')).not.toBeInTheDocument();
 });
+
+it('lists sessions scheduled on a holiday instead of claiming the day is clear', () => {
+  renderComponent(
+    <HolidaysCard holidays={[{
+      id: 1,
+      name: 'Program Holiday 01',
+      description: null,
+      start_date: '2026-09-25',
+      end_date: '2026-09-25',
+      no_sessions: false,
+      sessions: [{
+        id: 'sess-1',
+        title: 'Holiday Session 01',
+        course_code: 'TX-101',
+        scheduled_start: '2026-09-25T10:00:00+05:00',
+      }],
+    }]}
+    />,
+  );
+
+  expect(screen.getByText(/Holiday Session 01/)).toBeInTheDocument();
+  expect(screen.getByText(/TX-101/)).toBeInTheDocument();
+  expect(screen.queryByText('No sessions scheduled')).not.toBeInTheDocument();
+});
+
+it('shows the no-sessions fallback per holiday when none are scheduled', () => {
+  renderComponent(
+    <HolidaysCard holidays={[{
+      id: 2,
+      name: 'Chehlum',
+      description: null,
+      start_date: '2026-10-15',
+      end_date: '2026-10-15',
+      no_sessions: true,
+      sessions: [],
+    }]}
+    />,
+  );
+
+  expect(screen.getByText('No sessions scheduled')).toBeInTheDocument();
+});
