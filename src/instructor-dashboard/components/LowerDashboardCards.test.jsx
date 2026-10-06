@@ -134,7 +134,34 @@ it('accepts snake-case holidays with a nullable description', () => {
 
   expect(screen.getByText('Chehlum')).toBeInTheDocument();
   expect(screen.getByText(/Wednesday/)).toBeInTheDocument();
+  expect(screen.getByText('No sessions scheduled on this day')).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'View all' })).not.toBeInTheDocument();
+});
+
+it('lists sessions scheduled on a holiday instead of claiming the day is clear', () => {
+  renderWithIntl(
+    <HolidaysCard holidays={[{
+      id: 42,
+      type: 'public_holiday',
+      name: 'Program Holiday 01',
+      description: null,
+      start_date: '2026-09-25',
+      end_date: '2026-09-25',
+      no_sessions: false,
+      campus_ids: [2],
+      sessions: [{
+        id: 'sess-1',
+        title: 'Holiday Session 01',
+        course_code: 'TX-101',
+        scheduled_start: '2026-09-25T10:00:00+05:00',
+      }],
+    }]}
+    />,
+  );
+
+  expect(screen.getByText(/Holiday Session 01/)).toBeInTheDocument();
+  expect(screen.getByText(/TX-101/)).toBeInTheDocument();
+  expect(screen.queryByText('No sessions scheduled on this day')).not.toBeInTheDocument();
 });
 
 it('expands holidays and displays multi-day date ranges', async () => {
