@@ -699,3 +699,29 @@ $month-gap: 4px;
   flex: 0 0 auto;
   width: 9.5rem;
 }
+
+// Shared by both "Ends" rows (on a date / after N occurrences). Below `sm`
+// the control and its "(max N)" hint don't both fit beside the radio/label
+// on one line, so the hint drops under the control; at `sm`+ there's room,
+// so they sit side by side.
+.schedule-meeting__recurrence-end-row {
+  gap: .75rem;
+  align-items: flex-start;
+
+  @media (--pgn-size-breakpoint-min-width-sm) {
+    align-items: center;
+  }
+}
+
+.schedule-meeting__recurrence-end-content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: .25rem;
+
+  @media (--pgn-size-breakpoint-min-width-sm) {
+    flex-direction: row;
+    align-items: center;
+    gap: .4rem;
+  }
+}
