@@ -141,10 +141,11 @@ const getChipBg = (session, sessionTypeColors) => (
   || '#6c757d'
 );
 
-// A day is today, a weekend, or neither. Both the cell's ground and the
-// day-name colour follow from that, so it is a modifier rather than a value.
-const dayVariant = (isToday, isWeekend) => {
+// A day is today, a holiday, a weekend, or neither. Both the cell's ground and
+// the day-name colour follow from that, so it is a modifier rather than a value.
+const dayVariant = (isToday, isWeekend, isHoliday = false) => {
   if (isToday) { return 'today'; }
+  if (isHoliday) { return 'holiday'; }
   if (isWeekend) { return 'weekend'; }
   return 'plain';
 };
@@ -1149,20 +1150,13 @@ const TimeGrid = ({
         {days.map((day) => {
           const isToday = toDateKey(day) === todayKey;
           const isWeekend = isWeekendDay(day);
+          const dayHolidays = holidayMap.get(toDateKey(day)) || [];
           return (
             <div
               key={toDateKey(day)}
-              className={classNames('calendar-timegrid__day text-center', `calendar-timegrid__day--${dayVariant(isToday, isWeekend)}`)}
+              className={classNames('calendar-timegrid__day text-center', `calendar-timegrid__day--${dayVariant(isToday, isWeekend, dayHolidays.length > 0)}`)}
             >
               {day.toLocaleDateString('en-US', { weekday: 'short' })} {day.getDate()}
-              {(holidayMap.get(toDateKey(day)) || []).map((h) => (
-                <div
-                  key={h.id}
-                  className="calendar-tag calendar-tag--holiday text-truncate"
-                >
-                  {h.name}
-                </div>
-              ))}
               {isLearner && leaveDateMap?.get(toDateKey(day)) && (
                 <div
                   className="calendar-tag calendar-tag--leave text-truncate"
@@ -1197,14 +1191,35 @@ const TimeGrid = ({
             const key = toDateKey(day);
             const isToday = key === todayKey;
             const isWeekend = isWeekendDay(day);
+            const dayHolidays = holidayMap.get(key) || [];
             const daySessions = sessionMap.get(key) || [];
             const layout = layoutSessions(daySessions);
 
             return (
               <div
                 key={key}
-                className={classNames('calendar-timegrid__col position-relative', `calendar-timegrid__col--${dayVariant(isToday, isWeekend)}`)}
+                className={classNames('calendar-timegrid__col position-relative', `calendar-timegrid__col--${dayVariant(isToday, isWeekend, dayHolidays.length > 0)}`)}
               >
+                {/* Holiday name — horizontal on a wide column; below `md` the
+                    column is too narrow for that, so it runs vertically
+                    instead. Both read from the same string; CSS picks one. */}
+                {dayHolidays.length > 0 && (
+                  <>
+                    <div
+                      className="calendar-timegrid__holiday-label calendar-timegrid__holiday-label--horizontal position-absolute text-truncate user-select-none"
+                      title={dayHolidays.map((h) => h.name).join(', ')}
+                    >
+                      {dayHolidays.map((h) => h.name).join(', ')}
+                    </div>
+                    <div
+                      className="calendar-timegrid__holiday-label calendar-timegrid__holiday-label--vertical position-absolute text-truncate user-select-none"
+                      title={dayHolidays.map((h) => h.name).join(', ')}
+                    >
+                      {dayHolidays.map((h) => h.name).join(', ')}
+                    </div>
+                  </>
+                )}
+
                 {/* Hour grid lines */}
                 {HOURS.map((hour) => (
                   <div

@@ -1286,10 +1286,12 @@ const ScheduleMeetingModal = ({
               <Form.Group className="mb-3">
                 <Form.Label>Ends</Form.Label>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  <div className="d-flex align-items-center" style={{ gap: '0.75rem' }}>
-                    <input type="radio" id="end-date" name="endType" checked={endType === 'date'} onChange={() => setEndType('date')} />
-                    <label htmlFor="end-date" className="mb-0" style={{ minWidth: '42px' }}>On</label>
-                    <div className="d-flex align-items-center" style={{ gap: '0.4rem' }}>
+                  <div className="d-flex schedule-meeting__recurrence-end-row">
+                    <div className="d-flex align-items-center" style={{ gap: '0.5rem' }}>
+                      <input type="radio" id="end-date" name="endType" checked={endType === 'date'} onChange={() => setEndType('date')} />
+                      <label htmlFor="end-date" className="mb-0" style={{ minWidth: '42px' }}>On</label>
+                    </div>
+                    <div className="schedule-meeting__recurrence-end-content">
                       <DatepickerControl
                         value={endDate}
                         onChange={(value) => { setEndType('date'); setEndDate(value); }}
@@ -1299,30 +1301,34 @@ const ScheduleMeetingModal = ({
                         className="schedule-meeting__recurrence-end-date"
                         maxDate={getMaxEndDate(formData.scheduled_start_time)}
                       />
-                      <small style={{ color: '#6c757d', whiteSpace: 'nowrap' }}>(max {MAX_END_MONTHS} months)</small>
+                      <small style={{ color: '#6c757d' }}>(max {MAX_END_MONTHS} months)</small>
                     </div>
                   </div>
-                  <div className="d-flex align-items-center" style={{ gap: '0.75rem' }}>
-                    <input type="radio" id="end-count" name="endType" checked={endType === 'count'} onChange={() => setEndType('count')} />
-                    <label htmlFor="end-count" className="mb-0" style={{ minWidth: '42px' }}>After</label>
-                    <div className="d-flex align-items-center" style={{ gap: '0.4rem' }}>
-                      <Form.Control
-                        type="text"
-                        inputMode="numeric"
-                        value={endCount}
-                        onChange={(e) => {
-                          setEndType('count');
-                          const v = parseInt(e.target.value.replace(/\D/g, ''), 10);
-                          if (!Number.isNaN(v)) {
-                            setEndCount(Math.min(MAX_END_COUNT, Math.max(1, v)));
-                          }
-                        }}
-                        onClick={() => setEndType('count')}
-                        size="sm"
-                        style={{ width: '56px', textAlign: 'center', flexShrink: 0 }}
-                      />
-                      <span style={{ color: '#3d3d3d', whiteSpace: 'nowrap' }}>occurrences</span>
-                      <small style={{ color: '#6c757d', whiteSpace: 'nowrap' }}>(max {MAX_END_COUNT})</small>
+                  <div className="d-flex schedule-meeting__recurrence-end-row">
+                    <div className="d-flex align-items-center" style={{ gap: '0.5rem' }}>
+                      <input type="radio" id="end-count" name="endType" checked={endType === 'count'} onChange={() => setEndType('count')} />
+                      <label htmlFor="end-count" className="mb-0" style={{ minWidth: '42px' }}>After</label>
+                    </div>
+                    <div className="schedule-meeting__recurrence-end-content">
+                      <div className="d-flex align-items-center" style={{ gap: '0.4rem' }}>
+                        <Form.Control
+                          type="text"
+                          inputMode="numeric"
+                          value={endCount}
+                          onChange={(e) => {
+                            setEndType('count');
+                            const v = parseInt(e.target.value.replace(/\D/g, ''), 10);
+                            if (!Number.isNaN(v)) {
+                              setEndCount(Math.min(MAX_END_COUNT, Math.max(1, v)));
+                            }
+                          }}
+                          onClick={() => setEndType('count')}
+                          size="sm"
+                          style={{ width: '56px', textAlign: 'center', flexShrink: 0 }}
+                        />
+                        <span style={{ color: '#3d3d3d' }}>occurrences</span>
+                      </div>
+                      <small style={{ color: '#6c757d' }}>(max {MAX_END_COUNT})</small>
                     </div>
                   </div>
                 </div>
