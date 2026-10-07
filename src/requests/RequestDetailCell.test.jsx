@@ -41,11 +41,10 @@ describe('remote_session', () => {
     expect(screen.getByText(/Session A/)).toBeInTheDocument();
   });
 
-  it('collapses again on second click', () => {
+  it('closes the details modal', () => {
     wrap(req);
-    const btn = screen.getByRole('button', { name: /details/i });
-    fireEvent.click(btn);
-    fireEvent.click(btn);
+    fireEvent.click(screen.getByRole('button', { name: /details/i }));
+    fireEvent.click(screen.getByText('Close', { selector: 'button' }));
     expect(screen.queryByText(/Session A/)).not.toBeInTheDocument();
   });
 

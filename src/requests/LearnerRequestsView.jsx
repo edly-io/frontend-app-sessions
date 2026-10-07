@@ -117,12 +117,16 @@ const LearnerRequestsView = ({ lockedType }) => {
     {
       Header: 'Detail',
       id: 'detail',
-      Cell: ({ row }) => <RequestDetailCell req={row.original} programKey={programId || ''} />,
+      Cell: ({ row }) => (
+        <div className="requests-view__detail-cell">
+          <RequestDetailCell req={row.original} programKey={programId || ''} />
+        </div>
+      ),
     },
     {
       Header: 'Reason',
       accessor: 'reason',
-      Cell: ({ value }) => <CollapsibleText text={value} />,
+      Cell: ({ value }) => <div className="requests-view__reason-cell"><CollapsibleText text={value} /></div>,
     },
     {
       Header: 'Status',
@@ -141,7 +145,7 @@ const LearnerRequestsView = ({ lockedType }) => {
     {
       Header: 'Submitted',
       accessor: 'created',
-      Cell: ({ value }) => formatDateTime(value),
+      Cell: ({ value }) => <span className="text-nowrap">{formatDateTime(value)}</span>,
     },
     {
       Header: 'Attachment',

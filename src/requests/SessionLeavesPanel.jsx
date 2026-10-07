@@ -47,11 +47,12 @@ const SessionLeavesPanel = ({ programKey }) => {
     {
       Header: 'Session',
       accessor: 'title',
+      Cell: ({ value }) => <span className="text-nowrap">{value}</span>,
     },
     {
       Header: 'Date & Time',
       accessor: 'scheduled_start_time',
-      Cell: ({ value }) => (value ? formatDateTime(value) : '—'),
+      Cell: ({ value }) => <span className="text-nowrap">{value ? formatDateTime(value) : '—'}</span>,
     },
     {
       Header: 'Approved Leaves',

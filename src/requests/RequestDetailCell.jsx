@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import PropTypes from 'prop-types';
-import { Spinner } from '@openedx/paragon';
+import { Button, Spinner, StandardModal } from '@openedx/paragon';
 import { REQUEST_TYPE } from '../shared/constants';
 import { getSessions } from './api';
 
@@ -19,29 +19,6 @@ const deriveDateRange = (sessions) => {
   const start = formatDate(times[0]);
   const end = formatDate(times[times.length - 1]);
   return start === end ? start : `${start} – ${end}`;
-};
-
-const TOGGLE_STYLE = {
-  background: 'none',
-  border: 'none',
-  padding: 0,
-  fontSize: 13,
-  color: '#374151',
-  cursor: 'pointer',
-  display: 'block',
-  textAlign: 'left',
-};
-
-const PANEL_STYLE = {
-  marginTop: 6,
-  paddingLeft: 8,
-  borderLeft: '2px solid #e5e7eb',
-};
-
-const ITEM_STYLE = {
-  fontSize: 12,
-  color: '#374151',
-  lineHeight: 1.7,
 };
 
 const CATEGORY_LABELS = {
@@ -139,10 +116,9 @@ const RequestDetailCell = ({ req, programKey }) => {
     badgeMode = isFullDay ? 'full_day' : 'session_specific';
   }
 
-  const toggle = () => {
-    const next = !expanded;
-    setExpanded(next);
-    if (next && isFullDay && !localFetched && programKey && req.leave_start_date && req.leave_end_date) {
+  const openDetails = () => {
+    setExpanded(true);
+    if (isFullDay && !localFetched && programKey && req.leave_start_date && req.leave_end_date) {
       setLoadingSessions(true);
       getSessions({
         program_key: programKey,
@@ -155,58 +131,78 @@ const RequestDetailCell = ({ req, programKey }) => {
     }
   };
 
-  const panel = expanded ? (
-    <div style={PANEL_STYLE}>
-      {dateRange && (
-        <div style={{ ...ITEM_STYLE, fontWeight: 500, marginBottom: 2 }}>
-          {dateRange}
-        </div>
-      )}
-      {isFullDay && (
-        <div style={{ ...ITEM_STYLE, color: '#6b7280' }}>
-          {loadingSessions && <Spinner animation="border" size="sm" />}
-          {!loadingSessions && (() => {
-            const display = localSessions.length > 0 ? localSessions : sessions;
-            if (display.length === 0) {
-              return localFetched || !programKey
-                ? 'No sessions scheduled in this period'
-                : null;
-            }
-            return (
-              <ul style={{ paddingLeft: 0, listStyle: 'none', margin: '2px 0 0' }}>
-                {display.map((s) => (
-                  <li key={s.id} style={ITEM_STYLE}>
-                    {formatDate(s.scheduled_start_time)} · {s.title}
-                  </li>
-                ))}
-              </ul>
-            );
-          })()}
-        </div>
-      )}
-      {!isFullDay && sessions.length > 0 && (
-        <ul style={{ paddingLeft: 0, listStyle: 'none', margin: 0 }}>
-          {sessions.map((s) => (
-            <li key={s.id} style={ITEM_STYLE}>
-              {formatDate(s.scheduled_start_time)} · {s.title}
-            </li>
-          ))}
-        </ul>
-      )}
-      {!isFullDay && sessions.length === 0 && (
-        <span style={{ ...ITEM_STYLE, color: '#9ca3af' }}>No sessions</span>
-      )}
-    </div>
-  ) : null;
+  const renderSessionList = (list) => (
+    <ul className="list-unstyled mb-0">
+      {list.map((s) => (
+        <li key={s.id} className="py-1">
+          {formatDate(s.scheduled_start_time)} · {s.title}
+        </li>
+      ))}
+    </ul>
+  );
+
+  let sessionsContent;
+  if (isFullDay) {
+    const display = localSessions.length > 0 ? localSessions : sessions;
+    if (loadingSessions) {
+      sessionsContent = <Spinner animation="border" size="sm" screenReaderText="Loading sessions" />;
+    } else if (display.length > 0) {
+      sessionsContent = renderSessionList(display);
+    } else if (localFetched || !programKey) {
+      sessionsContent = <span className="text-muted">No sessions scheduled in this period</span>;
+    } else {
+      sessionsContent = null;
+    }
+  } else if (sessions.length > 0) {
+    sessionsContent = renderSessionList(sessions);
+  } else {
+    sessionsContent = <span className="text-muted">No sessions</span>;
+  }
+
+  let modalTitle = 'Request details';
+  if (isLeave) {
+    modalTitle = 'Leave details';
+  } else if (req.request_type_label === REQUEST_TYPE.REMOTE_SESSION) {
+    modalTitle = 'Remote session details';
+  }
 
   return (
     <div>
       {isLeave && <ModeBadge mode={badgeMode} />}
       {isLeave && <CategoryBadge category={req.category} />}
-      <button type="button" onClick={toggle} style={TOGGLE_STYLE}>
-        Details {expanded ? '▲' : '▼'}
-      </button>
-      {panel}
+      <Button
+        variant="link"
+        size="sm"
+        className="d-block p-0 text-left"
+        onClick={openDetails}
+      >
+        Details
+      </Button>
+      <StandardModal
+        isOpen={expanded}
+        onClose={() => setExpanded(false)}
+        title={modalTitle}
+        size="md"
+        isFullscreenOnMobile
+        footerNode={(
+          <Button variant="tertiary" onClick={() => setExpanded(false)}>Close</Button>
+        )}
+      >
+        {isLeave && (
+          <div className="mb-3">
+            <ModeBadge mode={badgeMode} />
+            <CategoryBadge category={req.category} />
+          </div>
+        )}
+        {dateRange && (
+          <div className="mb-3">
+            <div className="small text-muted">{isFullDay ? 'Leave period' : 'Date'}</div>
+            <div className="font-weight-bold">{dateRange}</div>
+          </div>
+        )}
+        <div className="small text-muted">Sessions</div>
+        {sessionsContent}
+      </StandardModal>
     </div>
   );
 };
