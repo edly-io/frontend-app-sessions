@@ -125,6 +125,48 @@ it('uses average course progress and represents unavailable progress without mod
   expect(screen.queryByRole('button', { name: 'Manage' })).not.toBeInTheDocument();
 });
 
+it('keeps the course cards in a shared row on one stretch chain', () => {
+  renderComponent(
+    <InstructorCoursesSection courses={[
+      {
+        course_id: 'course-v1:FBR+TX101+2026',
+        program_key: 'program-v1:FBR+STP50+2026',
+        course_code: 'TX-101',
+        name: 'Income Tax Law',
+        programme_name: '50th STP',
+        campus: { name: 'Lahore' },
+        trainee_count: 32,
+        average_progress_percentage: 63,
+        delivered_hours: 12,
+        status: 'in_progress',
+        can_manage: true,
+      },
+      {
+        course_id: 'course-v1:FBR+TX102+2026',
+        program_key: 'program-v1:FBR+STP50+2026',
+        course_code: 'TX-102',
+        name: 'Customs and Excise Enforcement, a title long enough to wrap onto a second line',
+        programme_name: '50th STP',
+        campus: { name: 'Lahore' },
+        trainee_count: 32,
+        average_progress_percentage: 10,
+        delivered_hours: 4,
+        status: 'in_progress',
+        can_manage: true,
+      },
+    ]}
+    />,
+  );
+
+  const row = document.querySelector('.dashboard-equal-height');
+  expect(row).not.toBeNull();
+
+  [...row.children].forEach(col => {
+    expect(col.className).toMatch(/\bcol(-|\b)/);
+    expect(col.querySelector('.pgn__card')).not.toBeNull();
+  });
+});
+
 it('renders snake_case delivery data and a signed negative monthly change', () => {
   renderComponent(
     <DeliverySummaryCard
