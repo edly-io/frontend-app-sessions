@@ -1,81 +1,74 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import PropTypes from 'prop-types';
-import {
-  Badge, Button, Col, Form, Row, Spinner,
-} from '@openedx/paragon';
-import { updateProgram } from '../app/api';
+import { useIntl } from '@edx/frontend-platform/i18n';
+import { Form, Icon, IconButton } from '@openedx/paragon';
+import { Add, Remove } from '@openedx/paragon/icons';
+import messages from './messages';
 import './requests.scss';
 
-const ThresholdControl = ({ programKey, initialThreshold, onUpdate }) => {
-  const [value, setValue] = useState(initialThreshold);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState('');
-
-  useEffect(() => { setValue(initialThreshold); }, [initialThreshold]);
-
-  const handleSave = async () => {
-    setSaving(true);
-    setSaved(false);
-    setError('');
-    try {
-      const updated = await updateProgram(programKey, { threshold: value });
-      const newThreshold = updated.threshold ?? value;
-      setValue(newThreshold);
-      onUpdate(newThreshold);
-      setSaved(true);
-      setTimeout(() => window.location.reload(), 800);
-    } catch {
-      setError('Failed to save threshold.');
-    } finally {
-      setSaving(false);
-    }
-  };
+// Leave-threshold number field with − / + steppers, built on Paragon's
+// Form.Control leading/trailing decorators.
+const ThresholdControl = ({
+  id, value, onChange, min, disabled,
+}) => {
+  const intl = useIntl();
+  const numeric = value === '' ? min : Number(value);
+  const step = (delta) => onChange(Math.max(min, numeric + delta));
 
   return (
-    <Row className="requests-filters align-items-end">
-      <Col xs="auto" className="mb-2">
-        <Form.Label htmlFor="leave-threshold" className="requests-filters__label">
-          Leave threshold
-        </Form.Label>
-        <Form.Control
-          id="leave-threshold"
-          type="number"
-          min={0}
-          value={value}
-          onChange={(e) => setValue(Number(e.target.value))}
-          className="requests-filters__number"
-          disabled={saving}
-        />
-      </Col>
-      <Col xs="auto" className="mb-2">
-        <Button
-          variant="outline-primary"
-          size="sm"
-          onClick={handleSave}
-          disabled={saving || value === initialThreshold}
-        >
-          {saving ? <Spinner animation="border" size="sm" /> : 'Save'}
-        </Button>
-      </Col>
-      {(saved || error) && (
-        <Col xs="auto" className="mb-2">
-          {saved && <Badge variant="success">Saved</Badge>}
-          {error && <Badge variant="danger">{error}</Badge>}
-        </Col>
-      )}
-    </Row>
+    <Form.Group controlId={id} className="mb-0">
+      <Form.Label>Leave threshold (days)</Form.Label>
+      <Form.Control
+        type="number"
+        min={min}
+        step={1}
+        inputMode="numeric"
+        value={value}
+        disabled={disabled}
+        // className lands on Paragon's decorator wrapper, controlClassName on the <input>.
+        className="requests-threshold"
+        controlClassName="requests-threshold__input text-center"
+        onChange={(e) => onChange(e.target.value === '' ? '' : Number(e.target.value))}
+        leadingElement={(
+          <IconButton
+            src={Remove}
+            iconAs={Icon}
+            alt="Decrease threshold"
+            size="sm"
+            onClick={() => step(-1)}
+            disabled={disabled || numeric <= min}
+          />
+        )}
+        trailingElement={(
+          <IconButton
+            src={Add}
+            iconAs={Icon}
+            alt="Increase threshold"
+            size="sm"
+            onClick={() => step(1)}
+            disabled={disabled}
+          />
+        )}
+      />
+      <Form.Control.Feedback type="default">
+        {intl.formatMessage(messages.leaveThresholdHelp)}
+      </Form.Control.Feedback>
+    </Form.Group>
   );
 };
 
 ThresholdControl.propTypes = {
-  programKey: PropTypes.string.isRequired,
-  initialThreshold: PropTypes.number.isRequired,
-  onUpdate: PropTypes.func,
+  id: PropTypes.string,
+  value: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
+  onChange: PropTypes.func.isRequired,
+  min: PropTypes.number,
+  disabled: PropTypes.bool,
 };
 
 ThresholdControl.defaultProps = {
-  onUpdate: () => {},
+  id: 'leave-threshold',
+  min: 0,
+  disabled: false,
 };
 
 export default ThresholdControl;

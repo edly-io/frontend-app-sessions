@@ -1,7 +1,9 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { Button, ButtonGroup } from '@openedx/paragon';
-import { Outlet, useParams, useSearchParams } from 'react-router-dom';
+import {
+  Outlet, useLocation, useParams, useSearchParams,
+} from 'react-router-dom';
 
 import { useConfig } from '../app/useConfig';
 import { USER_ROLE } from '../shared/constants';
@@ -10,6 +12,7 @@ import InstructorRequestsView from './InstructorRequestsView';
 import LearnerRequestsView from './LearnerRequestsView';
 import RequestsSubNav from './RequestsSubNav';
 import AuditLogTable from '../shared/AuditLogTable';
+import LeaveSettingsModal from './LeaveSettingsModal';
 
 // Renders the role-appropriate view for a single request type tab.
 // Used as the element for /:programId/requests/leaves and /remote-sessions.
@@ -38,6 +41,8 @@ const RequestsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeView = searchParams.get('view') || 'list';
   const recordFilter = searchParams.get('record_id') || undefined;
+  const { pathname } = useLocation();
+  const isLeavesTab = /\/requests\/leaves\/?$/.test(pathname);
 
   const handleViewChange = (view) => {
     setSearchParams((prev) => {
@@ -58,7 +63,8 @@ const RequestsPage = () => {
   return (
     <>
       {isAdmin && (
-        <div className="d-flex justify-content-end mb-3">
+        <div className="d-flex flex-wrap justify-content-end align-items-center mb-3" style={{ gap: '.5rem' }}>
+          {isLeavesTab && activeView === 'list' && <LeaveSettingsModal programKey={programId} />}
           <ButtonGroup size="sm">
             <Button
               variant={activeView === 'list' ? 'primary' : 'outline-primary'}
