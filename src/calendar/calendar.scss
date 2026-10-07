@@ -397,6 +397,11 @@ $month-gap: 4px;
     &--today {
       color: #4F46E5;
     }
+
+    &--holiday {
+      color: var(--sessions-cal-graded-text);
+      background: var(--sessions-cal-holiday-bg);
+    }
   }
 
   &__body {
@@ -422,6 +427,44 @@ $month-gap: 4px;
     &--today {
       background: var(--sessions-cal-today-bg);
     }
+
+    &--holiday {
+      background: var(--sessions-cal-holiday-bg);
+    }
+  }
+
+  // Below `md` a column is too narrow for horizontal text, so the holiday
+  // name runs vertically there instead; at `md`+ it reads left-to-right like
+  // everything else on the row. Same string, same pinned top-left anchor —
+  // only the orientation changes, chosen in CSS since there is no JS
+  // breakpoint hook in this codebase.
+  &__holiday-label {
+    top: 4px;
+    left: 4px;
+    font-weight: 600;
+    color: var(--sessions-cal-graded-text);
+    z-index: 1;
+
+    &--vertical {
+      max-height: calc(100% - 8px);
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      font-size: 16px;
+
+      @media (--pgn-size-breakpoint-min-width-md) {
+        display: none;
+      }
+    }
+
+    &--horizontal {
+      display: none;
+      right: 4px;
+      font-size: 11px;
+
+      @media (--pgn-size-breakpoint-min-width-md) {
+        display: block;
+      }
+    }
   }
 }
 
@@ -435,6 +478,7 @@ $month-gap: 4px;
 .calendar-hour-line {
   left: 0;
   right: 0;
+  z-index: 0;
   border-top: 1px solid var(--sessions-divider);
 }
 
