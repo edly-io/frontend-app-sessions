@@ -5,6 +5,7 @@ import { useParams } from 'react-router-dom';
 import {
   Alert, Badge, Button, Col, Container, DataTable, Form, Row, Spinner,
 } from '@openedx/paragon';
+import { UserIdentity } from '@edly-io/frontend-component-fbr';
 
 import { useConfig } from '../app/useConfig';
 import {
@@ -15,7 +16,7 @@ import {
   SUBSTITUTE_REQUEST_STATUS_VARIANTS,
   USER_ROLE,
 } from '../shared/constants';
-import { extractApiError, formatDateTime } from '../shared/utils';
+import { extractApiError, formatDateTime, formatLeaveRange } from '../shared/utils';
 import DatepickerControl from '../shared/date-picker-control/DatepickerControl';
 import './requests.scss';
 import { cancelSession } from '../calendar/api';
@@ -121,7 +122,7 @@ const SubstituteRequestsView = () => {
         const { session } = row.original;
         return (
           <div>
-            <div className="d-flex align-items-center font-weight-bold">
+            <div className="d-flex align-items-center font-weight-bold text-nowrap">
               {session.title}
               {/* The Status column reports the *request's* status, so without
                   this a cancelled session is indistinguishable from a live one
@@ -130,7 +131,7 @@ const SubstituteRequestsView = () => {
                 <Badge variant="light" className="ml-2">{SESSION_STATUS_LABELS.cancelled}</Badge>
               )}
             </div>
-            <div className="text-muted requests-view__cell-meta">
+            <div className="text-muted requests-view__cell-meta text-nowrap">
               {formatDateTime(session.scheduled_start_time)}
             </div>
             {session.location?.name && (
@@ -147,16 +148,24 @@ const SubstituteRequestsView = () => {
         const { leave_request: lr } = row.original;
         return (
           <div>
-            <div className="requests-view__cell-text">{lr.submitter_name || lr.submitter_email}</div>
-            {lr.submitter_name && (
-              <div className="text-muted requests-view__cell-meta">{lr.submitter_email}</div>
+            <UserIdentity
+              name={lr.submitter_name || lr.submitter_email}
+              badges={['Instructor']}
+              size="compact"
+            />
+            {lr.submitter_name && lr.submitter_email && (
+              <small className="text-muted d-block mt-1">{lr.submitter_email}</small>
             )}
-            <div className="text-muted requests-view__cell-meta">
-              {lr.leave_start_date} – {lr.leave_end_date}
-            </div>
           </div>
         );
       },
+    },
+    {
+      Header: 'Leave period',
+      id: 'leave-period',
+      Cell: ({ row }) => (
+        <span className="text-nowrap">{formatLeaveRange(row.original.leave_request) || '—'}</span>
+      ),
     },
     {
       Header: 'Status',

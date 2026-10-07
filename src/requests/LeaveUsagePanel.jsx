@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import {
   Alert, Button, Col, DataTable, Form, Row, Spinner,
 } from '@openedx/paragon';
+import { UserIdentity } from '@edly-io/frontend-component-fbr';
 import { getLeaveUsage } from './api';
 import { extractApiError } from '../shared/utils';
 import './requests.scss';
@@ -30,9 +31,9 @@ const NameCell = ({ row }) => {
     full_name: fullName, username, total_leaves_availed: used, threshold,
   } = row.original;
   return (
-    <span className={used > threshold ? 'font-weight-bold' : undefined}>
-      {fullName || username}
-    </span>
+    <div className={used > threshold ? 'font-weight-bold' : undefined}>
+      <UserIdentity name={fullName || username} badges={['Trainee']} size="compact" />
+    </div>
   );
 };
 NameCell.propTypes = { row: rowShape.isRequired };

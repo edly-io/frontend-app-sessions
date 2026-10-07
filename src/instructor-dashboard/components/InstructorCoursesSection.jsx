@@ -39,14 +39,14 @@ const InstructorCoursesSection = ({ courses }) => {
         <span>{intl.formatMessage(messages.coursesSubtitle)}</span>
       </div>
       {!courses.length ? <Alert variant="info">{intl.formatMessage(messages.noCourses)}</Alert> : (
-        <Row>
+        <Row className="dashboard-equal-height">
           {courses.map(course => {
             const progress = course.average_progress_percentage;
             const metadata = [course.programme_name, course.campus?.name].filter(Boolean).join(' · ');
             const hasProgress = Number.isFinite(progress) && course.status !== 'unavailable';
             const learningUrl = buildLearningUrl(course.course_id);
             return (
-              <Col xs={12} lg={6} className="mb-3" key={`${course.program_key}:${course.course_id}`}>
+              <Col xs={12} md={6} lg={4} className="mb-3" key={`${course.program_key}:${course.course_id}`}>
                 <Card className={`instructor-dashboard__course-card instructor-dashboard__course-card--${course.status}`}>
                   <Card.Section>
                     <div className="instructor-dashboard__course-header">

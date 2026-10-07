@@ -28,11 +28,9 @@ import DatepickerControl from '../shared/date-picker-control/DatepickerControl';
 import './requests.scss';
 import RequestDetailCell from './RequestDetailCell';
 import CreateRequestModal from './CreateRequestModal';
-import ThresholdControl from './ThresholdControl';
 import useModalParams from '../shared/useModalParams';
 import LeaveUsagePanel from './LeaveUsagePanel';
 import SessionLeavesPanel from './SessionLeavesPanel';
-import { getProgram } from '../app/api';
 
 const PAGE_SIZE = 15;
 
@@ -100,21 +98,6 @@ const AdminRequestsView = ({ readOnly, showNewRequest, lockedType }) => {
   const [bulkApproving, setBulkApproving] = useState(false);
   // When set, a confirm dialog lists the selected leaves whose date has already passed.
   const [bulkPastLeaves, setBulkPastLeaves] = useState(null);
-
-  // Threshold — leaves tab only (for ThresholdControl settings UI)
-  const [threshold, setThreshold] = useState(null);
-  const [thresholdLoading, setThresholdLoading] = useState(false);
-
-  // Fetch threshold when in leaves tab
-  useEffect(() => {
-    if (lockedType !== REQUEST_TYPE.LEAVE) { return; }
-    setThresholdLoading(true);
-    getProgram(programId)
-      .then((p) => setThreshold(p.threshold ?? null))
-      .catch(() => {})
-      .finally(() => setThresholdLoading(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [programId, lockedType]);
 
   // Clear selection on filter/page change
   useEffect(() => {
@@ -301,12 +284,16 @@ const AdminRequestsView = ({ readOnly, showNewRequest, lockedType }) => {
       {
         Header: 'Detail',
         id: 'detail',
-        Cell: ({ row }) => <RequestDetailCell req={row.original} programKey={programId || ''} />,
+        Cell: ({ row }) => (
+          <div className="requests-view__detail-cell">
+            <RequestDetailCell req={row.original} programKey={programId || ''} />
+          </div>
+        ),
       },
       {
         Header: 'Reason',
         accessor: 'reason',
-        Cell: ({ value }) => <CollapsibleText text={value} />,
+        Cell: ({ value }) => <div className="requests-view__reason-cell"><CollapsibleText text={value} /></div>,
       },
       {
         Header: 'Status',
@@ -320,7 +307,7 @@ const AdminRequestsView = ({ readOnly, showNewRequest, lockedType }) => {
       {
         Header: 'Submitted',
         accessor: 'created',
-        Cell: ({ value }) => formatDateTime(value),
+        Cell: ({ value }) => <span className="text-nowrap">{formatDateTime(value)}</span>,
       },
       {
         Header: 'Reviewer note',
@@ -347,12 +334,12 @@ const AdminRequestsView = ({ readOnly, showNewRequest, lockedType }) => {
         Cell: ({ row }) => (
           <Button
             as={Link}
-            variant="link"
+            variant="outline-primary"
             size="sm"
-            className="p-0"
+            className="text-nowrap"
             to={`?view=audit-log&record_id=${row.original.id}`}
           >
-            History →
+            History
           </Button>
         ),
       },
@@ -378,7 +365,7 @@ const AdminRequestsView = ({ readOnly, showNewRequest, lockedType }) => {
                 )}
                 <div className="requests-view__row-actions">
                   <Button
-                    variant="success"
+                    variant="primary"
                     size="sm"
                     onClick={() => handleApproveWithdrawalClick(request)}
                     disabled={busy}
@@ -405,7 +392,7 @@ const AdminRequestsView = ({ readOnly, showNewRequest, lockedType }) => {
               )}
               <div className="requests-view__row-actions">
                 <Button
-                  variant="success"
+                  variant="primary"
                   size="sm"
                   onClick={() => handleApprove(request)}
                   disabled={busy}
@@ -447,18 +434,6 @@ const AdminRequestsView = ({ readOnly, showNewRequest, lockedType }) => {
         <Alert variant="danger" dismissible onClose={() => setError('')}>
           {error}
         </Alert>
-      )}
-
-      {/* ── Settings ──────────────────────────────────────────────── */}
-      {lockedType === REQUEST_TYPE.LEAVE && !thresholdLoading && threshold !== null && (
-        <div className="mb-5">
-          <SectionHeading>Settings</SectionHeading>
-          <ThresholdControl
-            programKey={programId}
-            initialThreshold={threshold}
-            onUpdate={(t) => setThreshold(t)}
-          />
-        </div>
       )}
 
       {/* ── Requests ──────────────────────────────────────────────── */}
@@ -555,27 +530,28 @@ const AdminRequestsView = ({ readOnly, showNewRequest, lockedType }) => {
         </Row>
 
         {(showNewRequest || (lockedType === REQUEST_TYPE.LEAVE && pendingIds.length > 0)) && (
-          <div className="requests-view__inline-status flex-wrap mb-3">
+          <div className="requests-view__inline-status requests-view__bulk-bar flex-wrap mb-3">
             {lockedType === REQUEST_TYPE.LEAVE && pendingIds.length > 0 && (
               <>
-                <Form.Check
-                  type="checkbox"
+                <Form.Checkbox
                   id="select-all-pending"
-                  label={`Select all pending (${pendingIds.length})`}
                   checked={allPendingSelected}
                   onChange={(e) => handleSelectAll(e.target.checked)}
-                />
-                {selectedIds.size > 0 && (
-                  <Button
-                    variant="warning"
-                    size="sm"
-                    onClick={handleBulkApprove}
-                    disabled={bulkApproving}
-                  >
-                    {bulkApproving && <Spinner animation="border" size="sm" className="mr-1" />}
-                    Bulk Approve ({selectedIds.size})
-                  </Button>
-                )}
+                >
+                  {`Select all pending (${pendingIds.length})`}
+                </Form.Checkbox>
+                {/* Always rendered (disabled until something is selected) so the
+                    layout never shifts when the selection changes. */}
+                <Button
+                  variant="warning"
+                  size="sm"
+                  className="requests-view__bulk-approve"
+                  onClick={handleBulkApprove}
+                  disabled={bulkApproving || selectedIds.size === 0}
+                >
+                  {bulkApproving && <Spinner animation="border" size="sm" className="mr-1" />}
+                  {selectedIds.size > 0 ? `Bulk Approve (${selectedIds.size})` : 'Bulk Approve'}
+                </Button>
               </>
             )}
             {showNewRequest && (

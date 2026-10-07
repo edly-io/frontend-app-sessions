@@ -464,13 +464,13 @@
     display: flex;
     flex-direction: column-reverse;
     padding: .625rem;
-    background: var(--pgn-color-light-200, #F8F9FA);
+    background: var(--sessions-surface-subtle);
     border-radius: .5rem;
   }
 
   dt {
     margin-top: .2rem;
-    color: var(--pgn-color-gray-700, #6B7885);
+    color: var(--sessions-text-muted);
     font-size: .6875rem;
   }
 
