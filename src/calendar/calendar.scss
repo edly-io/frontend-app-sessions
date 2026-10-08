@@ -36,8 +36,15 @@ $month-gap: 4px;
     border-bottom: 2px solid var(--sessions-border);
   }
 
+  // Grid, not flex: a wrapped flex line stretches every cell in it to match
+  // the tallest cell in that same week, so a week with a busy day looks
+  // taller (and its gap to the next week smaller) than a quiet week. Fixed
+  // row tracks keep every week — and every cell within it — the same height
+  // regardless of how much a given day is carrying.
   &__grid {
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    grid-auto-rows: 110px;
   }
 
   // `min-width: 0` is what keeps a long event chip from widening its own
@@ -71,6 +78,7 @@ $month-gap: 4px;
 // computed in JS and handed to `style`.
 .calendar-day-cell {
   min-width: 0;
+  overflow-y: auto;
   border: 1px solid var(--sessions-border);
   border-radius: 4px;
   padding: 4px 6px;

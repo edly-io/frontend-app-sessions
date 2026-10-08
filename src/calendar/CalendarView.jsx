@@ -794,7 +794,7 @@ const DayCell = ({
   date, sessions = [], onEditSession, onDeleteSession, onCancelSession, onSessionDetail,
   openPopoverId, setOpenPopoverId,
   openDayKey, setOpenDayKey,
-  isOutsideMonth = false, cellMinHeight = 110, canManageSessions = false,
+  isOutsideMonth = false, cellHeight = 110, canManageSessions = false,
   isInstructor = false, isLearner = false, studentRequestMap, leaveDateMap = null, holidays = [],
   gradedDates = [], sessionTypeColors = {}, sessionTypeLabels,
 }) => {
@@ -835,7 +835,7 @@ const DayCell = ({
         `calendar-day-cell--${dayVariant(isToday, isWeekend)}`,
         { 'calendar-day-cell--clickable': hasSessions, 'calendar-day-cell--outside': isOutsideMonth },
       )}
-      style={{ minHeight: cellMinHeight }}
+      style={{ height: cellHeight }}
       aria-label={`${date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}, ${sessions.length} session${sessions.length !== 1 ? 's' : ''}`}
     >
       {/* Day number */}
@@ -1036,7 +1036,7 @@ const MonthGrid = ({
                 openDayKey={openDayKey}
                 setOpenDayKey={setOpenDayKey}
                 isOutsideMonth={day.getMonth() !== currentMonth}
-                cellMinHeight={110}
+                cellHeight={110}
                 canManageSessions={canManageSessions}
                 isInstructor={isInstructor}
                 isLearner={isLearner}
@@ -1782,7 +1782,7 @@ DayCell.propTypes = {
   openDayKey: PropTypes.string,
   setOpenDayKey: PropTypes.func.isRequired,
   isOutsideMonth: PropTypes.bool,
-  cellMinHeight: PropTypes.number,
+  cellHeight: PropTypes.number,
   canManageSessions: PropTypes.bool,
   isInstructor: PropTypes.bool,
   isLearner: PropTypes.bool,
@@ -1804,7 +1804,7 @@ DayCell.defaultProps = {
   openPopoverId: null,
   openDayKey: null,
   isOutsideMonth: false,
-  cellMinHeight: 110,
+  cellHeight: 110,
   canManageSessions: false,
   isInstructor: false,
   isLearner: false,
