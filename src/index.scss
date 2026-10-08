@@ -136,6 +136,14 @@ textarea.form-control:not(.form-control-sm, .form-control-lg) {
   }
 }
 
+// Paragon only lets the table layout scroll sideways below the xl breakpoint
+// (1400px); above it a wide listing is clipped at the container's edge
+// instead. Scroll at every size. Element-qualified so it outranks Paragon's
+// rule whichever stylesheet loads last.
+div.pgn__data-table-layout-wrapper {
+  overflow-x: auto;
+}
+
 // Paragon caps every DataTable cell at `max-width: 20vw` and clips the
 // overflow. That is ~280px on a desktop but only ~75px on a phone, which cuts
 // names, emails and dates off mid-word. A fixed cap reads the same at every
