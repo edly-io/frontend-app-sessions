@@ -25,6 +25,8 @@ import CreateRequestModal from './CreateRequestModal';
 import RequestDetailCell from './RequestDetailCell';
 import LeaveUsageSummary from './LeaveUsageSummary';
 import useModalParams from '../shared/useModalParams';
+import { MobileRowCard, MobileRowCardsList, MobileRowField } from '../shared/MobileRowCards';
+import useIsBelowLg from '../shared/useIsBelowLg';
 
 const PAGE_SIZE = 15;
 
@@ -57,6 +59,7 @@ CollapsibleText.propTypes = { text: PropTypes.string, muted: PropTypes.bool };
 CollapsibleText.defaultProps = { text: '', muted: false };
 
 const LearnerRequestsView = ({ lockedType }) => {
+  const isBelowLg = useIsBelowLg();
   const { programId } = useParams();
   const [requests, setRequests] = useState([]);
   const [count, setCount] = useState(0);
@@ -102,6 +105,86 @@ const LearnerRequestsView = ({ lockedType }) => {
   }, [programId, filterState, filterType, filterQ, filterStartDate, filterEndDate]);
 
   useEffect(() => { fetchData({ pageIndex: 0 }); }, [fetchData]);
+
+  const renderActions = useCallback((req) => {
+    const isLeave = req.request_type_label === REQUEST_TYPE.LEAVE;
+
+    if (confirmAction?.id === req.id) {
+      const btnVariant = confirmAction.kind === 'delete' ? 'danger' : 'warning';
+      return (
+        <span className="requests-view__row-actions">
+          <Button
+            variant={btnVariant}
+            size="sm"
+            onClick={async () => {
+              try {
+                if (confirmAction.kind === 'withdraw') {
+                  await withdrawRequest(req.id);
+                } else {
+                  await deleteRequest(req.id, confirmAction.requestTypeLabel);
+                }
+              } catch (err) {
+                setError(extractApiError(err, 'Action failed'));
+              } finally {
+                setConfirmAction(null);
+                fetchData({ pageIndex: 0 });
+              }
+            }}
+          >
+            Confirm
+          </Button>
+          <Button variant="tertiary" size="sm" onClick={() => setConfirmAction(null)}>Cancel</Button>
+        </span>
+      );
+    }
+
+    if (req.state === REQUEST_STATUS.PENDING) {
+      return (
+        <Button
+          variant="outline-danger"
+          size="sm"
+          onClick={() => setConfirmAction({
+            id: req.id,
+            kind: 'delete',
+            requestTypeLabel: req.request_type_label,
+          })}
+        >
+          Delete
+        </Button>
+      );
+    }
+
+    if (req.state === REQUEST_STATUS.WITHDRAWAL_REJECTED && isLeave) {
+      return (
+        <div>
+          <small className="text-muted d-block mb-1">
+            Your previous withdrawal request was denied.
+          </small>
+          <Button
+            variant="outline-warning"
+            size="sm"
+            onClick={() => setConfirmAction({ id: req.id, kind: 'withdraw' })}
+          >
+            Withdraw
+          </Button>
+        </div>
+      );
+    }
+
+    if (req.state === REQUEST_STATUS.APPROVED && isLeave) {
+      return (
+        <Button
+          variant="outline-warning"
+          size="sm"
+          onClick={() => setConfirmAction({ id: req.id, kind: 'withdraw' })}
+        >
+          Withdraw
+        </Button>
+      );
+    }
+
+    return null;
+  }, [confirmAction, fetchData]);
 
   /* eslint-disable react/no-unstable-nested-components, react/prop-types */
   const columns = useMemo(() => [
@@ -164,99 +247,10 @@ const LearnerRequestsView = ({ lockedType }) => {
     {
       Header: 'Actions',
       id: 'actions',
-      Cell: ({ row }) => {
-        const req = row.original;
-        const isLeave = req.request_type_label === REQUEST_TYPE.LEAVE;
-
-        // Confirm step active for this row
-        if (confirmAction?.id === req.id) {
-          const btnVariant = confirmAction.kind === 'delete' ? 'danger' : 'warning';
-          return (
-            <span className="requests-view__row-actions">
-              <Button
-                variant={btnVariant}
-                size="sm"
-                onClick={async () => {
-                  try {
-                    if (confirmAction.kind === 'withdraw') {
-                      await withdrawRequest(req.id);
-                    } else {
-                      await deleteRequest(req.id, confirmAction.requestTypeLabel);
-                    }
-                  } catch (err) {
-                    setError(extractApiError(err, 'Action failed'));
-                  } finally {
-                    setConfirmAction(null);
-                    fetchData({ pageIndex: 0 });
-                  }
-                }}
-              >
-                Confirm
-              </Button>
-              <Button
-                variant="tertiary"
-                size="sm"
-                onClick={() => setConfirmAction(null)}
-              >
-                Cancel
-              </Button>
-            </span>
-          );
-        }
-
-        // PENDING → Delete (works for both leave and remote_session)
-        if (req.state === REQUEST_STATUS.PENDING) {
-          return (
-            <Button
-              variant="outline-danger"
-              size="sm"
-              onClick={() => setConfirmAction({
-                id: req.id,
-                kind: 'delete',
-                requestTypeLabel: req.request_type_label,
-              })}
-            >
-              Delete
-            </Button>
-          );
-        }
-
-        // WITHDRAWAL_REJECTED leave → helper text + Withdraw
-        if (req.state === REQUEST_STATUS.WITHDRAWAL_REJECTED && isLeave) {
-          return (
-            <div>
-              <small className="text-muted d-block mb-1">
-                Your previous withdrawal request was denied.
-              </small>
-              <Button
-                variant="outline-warning"
-                size="sm"
-                onClick={() => setConfirmAction({ id: req.id, kind: 'withdraw' })}
-              >
-                Withdraw
-              </Button>
-            </div>
-          );
-        }
-
-        // APPROVED leave → Withdraw
-        if (req.state === REQUEST_STATUS.APPROVED && isLeave) {
-          return (
-            <Button
-              variant="outline-warning"
-              size="sm"
-              onClick={() => setConfirmAction({ id: req.id, kind: 'withdraw' })}
-            >
-              Withdraw
-            </Button>
-          );
-        }
-
-        return null;
-      },
+      Cell: ({ row }) => renderActions(row.original),
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [confirmAction]);
+  ], [confirmAction, renderActions]);
   /* eslint-enable react/no-unstable-nested-components, react/prop-types */
 
   if (initialLoading) {
@@ -402,10 +396,59 @@ const LearnerRequestsView = ({ lockedType }) => {
           columns={columns}
           initialState={{ pageIndex, pageSize: PAGE_SIZE }}
         >
-          <div className="sticky-header-table sessions-table-scroll">
-            <DataTable.Table />
-            <DataTable.EmptyTable content="No requests" />
-          </div>
+          {!isBelowLg && (
+            <div className="sticky-header-table sessions-table-scroll">
+              <DataTable.Table />
+              <DataTable.EmptyTable content="No requests" />
+            </div>
+          )}
+          {isBelowLg && requests.length > 0 && (
+            <MobileRowCardsList>
+                {requests.map((req) => {
+                  const { attachment } = req;
+                  const filename = attachment ? decodeURIComponent(attachment.split('/').pop() || 'file') : null;
+                  const actions = renderActions(req);
+                  return (
+                    <MobileRowCard
+                      key={req.id}
+                      title={<RequestDetailCell req={req} programKey={programId || ''} />}
+                      subtitle={req.created ? formatDateTime(req.created) : null}
+                      footer={actions}
+                    >
+                      {!lockedType && (
+                        <MobileRowField label="Type">
+                          <Badge variant={REQUEST_TYPE_VARIANTS[req.request_type_label] || 'secondary'}>
+                            {REQUEST_TYPE_LABELS[req.request_type_label] || req.request_type_label}
+                          </Badge>
+                        </MobileRowField>
+                      )}
+                      <MobileRowField label="Status">
+                        <Badge variant={REQUEST_STATUS_VARIANTS[req.state] || 'secondary'}>
+                          {REQUEST_STATUS_LABELS[req.state] || req.state}
+                        </Badge>
+                      </MobileRowField>
+                      {req.reason && (
+                        <MobileRowField label="Reason">
+                          <CollapsibleText text={req.reason} />
+                        </MobileRowField>
+                      )}
+                      {req.reviewer_note && (
+                        <MobileRowField label="Reviewer note">
+                          <CollapsibleText text={req.reviewer_note} muted />
+                        </MobileRowField>
+                      )}
+                      {attachment && (
+                        <MobileRowField label="Attachment">
+                          <a href={attachment} target="_blank" rel="noopener noreferrer" className="requests-view__attachment-link">
+                            {filename}
+                          </a>
+                        </MobileRowField>
+                      )}
+                    </MobileRowCard>
+                  );
+                })}
+            </MobileRowCardsList>
+          )}
           <DataTable.TableFooter />
         </DataTable>
       )}

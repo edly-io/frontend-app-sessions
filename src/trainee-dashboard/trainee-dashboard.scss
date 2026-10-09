@@ -479,18 +479,21 @@
   }
 }
 
+.trainee-dashboard__progress-courses {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+
 .trainee-dashboard__progress-row {
   display: grid;
   grid-template-columns: minmax(10rem, 1fr) minmax(7rem, 9rem) 3rem;
   gap: .875rem;
   align-items: center;
-  padding: .5rem 0;
-  border-top: 1px dashed var(--pgn-color-light-300, #EAEDF1);
+  padding: .625rem .875rem;
+  background: var(--sessions-surface-subtle);
+  border-radius: .5rem;
   font-size: .8125rem;
-
-  &:first-child {
-    border-top: 0;
-  }
 
   strong {
     text-align: right;
@@ -787,11 +790,19 @@
   }
 
   .trainee-dashboard__progress-row {
-    grid-template-columns: minmax(0, 1fr) 3rem;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    gap: .375rem .75rem;
 
-    .progress {
+    > :nth-child(2) {
       grid-column: 1 / -1;
       grid-row: 2;
+    }
+
+    strong {
+      grid-column: 2;
+      grid-row: 1;
+      align-self: center;
     }
   }
 

@@ -23,6 +23,8 @@ import { cancelSession } from '../calendar/api';
 import { getSubstituteRequests, closeSubstituteRequest, getSubstituteRequest } from './api';
 import AssignSubstituteModal from './AssignSubstituteModal';
 import useModalParams from '../shared/useModalParams';
+import { MobileRowCard, MobileRowCardsList, MobileRowField } from '../shared/MobileRowCards';
+import useIsBelowLg from '../shared/useIsBelowLg';
 
 const PAGE_SIZE = 15;
 
@@ -37,6 +39,7 @@ const PAGE_SIZE = 15;
 const isSessionCancelled = (session) => session?.status === SESSION_STATUS.CANCELLED;
 
 const SubstituteRequestsView = () => {
+  const isBelowLg = useIsBelowLg();
   const { programId } = useParams();
   const { data: config } = useConfig();
 
@@ -112,6 +115,55 @@ const SubstituteRequestsView = () => {
       fetchData({ pageIndex: 0 });
     }
   };
+
+  const renderActions = useCallback((req) => {
+    const isClosed = req.status === SUBSTITUTE_REQUEST_STATUS.CLOSED;
+    const isAssigned = req.status === SUBSTITUTE_REQUEST_STATUS.ASSIGNED;
+
+    if (cancellingId === req.id) {
+      return (
+        <div className="requests-view__cell-meta">
+          <p className="mb-2 requests-view__confirm-text">
+            Cancel this session and close the substitute request?
+          </p>
+          <span className="requests-view__row-actions">
+            <Button variant="danger" size="sm" onClick={() => handleCancelSession(req)}>Cancel Session</Button>
+            <Button variant="tertiary" size="sm" onClick={() => setCancellingId(null)}>No, go back</Button>
+          </span>
+        </div>
+      );
+    }
+
+    if (isClosed || isAssigned) { return null; }
+
+    if (isSessionCancelled(req.session)) {
+      return (
+        <Button variant="outline-secondary" size="sm" onClick={() => handleCloseRequest(req)}>
+          Close
+        </Button>
+      );
+    }
+
+    return (
+      <span className="requests-view__row-actions">
+        <Button
+          variant="outline-primary"
+          size="sm"
+          onClick={() => openModal('assign-substitute', req.id)}
+        >
+          Assign Substitute
+        </Button>
+        <Button
+          variant="outline-danger"
+          size="sm"
+          onClick={() => setCancellingId(req.id)}
+        >
+          Cancel Session
+        </Button>
+      </span>
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cancellingId]);
 
   /* eslint-disable react/no-unstable-nested-components, react/prop-types */
   const columns = useMemo(() => [
@@ -212,84 +264,10 @@ const SubstituteRequestsView = () => {
     {
       Header: 'Actions',
       id: 'actions',
-      Cell: ({ row }) => {
-        const req = row.original;
-        const isClosed = req.status === SUBSTITUTE_REQUEST_STATUS.CLOSED;
-        const isAssigned = req.status === SUBSTITUTE_REQUEST_STATUS.ASSIGNED;
-
-        if (cancellingId === req.id) {
-          return (
-            <div className="requests-view__cell-meta">
-              <p className="mb-2 requests-view__confirm-text">
-                Cancel this session and close the substitute request?
-              </p>
-              <span className="requests-view__row-actions">
-                <Button
-                  variant="danger"
-                  size="sm"
-                  onClick={() => handleCancelSession(req)}
-                >
-                  Cancel Session
-                </Button>
-                <Button
-                  variant="tertiary"
-                  size="sm"
-                  onClick={() => setCancellingId(null)}
-                >
-                  No, go back
-                </Button>
-              </span>
-            </div>
-          );
-        }
-
-        if (isClosed) { return null; }
-
-        // Once a substitute is on the row, the request is resolved: reassign
-        // through the calendar's session-edit flow instead. Cancelling here
-        // would also undo the arranged cover — a Cancel Session action is still
-        // reachable from the calendar.
-        if (isAssigned) { return null; }
-
-        // Neither action is meaningful once the session is cancelled: assigning
-        // is refused by the backend, and cancelling again returns
-        // `already_cancelled`. The row still needs clearing though, and closing
-        // is otherwise only reachable as a side effect of "Cancel Session" —
-        // so offer it on its own here rather than stranding the row.
-        if (isSessionCancelled(req.session)) {
-          return (
-            <Button
-              variant="outline-secondary"
-              size="sm"
-              onClick={() => handleCloseRequest(req)}
-            >
-              Close
-            </Button>
-          );
-        }
-
-        return (
-          <span className="requests-view__row-actions">
-            <Button
-              variant="outline-primary"
-              size="sm"
-              onClick={() => openModal('assign-substitute', req.id)}
-            >
-              Assign Substitute
-            </Button>
-            <Button
-              variant="outline-danger"
-              size="sm"
-              onClick={() => setCancellingId(req.id)}
-            >
-              Cancel Session
-            </Button>
-          </span>
-        );
-      },
+      Cell: ({ row }) => renderActions(row.original),
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [cancellingId]);
+  ], [cancellingId, renderActions]);
   /* eslint-enable react/no-unstable-nested-components, react/prop-types */
 
   if (config?.user_role !== USER_ROLE.ADMIN) { return null; }
@@ -382,10 +360,81 @@ const SubstituteRequestsView = () => {
           columns={columns}
           initialState={{ pageIndex, pageSize: PAGE_SIZE }}
         >
-          <div className="sticky-header-table sessions-table-scroll">
-            <DataTable.Table />
-            <DataTable.EmptyTable content="No substitute requests" />
-          </div>
+          {!isBelowLg && (
+            <div className="sticky-header-table sessions-table-scroll">
+              <DataTable.Table />
+              <DataTable.EmptyTable content="No substitute requests" />
+            </div>
+          )}
+          {isBelowLg && requests.length > 0 && (
+            <MobileRowCardsList>
+                {requests.map((req) => {
+                  const { session, leave_request: lr } = req;
+                  const sessionEmails = session?.instructor_emails ?? [];
+                  const sessionNames = session?.instructor_names ?? [];
+                  const onLeaveEmail = lr?.submitter_email;
+                  let substitutes = sessionEmails
+                    .map((email, i) => ({ email, name: sessionNames[i] || '' }))
+                    .filter(({ email }) => email && email !== onLeaveEmail);
+                  if (substitutes.length === 0 && req.substitute_instructor_email) {
+                    substitutes = [{
+                      email: req.substitute_instructor_email,
+                      name: req.substitute_instructor_name || '',
+                    }];
+                  }
+                  return (
+                    <MobileRowCard
+                      key={req.id}
+                      title={(
+                        <span className="d-flex align-items-center flex-wrap" style={{ gap: 6 }}>
+                          <span>{session?.title}</span>
+                          {isSessionCancelled(session) && (
+                            <Badge variant="light">{SESSION_STATUS_LABELS.cancelled}</Badge>
+                          )}
+                        </span>
+                      )}
+                      subtitle={session?.scheduled_start_time ? formatDateTime(session.scheduled_start_time) : null}
+                      footer={renderActions(req)}
+                    >
+                      {session?.location?.name && (
+                        <MobileRowField label="Location">{session.location.name}</MobileRowField>
+                      )}
+                      <MobileRowField label="Instructor on leave">
+                        <div>
+                          <UserIdentity
+                            name={lr?.submitter_name || lr?.submitter_email}
+                            badges={['Instructor']}
+                            size="compact"
+                          />
+                          {lr?.submitter_name && lr?.submitter_email && (
+                            <small className="text-muted d-block mt-1">{lr.submitter_email}</small>
+                          )}
+                        </div>
+                      </MobileRowField>
+                      <MobileRowField label="Leave period">
+                        {formatLeaveRange(lr) || '—'}
+                      </MobileRowField>
+                      <MobileRowField label="Status">
+                        <Badge variant={SUBSTITUTE_REQUEST_STATUS_VARIANTS[req.status] || 'secondary'}>
+                          {SUBSTITUTE_REQUEST_STATUS_LABELS[req.status] || req.status}
+                        </Badge>
+                      </MobileRowField>
+                      {substitutes.length > 0 && (
+                        <MobileRowField label="Substitute">
+                          <div>
+                            {substitutes.map(({ email, name }) => (
+                              <div key={email} className="requests-view__cell-text">
+                                {name ? <>{name} <span className="text-muted">({email})</span></> : email}
+                              </div>
+                            ))}
+                          </div>
+                        </MobileRowField>
+                      )}
+                    </MobileRowCard>
+                  );
+                })}
+            </MobileRowCardsList>
+          )}
           <DataTable.TableFooter />
         </DataTable>
       )}

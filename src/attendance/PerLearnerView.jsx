@@ -16,6 +16,8 @@ import { fetchProgramCourses, fetchProgramLearners } from '../calendar/api';
 import { useConfig } from '../app/useConfig';
 import { ATTENDANCE_STATUS, USER_ROLE } from '../shared/constants';
 import { extractApiError, formatDateTime, getStatusVariant } from '../shared/utils';
+import { MobileRowCard, MobileRowCardsList, MobileRowField } from '../shared/MobileRowCards';
+import useIsBelowLg from '../shared/useIsBelowLg';
 import './attendance.scss';
 
 const PAGE_SIZE = 50;
@@ -227,6 +229,7 @@ const BASE_COLUMNS = [
 // ─── Component ───────────────────────────────────────────────────────────────
 
 const PerLearnerView = () => {
+  const isBelowLg = useIsBelowLg();
   const { programId } = useParams();
   const { data: config } = useConfig();
   const isAdmin = config?.user_role === USER_ROLE.ADMIN;
@@ -549,10 +552,43 @@ const PerLearnerView = () => {
           columns={columns}
           initialState={{ pageIndex, pageSize: PAGE_SIZE }}
         >
-          <div className="sticky-header-table sessions-table-scroll">
-            <DataTable.Table />
-            <DataTable.EmptyTable content="No records" />
-          </div>
+          {!isBelowLg && (
+            <div className="sticky-header-table sessions-table-scroll">
+              <DataTable.Table />
+              <DataTable.EmptyTable content="No records" />
+            </div>
+          )}
+          {isBelowLg && tableData.length > 0 && (
+            <MobileRowCardsList>
+                {tableData.map((r) => {
+                  const row = { original: r };
+                  return (
+                    <MobileRowCard
+                      key={`${r.session_id}-${r.user_id}`}
+                      title={r.session_title || '—'}
+                      subtitle={r.session_date ? formatDateTime(r.session_date) : null}
+                      footer={isAdmin ? NoteCell({ row }) : null}
+                    >
+                      <MobileRowField label="Status">{StatusCell({ row })}</MobileRowField>
+                      <MobileRowField label="Marking window">{MarkingWindowCell({ row })}</MobileRowField>
+                      {r.is_overridden && r.override_reason && (
+                        <MobileRowField label="Change reason">
+                          <small className="text-muted">{r.override_reason}</small>
+                        </MobileRowField>
+                      )}
+                      {r.overridden_by_email && (
+                        <MobileRowField label="Changed by">
+                          <small className="text-muted">{r.overridden_by_email}</small>
+                        </MobileRowField>
+                      )}
+                      {r.source && (
+                        <MobileRowField label="Source"><Badge variant="light">{r.source}</Badge></MobileRowField>
+                      )}
+                    </MobileRowCard>
+                  );
+                })}
+            </MobileRowCardsList>
+          )}
           <DataTable.TableFooter />
         </DataTable>
       )}

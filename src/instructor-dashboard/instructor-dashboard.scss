@@ -494,6 +494,10 @@
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) minmax(15rem, 1fr);
   gap: 2rem;
+
+  > div {
+    min-width: 0;
+  }
 }
 
 .instructor-dashboard__delivery-total {
@@ -608,6 +612,61 @@
   }
 }
 
+.instructor-dashboard__delivery-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+.instructor-dashboard__delivery-subcard {
+  min-width: 0;
+  padding: 1rem;
+  background: var(--sessions-surface-subtle);
+  border-radius: .5rem;
+}
+
+.instructor-dashboard__weekly-box {
+  margin-top: 1rem;
+  padding: .875rem 1rem 1rem;
+  background: var(--sessions-surface-subtle);
+  border-radius: .5rem;
+
+  .instructor-dashboard__weekly-chart {
+    margin-top: .75rem;
+  }
+}
+
+.instructor-dashboard__subheading--flush {
+  margin-top: 0;
+}
+
+.instructor-dashboard__delta {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: .125rem .5rem;
+  border-radius: 999px;
+  font-size: .75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.instructor-dashboard__delta--up {
+  color: #1E6B3C;
+  background: #E6F4EC;
+}
+
+.instructor-dashboard__delta--down {
+  color: #9C2C2C;
+  background: #FDECEC;
+}
+
+.instructor-dashboard__delta--flat {
+  color: #5C6673;
+  background: #EEF1F4;
+}
+
 .instructor-dashboard__lower-grid {
   margin-bottom: .25rem;
 }
@@ -718,6 +777,10 @@
   .instructor-dashboard__delivery-grid {
     grid-template-columns: 1fr;
   }
+
+  .instructor-dashboard__delivery-split {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (--pgn-size-breakpoint-max-width-sm) {
@@ -776,6 +839,41 @@
       grid-column: 1 / -1;
       grid-row: 2;
     }
+  }
+
+  .instructor-dashboard__glance-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .instructor-dashboard__delivery-total {
+    strong {
+      font-size: 1.5rem;
+    }
+  }
+
+  .instructor-dashboard__delta {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .instructor-dashboard__delivery-subcard {
+    padding: .75rem;
+  }
+
+  .instructor-dashboard__weekly-chart {
+    gap: .25rem;
+    overflow-x: hidden;
+
+    li {
+      flex: 1 1 0;
+      min-width: 0;
+      grid-template-rows: 1rem 5.5rem auto;
+    }
+  }
+
+  .instructor-dashboard__weekly-value,
+  .instructor-dashboard__weekly-date {
+    font-size: .5625rem;
   }
 
   .instructor-dashboard__feedback-row,
