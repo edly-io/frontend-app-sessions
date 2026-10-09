@@ -25,12 +25,6 @@ const DescriptionCell = ({ value }) => (
 DescriptionCell.propTypes = { value: PropTypes.string };
 DescriptionCell.defaultProps = { value: '' };
 
-const SerialCell = ({ value }) => (
-  value ? <code>{value}</code> : <span className="text-muted">—</span>
-);
-SerialCell.propTypes = { value: PropTypes.string };
-SerialCell.defaultProps = { value: '' };
-
 const ActionsCell = ({ row, column }) => {
   const {
     isAdmin, onEdit, onDelete, onAuditHistory,
@@ -169,7 +163,6 @@ const LocationsPage = () => {
     { Header: 'Name', accessor: 'name' },
     { Header: 'City', id: 'city', Cell: CityCell },
     { Header: 'Description', accessor: 'description', Cell: DescriptionCell },
-    { Header: 'Biometric serial', accessor: 'biometric_machine_serial_number', Cell: SerialCell },
     {
       Header: 'Actions',
       id: 'actions',

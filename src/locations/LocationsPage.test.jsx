@@ -90,7 +90,6 @@ describe('admin', () => {
     });
     wrap();
     await waitFor(() => expect(screen.getByText('Science lab')).toBeInTheDocument());
-    expect(screen.getByText('SN-001')).toBeInTheDocument();
   });
 
   it('shows Locations and Audit Log tabs', async () => {

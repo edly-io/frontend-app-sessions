@@ -57,22 +57,16 @@ describe('create mode', () => {
     expect(onSuccess).toHaveBeenCalledWith({ id: 'loc1', name: 'IRSA 1' });
   });
 
-  it('shows the biometric attendance note', () => {
-    wrap();
-    expect(screen.getByText(/Required for attendance tracking/i)).toBeInTheDocument();
-  });
-
-  it('includes description and biometric serial in payload', async () => {
+  it('includes description in payload', async () => {
     createLocation.mockResolvedValue({ id: 'loc1', name: 'Lab' });
     wrap();
     fireEvent.change(screen.getByPlaceholderText(/irsa 1/i), { target: { value: 'Lab' } });
     fireEvent.change(screen.getByPlaceholderText(/optional — building/i), { target: { value: '2nd floor' } });
-    fireEvent.change(screen.getByPlaceholderText(/optional — serial/i), { target: { value: 'BIO-123' } });
     fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
     await waitFor(() => expect(createLocation).toHaveBeenCalledWith({
       name: 'Lab',
       description: '2nd floor',
-      biometric_machine_serial_number: 'BIO-123',
+      biometric_machine_serial_number: '',
     }));
   });
 });
