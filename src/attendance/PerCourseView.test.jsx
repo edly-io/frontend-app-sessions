@@ -79,7 +79,7 @@ it('requests the selected course from the paginated endpoint', async () => {
   });
   wrap();
   await selectCourse();
-  await waitFor(() => expect(screen.getByText('Session 1')).toBeInTheDocument());
+  await waitFor(() => expect(screen.getAllByText('Session 1').length).toBeGreaterThan(0));
   expect(getCourseSessionsList).toHaveBeenCalledWith(COURSE_KEY, PROGRAM_ID, { page: 1, pageSize: 25 });
 });
 
@@ -94,11 +94,11 @@ it('pages on the server rather than in the browser', async () => {
   );
   wrap();
   await selectCourse();
-  await waitFor(() => expect(screen.getByText('Session 1')).toBeInTheDocument());
+  await waitFor(() => expect(screen.getAllByText('Session 1').length).toBeGreaterThan(0));
 
   fireEvent.click(screen.getByRole('button', { name: /^next/i }));
 
-  await waitFor(() => expect(screen.getByText('Session 2')).toBeInTheDocument());
+  await waitFor(() => expect(screen.getAllByText('Session 2').length).toBeGreaterThan(0));
   expect(getCourseSessionsList).toHaveBeenLastCalledWith(COURSE_KEY, PROGRAM_ID, { page: 2, pageSize: 25 });
 });
 
@@ -108,7 +108,7 @@ it('leaves the next-page control disabled when everything fits on one page', asy
   });
   wrap();
   await selectCourse();
-  await waitFor(() => expect(screen.getByText('Session 1')).toBeInTheDocument());
+  await waitFor(() => expect(screen.getAllByText('Session 1').length).toBeGreaterThan(0));
   // Paragon's footer always renders the Previous/Next pair; with one page both
   // are disabled, so there is no second page to request.
   expect(screen.getByRole('button', { name: /^next/i })).toBeDisabled();
@@ -121,7 +121,7 @@ it('uses the dedicated no-course endpoint for the no-course option', async () =>
   });
   wrap();
   await selectNoCourse();
-  await waitFor(() => expect(screen.getByText('Session 9')).toBeInTheDocument());
+  await waitFor(() => expect(screen.getAllByText('Session 9').length).toBeGreaterThan(0));
   expect(getNoCourseSessionsList).toHaveBeenCalledWith(PROGRAM_ID, { page: 1, pageSize: 25 });
   expect(getCourseSessionsList).not.toHaveBeenCalled();
 });
@@ -137,11 +137,11 @@ it('pages the no-course option on the server', async () => {
   );
   wrap();
   await selectNoCourse();
-  await waitFor(() => expect(screen.getByText('Session 1')).toBeInTheDocument());
+  await waitFor(() => expect(screen.getAllByText('Session 1').length).toBeGreaterThan(0));
 
   fireEvent.click(screen.getByRole('button', { name: /^next/i }));
 
-  await waitFor(() => expect(screen.getByText('Session 2')).toBeInTheDocument());
+  await waitFor(() => expect(screen.getAllByText('Session 2').length).toBeGreaterThan(0));
   expect(getNoCourseSessionsList).toHaveBeenLastCalledWith(PROGRAM_ID, { page: 2, pageSize: 25 });
 });
 

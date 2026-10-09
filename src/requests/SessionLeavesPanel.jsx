@@ -8,11 +8,14 @@ import {
 import { getSessionApprovedLeaves } from './api';
 import { extractApiError, formatDateTime } from '../shared/utils';
 import SectionHeading from '../shared/SectionHeading';
+import { MobileRowCard, MobileRowCardsList, MobileRowField } from '../shared/MobileRowCards';
+import useIsBelowLg from '../shared/useIsBelowLg';
 import './requests.scss';
 
 const PAGE_SIZE = 15;
 
 const SessionLeavesPanel = ({ programKey }) => {
+  const isBelowLg = useIsBelowLg();
   const [sessions, setSessions] = useState([]);
   const [count, setCount] = useState(0);
   const [pageIndex, setPageIndex] = useState(0);
@@ -133,10 +136,42 @@ const SessionLeavesPanel = ({ programKey }) => {
             columns={columns}
             initialState={{ pageIndex, pageSize: PAGE_SIZE }}
           >
-            <div className="sticky-header-table sessions-table-scroll">
-              <DataTable.Table />
-              <DataTable.EmptyTable content="No sessions found" />
-            </div>
+            {!isBelowLg && (
+              <div className="sticky-header-table sessions-table-scroll">
+                <DataTable.Table />
+                <DataTable.EmptyTable content="No sessions found" />
+              </div>
+            )}
+            {isBelowLg && sessions.length > 0 && (
+              <MobileRowCardsList>
+                  {sessions.map((s) => {
+                    const n = s.students_on_leave?.length ?? 0;
+                    return (
+                      <MobileRowCard
+                        key={s.id ?? `${s.title}-${s.scheduled_start_time}`}
+                        title={s.title}
+                        subtitle={s.scheduled_start_time ? formatDateTime(s.scheduled_start_time) : null}
+                        footer={(
+                          <Button
+                            size="sm"
+                            variant="outline-primary"
+                            onClick={() => setSelectedSession(s)}
+                            disabled={n === 0}
+                          >
+                            View approved leaves
+                          </Button>
+                        )}
+                      >
+                        <MobileRowField label="Approved leaves">
+                          <span className={`font-weight-bold requests-view__leave-count--${n > 0 ? 'some' : 'none'}`}>
+                            {n}
+                          </span>
+                        </MobileRowField>
+                      </MobileRowCard>
+                    );
+                  })}
+              </MobileRowCardsList>
+            )}
             <DataTable.TableFooter />
           </DataTable>
         )

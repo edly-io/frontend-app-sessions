@@ -12,6 +12,8 @@ import { getCourseSessionsList, getNoCourseSessionsList } from './api';
 import SearchableSelect from '../shared/SearchableSelect';
 import { SESSION_STATUS_LABELS } from '../shared/constants';
 import { extractApiError, formatDateTime, getStatusVariant } from '../shared/utils';
+import { MobileRowCard, MobileRowCardsList, MobileRowField } from '../shared/MobileRowCards';
+import useIsBelowLg from '../shared/useIsBelowLg';
 
 const NO_COURSE_VALUE = '__none__';
 const PAGE_SIZE = 25;
@@ -94,6 +96,7 @@ const PerCourseView = () => {
   const { programId } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const isBelowLg = useIsBelowLg();
 
   const [courses, setCourses] = useState([]);
   const [coursesLoading, setCoursesLoading] = useState(true);
@@ -260,7 +263,50 @@ const PerCourseView = () => {
           columns={columns}
           initialState={{ pageIndex: sessionPageIndex, pageSize: PAGE_SIZE }}
         >
-          <DataTable.Table />
+          {!isBelowLg && <DataTable.Table />}
+          {isBelowLg && tableRows.length > 0 && (
+            <MobileRowCardsList>
+                {tableRows.map((s) => {
+                  const days = s.marking_window_remaining_days;
+                  return (
+                    <MobileRowCard
+                      key={s.id}
+                      title={s.title || '—'}
+                      subtitle={s.scheduled_start_time ? formatDateTime(s.scheduled_start_time) : null}
+                      footer={(
+                        <Button
+                          variant="tertiary"
+                          size="sm"
+                          onClick={() => s.onViewAttendance(s.id)}
+                        >
+                          View Attendance
+                        </Button>
+                      )}
+                    >
+                      <MobileRowField label="Status">
+                        <Badge variant={getStatusVariant(s.status)}>
+                          {SESSION_STATUS_LABELS[s.status] || s.status}
+                        </Badge>
+                      </MobileRowField>
+                      <MobileRowField label="Marking window">
+                        {s.marking_window_open ? (
+                          <>
+                            <Badge variant="success">Open</Badge>
+                            {days != null && (
+                              <small className="text-muted d-block mt-1">
+                                {days} {days === 1 ? 'day' : 'days'} left
+                              </small>
+                            )}
+                          </>
+                        ) : (
+                          <Badge variant="secondary">Closed</Badge>
+                        )}
+                      </MobileRowField>
+                    </MobileRowCard>
+                  );
+                })}
+            </MobileRowCardsList>
+          )}
           <DataTable.EmptyTable content="No completed sessions found." />
           <DataTable.TableFooter />
         </DataTable>

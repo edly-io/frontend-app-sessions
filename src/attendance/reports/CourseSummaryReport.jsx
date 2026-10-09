@@ -20,6 +20,8 @@ import {
 } from '../api';
 import { extractApiError } from '../../shared/utils';
 import SectionHeading from '../../shared/SectionHeading';
+import { MobileRowCard, MobileRowCardsList, MobileRowField } from '../../shared/MobileRowCards';
+import useIsBelowLg from '../../shared/useIsBelowLg';
 import './CourseSummaryReport.scss';
 
 // ─── Cell renderers ──────────────────────────────────────────────────────────
@@ -93,6 +95,7 @@ const COLUMNS = [
 // ─── Component ───────────────────────────────────────────────────────────────
 
 const CourseSummaryReport = () => {
+  const isBelowLg = useIsBelowLg();
   const { programId } = useParams();
   const queryClient = useQueryClient();
   const { data: config } = useConfig();
@@ -434,7 +437,36 @@ const CourseSummaryReport = () => {
                 itemCount={tableData.length}
                 initialState={{ sortBy: [{ id: 'attendance_rate', desc: false }] }}
               >
-                <DataTable.Table />
+                {!isBelowLg && <DataTable.Table />}
+                {isBelowLg && (
+                  <MobileRowCardsList>
+                    {tableData.map((r) => {
+                      const pct = Math.round(r.attendance_rate ?? 0);
+                      const tone = r.is_at_risk ? 'text-danger' : 'text-success';
+                      return (
+                        <MobileRowCard
+                          key={r.user_id ?? r.email ?? r.full_name}
+                          title={(
+                            <span className="d-flex align-items-center" style={{ gap: 8 }}>
+                              <span>{r.full_name || r.email}</span>
+                              {r.is_at_risk && <Badge variant="danger">At Risk</Badge>}
+                            </span>
+                          )}
+                          subtitle={r.full_name ? r.email : null}
+                        >
+                          <MobileRowField label="Attendance %">
+                            <strong className={tone}>{pct}%</strong>
+                          </MobileRowField>
+                          <MobileRowField label="Sessions">{r.total}</MobileRowField>
+                          <MobileRowField label="Present">{r.present}</MobileRowField>
+                          <MobileRowField label="Absent">{r.absent}</MobileRowField>
+                          <MobileRowField label="Leave">{r.leave}</MobileRowField>
+                          <MobileRowField label="Pending">{r.pending}</MobileRowField>
+                        </MobileRowCard>
+                      );
+                    })}
+                  </MobileRowCardsList>
+                )}
                 <DataTable.EmptyTable content="No learners" />
               </DataTable>
             )}

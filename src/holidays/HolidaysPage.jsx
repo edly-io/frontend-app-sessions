@@ -15,6 +15,8 @@ import { getHolidays, deleteHoliday } from './api';
 import { extractApiError } from '../shared/utils';
 import HolidayModal from './HolidayModal';
 import useModalParams from '../shared/useModalParams';
+import { MobileRowCard, MobileRowCardsList, MobileRowField } from '../shared/MobileRowCards';
+import useIsBelowLg from '../shared/useIsBelowLg';
 
 const fmt = (d) => new Date(`${d}T00:00:00`).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 
@@ -77,6 +79,7 @@ ActionsCell.propTypes = {
 const PAGE_SIZE = 20;
 
 const HolidaysPage = () => {
+  const isBelowLg = useIsBelowLg();
   const { data: config } = useConfig();
   const isAdmin = config?.user_role === USER_ROLE.ADMIN;
 
@@ -217,7 +220,46 @@ const HolidaysPage = () => {
           columns={columns}
           initialState={{ pageIndex: 0, pageSize: PAGE_SIZE }}
         >
-          <DataTable.Table />
+          {!isBelowLg && <DataTable.Table />}
+          {isBelowLg && holidays.length > 0 && (
+            <MobileRowCardsList>
+                {holidays.map((h) => {
+                  let dateRange = '—';
+                  if (h.start_date) {
+                    dateRange = h.start_date === h.end_date
+                      ? fmt(h.start_date)
+                      : `${fmt(h.start_date)} – ${fmt(h.end_date)}`;
+                  }
+                  return (
+                    <MobileRowCard
+                      key={h.id}
+                      title={h.name}
+                      subtitle={dateRange}
+                      footer={isAdmin ? (
+                        <>
+                          <Button variant="tertiary" size="sm" iconBefore={EditOutline} onClick={() => openModal('edit-holiday', h.id)}>Edit</Button>
+                          <Button
+                            variant="tertiary"
+                            size="sm"
+                            iconBefore={DeleteOutline}
+                            className="text-danger"
+                            onClick={() => setDeleteTarget(h)}
+                          >
+                            Delete
+                          </Button>
+                        </>
+                      ) : null}
+                    >
+                      {h.description && (
+                        <MobileRowField label="Description">
+                          <span>{h.description}</span>
+                        </MobileRowField>
+                      )}
+                    </MobileRowCard>
+                  );
+                })}
+            </MobileRowCardsList>
+          )}
           <DataTable.EmptyTable content="No holidays found." />
           <DataTable.TableFooter />
         </DataTable>

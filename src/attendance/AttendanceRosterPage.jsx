@@ -20,6 +20,8 @@ import { useConfig } from '../app/useConfig';
 import './attendance.scss';
 import { ATTENDANCE_STATUS, USER_ROLE } from '../shared/constants';
 import { extractApiError, formatDateTime, getStatusVariant } from '../shared/utils';
+import { MobileRowCard, MobileRowCardsList, MobileRowField } from '../shared/MobileRowCards';
+import useIsBelowLg from '../shared/useIsBelowLg';
 
 const PAGE_SIZE = 25;
 
@@ -183,6 +185,7 @@ NoteCell.propTypes = {
 // ─── Main component ──────────────────────────────────────────────────────────
 
 const AttendanceRosterPage = () => {
+  const isBelowLg = useIsBelowLg();
   const { programId, sessionId } = useParams();
   const [searchParams] = useSearchParams();
   const courseId = searchParams.get('course_id') || '';
@@ -520,8 +523,44 @@ const AttendanceRosterPage = () => {
           itemCount={tableData.length}
           initialState={{ pageSize: PAGE_SIZE }}
         >
-          <DataTable.Table />
-          <DataTable.EmptyTable content="No learners" />
+          {!isBelowLg && (
+            <>
+              <DataTable.Table />
+              <DataTable.EmptyTable content="No learners" />
+            </>
+          )}
+          {isBelowLg && (
+            <MobileRowCardsList>
+              {tableData.map((r) => {
+                const row = { original: r };
+                return (
+                  <MobileRowCard
+                    key={r.user_id}
+                    title={r.full_name || r.username || '—'}
+                    subtitle={r.email}
+                    footer={isAdmin ? NoteCell({ row }) : null}
+                  >
+                    <MobileRowField label="Status">{StatusCell({ row })}</MobileRowField>
+                    {r.pendingReason && (
+                      <MobileRowField label="Change reason">
+                        <small className="text-muted font-italic">{r.pendingReason}</small>
+                      </MobileRowField>
+                    )}
+                    {r.overridden_by_email && (
+                      <MobileRowField label="Changed by">
+                        <small className="text-muted">{r.overridden_by_email}</small>
+                      </MobileRowField>
+                    )}
+                    {r.source && (
+                      <MobileRowField label="Source">
+                        <Badge variant="light">{r.source}</Badge>
+                      </MobileRowField>
+                    )}
+                  </MobileRowCard>
+                );
+              })}
+            </MobileRowCardsList>
+          )}
           {roster.length > PAGE_SIZE && <DataTable.TableFooter />}
         </DataTable>
       )}

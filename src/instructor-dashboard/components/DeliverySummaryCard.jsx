@@ -1,6 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { Alert, Badge, Card } from '@openedx/paragon';
+import { Alert, Card } from '@openedx/paragon';
 import { useIntl } from '@edx/frontend-platform/i18n';
 import messages from '../messages';
 import { formatDate, formatTime } from '../utils';
@@ -24,17 +24,21 @@ const DeliverySummaryCard = ({ courses, delivery, timezone = undefined }) => {
       return {
         message: messages.increaseFromLastMonth,
         values: { hours: monthlyChange },
-        variant: 'success',
+        modifier: 'instructor-dashboard__delta--up',
       };
     }
     if (monthlyChange < 0) {
       return {
         message: messages.decreaseFromLastMonth,
         values: { hours: Math.abs(monthlyChange) },
-        variant: 'danger',
+        modifier: 'instructor-dashboard__delta--down',
       };
     }
-    return { message: messages.noChangeFromLastMonth, values: {}, variant: 'light' };
+    return {
+      message: messages.noChangeFromLastMonth,
+      values: {},
+      modifier: 'instructor-dashboard__delta--flat',
+    };
   };
   const change = getMonthlyChange();
 
@@ -51,45 +55,49 @@ const DeliverySummaryCard = ({ courses, delivery, timezone = undefined }) => {
               <div className="instructor-dashboard__delivery-total">
                 <strong>{intl.formatMessage(messages.hoursShort, { hours: delivery.delivered_hours })}</strong>
                 <span>{intl.formatMessage(messages.deliveryHeadline, { sessions: delivery.delivered_sessions })}</span>
-                <Badge variant={change.variant}>
+                <span className={`instructor-dashboard__delta ${change.modifier}`}>
                   {intl.formatMessage(change.message, change.values)}
-                </Badge>
+                </span>
               </div>
-              <h3 className="instructor-dashboard__subheading">{intl.formatMessage(messages.weeklyHours)}</h3>
-              <ol className="instructor-dashboard__weekly-chart">
-                {delivery.weekly_hours.map(week => {
-                  const weekStart = formatDate(intl, week.week_start);
-                  const weekEnd = formatDate(intl, week.week_end);
-                  const barHeight = week.hours > 0
-                    ? Math.max(8, Math.round((week.hours / maxWeek) * 100))
-                    : 0;
+              <div className="instructor-dashboard__weekly-box">
+                <h3 className="instructor-dashboard__subheading instructor-dashboard__subheading--flush">
+                  {intl.formatMessage(messages.weeklyHours)}
+                </h3>
+                <ol className="instructor-dashboard__weekly-chart">
+                  {delivery.weekly_hours.map(week => {
+                    const weekStart = formatDate(intl, week.week_start);
+                    const weekEnd = formatDate(intl, week.week_end);
+                    const barHeight = week.hours > 0
+                      ? Math.max(8, Math.round((week.hours / maxWeek) * 100))
+                      : 0;
 
-                  return (
-                    <li key={week.week_start}>
-                      <strong className="instructor-dashboard__weekly-value">
-                        {intl.formatMessage(messages.hoursShort, { hours: week.hours })}
-                      </strong>
-                      <span className="instructor-dashboard__weekly-bar-track" aria-hidden="true">
-                        <span
-                          className="instructor-dashboard__weekly-bar"
-                          // eslint-disable-next-line react/forbid-component-props
-                          style={{ height: `${barHeight}%` }}
-                        />
-                      </span>
-                      <time className="instructor-dashboard__weekly-date" dateTime={week.week_start}>
-                        {weekStart}
-                      </time>
-                      <span className="sr-only">
-                        {intl.formatMessage(messages.teachingHoursWeek, {
-                          startDate: weekStart,
-                          endDate: weekEnd,
-                          hours: week.hours,
-                        })}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ol>
+                    return (
+                      <li key={week.week_start}>
+                        <strong className="instructor-dashboard__weekly-value">
+                          {intl.formatMessage(messages.hoursShort, { hours: week.hours })}
+                        </strong>
+                        <span className="instructor-dashboard__weekly-bar-track" aria-hidden="true">
+                          <span
+                            className="instructor-dashboard__weekly-bar"
+                            // eslint-disable-next-line react/forbid-component-props
+                            style={{ height: `${barHeight}%` }}
+                          />
+                        </span>
+                        <time className="instructor-dashboard__weekly-date" dateTime={week.week_start}>
+                          {weekStart}
+                        </time>
+                        <span className="sr-only">
+                          {intl.formatMessage(messages.teachingHoursWeek, {
+                            startDate: weekStart,
+                            endDate: weekEnd,
+                            hours: week.hours,
+                          })}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </div>
             </div>
             <div>
               <h3>{intl.formatMessage(messages.atAGlance)}</h3>
@@ -113,46 +121,56 @@ const DeliverySummaryCard = ({ courses, delivery, timezone = undefined }) => {
               </dl>
             </div>
           </div>
-          <h3 className="instructor-dashboard__subheading">{intl.formatMessage(messages.hoursByCourse)}</h3>
-          <div className="instructor-dashboard__course-hours">
-            {courses.map(course => (
-              <div className="instructor-dashboard__course-hours-row" key={course.course_id}>
-                <span>{course.name}</span>
-                <span className="instructor-dashboard__course-hours-track" aria-hidden="true">
-                  <span
-                    // eslint-disable-next-line react/forbid-component-props
-                    style={{ width: `${Math.round((course.delivered_hours / maxCourseHours) * 100)}%` }}
-                  />
-                </span>
-                <strong aria-label={intl.formatMessage(messages.courseHours, {
-                  course: course.name,
-                  hours: course.delivered_hours,
-                })}
-                >
-                  {intl.formatMessage(messages.hoursShort, { hours: course.delivered_hours })}
-                </strong>
+          <div className="instructor-dashboard__delivery-split">
+            <section className="instructor-dashboard__delivery-subcard">
+              <h3 className="instructor-dashboard__subheading instructor-dashboard__subheading--flush">
+                {intl.formatMessage(messages.hoursByCourse)}
+              </h3>
+              <div className="instructor-dashboard__course-hours">
+                {courses.map(course => (
+                  <div className="instructor-dashboard__course-hours-row" key={course.course_id}>
+                    <span>{course.name}</span>
+                    <span className="instructor-dashboard__course-hours-track" aria-hidden="true">
+                      <span
+                        // eslint-disable-next-line react/forbid-component-props
+                        style={{ width: `${Math.round((course.delivered_hours / maxCourseHours) * 100)}%` }}
+                      />
+                    </span>
+                    <strong aria-label={intl.formatMessage(messages.courseHours, {
+                      course: course.name,
+                      hours: course.delivered_hours,
+                    })}
+                    >
+                      {intl.formatMessage(messages.hoursShort, { hours: course.delivered_hours })}
+                    </strong>
+                  </div>
+                ))}
               </div>
-            ))}
+            </section>
+            <section className="instructor-dashboard__delivery-subcard">
+              <h3 className="instructor-dashboard__subheading instructor-dashboard__subheading--flush">
+                {intl.formatMessage(messages.recentSessions)}
+              </h3>
+              {!delivery.recent_sessions.length ? (
+                <Alert variant="info">{intl.formatMessage(messages.noDeliveryHistory)}</Alert>
+              ) : delivery.recent_sessions.map(session => (
+                <article className="instructor-dashboard__recent-session" key={session.id}>
+                  <time dateTime={session.scheduled_start}>
+                    {formatDate(intl, session.scheduled_start, {}, timezone)} · {' '}
+                    {formatTime(intl, session.scheduled_start, timezone)}
+                  </time>
+                  <div><strong>{session.title}</strong>{session.course_code && <span>{session.course_code}</span>}</div>
+                  <span>{formatDuration(intl, session.duration_minutes)}</span>
+                  <span>
+                    {intl.formatMessage(messages.presentCount, {
+                      present: session.present,
+                      total: session.trainee_count,
+                    })}
+                  </span>
+                </article>
+              ))}
+            </section>
           </div>
-          <h3 className="instructor-dashboard__subheading">{intl.formatMessage(messages.recentSessions)}</h3>
-          {!delivery.recent_sessions.length ? (
-            <Alert variant="info">{intl.formatMessage(messages.noDeliveryHistory)}</Alert>
-          ) : delivery.recent_sessions.map(session => (
-            <article className="instructor-dashboard__recent-session" key={session.id}>
-              <time dateTime={session.scheduled_start}>
-                {formatDate(intl, session.scheduled_start, {}, timezone)} · {' '}
-                {formatTime(intl, session.scheduled_start, timezone)}
-              </time>
-              <div><strong>{session.title}</strong>{session.course_code && <span>{session.course_code}</span>}</div>
-              <span>{formatDuration(intl, session.duration_minutes)}</span>
-              <span>
-                {intl.formatMessage(messages.presentCount, {
-                  present: session.present,
-                  total: session.trainee_count,
-                })}
-              </span>
-            </article>
-          ))}
         </Card.Section>
       </Card>
     </section>

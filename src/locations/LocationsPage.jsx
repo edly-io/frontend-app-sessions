@@ -6,9 +6,11 @@ import React, {
 } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import {
-  Alert, Button, ButtonGroup, Container, DataTable, Form, Spinner, StandardModal, Toast,
+  Alert, Button, ButtonGroup, Container, DataTable, Form, Icon, IconButton, Spinner, StandardModal, Toast,
 } from '@openedx/paragon';
-import { Add, DeleteOutline, EditOutline } from '@openedx/paragon/icons';
+import {
+  Add, DeleteOutline, EditOutline, History,
+} from '@openedx/paragon/icons';
 import PropTypes from 'prop-types';
 import { useConfig } from '../app/useConfig';
 import { getProgram } from '../app/api';
@@ -18,6 +20,8 @@ import { extractApiError } from '../shared/utils';
 import LocationModal from './LocationModal';
 import useModalParams from '../shared/useModalParams';
 import AuditLogTable from '../shared/AuditLogTable';
+import { MobileRowCard, MobileRowCardsList, MobileRowField } from '../shared/MobileRowCards';
+import useIsBelowLg from '../shared/useIsBelowLg';
 
 const DescriptionCell = ({ value }) => (
   value ? <span>{value}</span> : <span className="text-muted">—</span>
@@ -77,6 +81,7 @@ ActionsCell.propTypes = {
 const PAGE_SIZE = 20;
 
 const LocationsPage = () => {
+  const isBelowLg = useIsBelowLg();
   const { programId } = useParams();
   const { data: config } = useConfig();
   const isAdmin = config?.user_role === USER_ROLE.ADMIN;
@@ -286,7 +291,63 @@ const LocationsPage = () => {
               columns={columns}
               initialState={{ pageIndex: 0, pageSize: PAGE_SIZE }}
             >
-              <DataTable.Table />
+              {!isBelowLg && <DataTable.Table />}
+              {isBelowLg && locations.length > 0 && (
+                <MobileRowCardsList>
+                    {locations.map((loc) => (
+                      <MobileRowCard
+                        key={loc.id}
+                        title={loc.name}
+                        subtitle={programInfo?.city?.name || null}
+                        footer={isAdmin ? (
+                          <>
+                            <IconButton
+                              src={EditOutline}
+                              iconAs={Icon}
+                              size="sm"
+                              variant="primary"
+                              alt="Edit"
+                              onClick={() => openModal('edit-location', loc.id)}
+                            />
+                            <IconButton
+                              src={DeleteOutline}
+                              iconAs={Icon}
+                              size="sm"
+                              variant="primary"
+                              alt="Delete"
+                              className="text-danger"
+                              onClick={() => setDeleteTarget(loc)}
+                            />
+                            <IconButton
+                              src={History}
+                              iconAs={Icon}
+                              size="sm"
+                              variant="primary"
+                              alt="History"
+                              onClick={() => setSearchParams((prev) => {
+                                const next = new URLSearchParams(prev);
+                                next.set('view', 'audit-log');
+                                next.set('record_id', String(loc.id));
+                                return next;
+                              })}
+                            />
+                          </>
+                        ) : null}
+                      >
+                        {loc.description && (
+                          <MobileRowField label="Description">
+                            <span>{loc.description}</span>
+                          </MobileRowField>
+                        )}
+                        {loc.biometric_machine_serial_number && (
+                          <MobileRowField label="Biometric serial">
+                            <code>{loc.biometric_machine_serial_number}</code>
+                          </MobileRowField>
+                        )}
+                      </MobileRowCard>
+                    ))}
+                </MobileRowCardsList>
+              )}
               <DataTable.EmptyTable content="No locations found." />
               <DataTable.TableFooter />
             </DataTable>

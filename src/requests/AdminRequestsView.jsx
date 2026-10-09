@@ -31,6 +31,8 @@ import CreateRequestModal from './CreateRequestModal';
 import useModalParams from '../shared/useModalParams';
 import LeaveUsagePanel from './LeaveUsagePanel';
 import SessionLeavesPanel from './SessionLeavesPanel';
+import { MobileRowCard, MobileRowCardsList, MobileRowField } from '../shared/MobileRowCards';
+import useIsBelowLg from '../shared/useIsBelowLg';
 
 const PAGE_SIZE = 15;
 
@@ -74,6 +76,7 @@ CollapsibleText.propTypes = { text: PropTypes.string, muted: PropTypes.bool };
 CollapsibleText.defaultProps = { text: '', muted: false };
 
 const AdminRequestsView = ({ readOnly, showNewRequest, lockedType }) => {
+  const isBelowLg = useIsBelowLg();
   const { programId } = useParams();
   const { modal, openModal, closeModal } = useModalParams();
   const isCreateOpen = modal === 'new-request';
@@ -238,6 +241,60 @@ const AdminRequestsView = ({ readOnly, showNewRequest, lockedType }) => {
     doBulkApprove();
   };
 
+  const renderActions = useCallback((request) => {
+    if (readOnly) { return null; }
+    const isPending = request.state === REQUEST_STATUS.PENDING;
+    const isWithdrawalPending = request.state === REQUEST_STATUS.WITHDRAWAL_PENDING;
+    if (!isPending && !isWithdrawalPending) { return null; }
+    const busy = actioningId === request.id;
+    const datePassed = isLeaveStartDatePast(request);
+
+    if (isWithdrawalPending) {
+      return (
+        <div>
+          {datePassed && (
+            <small className="text-danger d-block mb-1">{PAST_LEAVE_SHORT_WARNING}</small>
+          )}
+          <div className="requests-view__row-actions">
+            <Button variant="primary" size="sm" onClick={() => handleApproveWithdrawalClick(request)} disabled={busy}>
+              Approve Withdrawal
+            </Button>
+            <Button
+              variant="outline-danger"
+              size="sm"
+              onClick={() => handleOpenRejectModal(request, REQUEST_STATUS.WITHDRAWAL_REJECTED)}
+              disabled={busy}
+            >
+              Reject Withdrawal
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div>
+        {datePassed && (
+          <small className="text-danger d-block mb-1">{PAST_LEAVE_APPROVE_WARNING}</small>
+        )}
+        <div className="requests-view__row-actions">
+          <Button variant="primary" size="sm" onClick={() => handleApprove(request)} disabled={busy}>
+            Approve
+          </Button>
+          <Button
+            variant="outline-danger"
+            size="sm"
+            onClick={() => handleOpenRejectModal(request, REQUEST_STATUS.REJECTED)}
+            disabled={busy}
+          >
+            Reject
+          </Button>
+        </div>
+      </div>
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [readOnly, actioningId]);
+
   /* eslint-disable react/no-unstable-nested-components, react/prop-types */
   const columns = useMemo(() => {
     const base = [
@@ -349,74 +406,13 @@ const AdminRequestsView = ({ readOnly, showNewRequest, lockedType }) => {
       base.push({
         Header: 'Actions',
         id: 'actions',
-        Cell: ({ row }) => {
-          const request = row.original;
-          const isPending = request.state === REQUEST_STATUS.PENDING;
-          const isWithdrawalPending = request.state === REQUEST_STATUS.WITHDRAWAL_PENDING;
-          if (!isPending && !isWithdrawalPending) { return null; }
-          const busy = actioningId === request.id;
-          const datePassed = isLeaveStartDatePast(request);
-
-          if (isWithdrawalPending) {
-            return (
-              <div>
-                {datePassed && (
-                  <small className="text-danger d-block mb-1">{PAST_LEAVE_SHORT_WARNING}</small>
-                )}
-                <div className="requests-view__row-actions">
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => handleApproveWithdrawalClick(request)}
-                    disabled={busy}
-                  >
-                    Approve Withdrawal
-                  </Button>
-                  <Button
-                    variant="outline-danger"
-                    size="sm"
-                    onClick={() => handleOpenRejectModal(request, REQUEST_STATUS.WITHDRAWAL_REJECTED)}
-                    disabled={busy}
-                  >
-                    Reject Withdrawal
-                  </Button>
-                </div>
-              </div>
-            );
-          }
-
-          return (
-            <div>
-              {datePassed && (
-                <small className="text-danger d-block mb-1">{PAST_LEAVE_APPROVE_WARNING}</small>
-              )}
-              <div className="requests-view__row-actions">
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => handleApprove(request)}
-                  disabled={busy}
-                >
-                  Approve
-                </Button>
-                <Button
-                  variant="outline-danger"
-                  size="sm"
-                  onClick={() => handleOpenRejectModal(request, REQUEST_STATUS.REJECTED)}
-                  disabled={busy}
-                >
-                  Reject
-                </Button>
-              </div>
-            </div>
-          );
-        },
+        Cell: ({ row }) => renderActions(row.original),
       });
     }
 
     return base;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [actioningId, readOnly, lockedType]);
+  }, [actioningId, readOnly, lockedType, renderActions]);
   /* eslint-enable react/no-unstable-nested-components, react/prop-types */
 
   if (initialLoading) {
@@ -592,10 +588,97 @@ const AdminRequestsView = ({ readOnly, showNewRequest, lockedType }) => {
             columns={columns}
             initialState={{ pageIndex, pageSize: PAGE_SIZE }}
           >
-            <div className="sticky-header-table sessions-table-scroll">
-              <DataTable.Table />
-              <DataTable.EmptyTable content="No requests" />
-            </div>
+            {!isBelowLg && (
+              <div className="sticky-header-table sessions-table-scroll">
+                <DataTable.Table />
+                <DataTable.EmptyTable content="No requests" />
+              </div>
+            )}
+            {isBelowLg && requests.length > 0 && (
+              <MobileRowCardsList>
+                  {requests.map((req) => {
+                    const displayName = req.submitter_name || req.submitter_email;
+                    const { attachment } = req;
+                    const filename = attachment ? decodeURIComponent(attachment.split('/').pop() || 'file') : null;
+                    const actions = renderActions(req);
+                    return (
+                      <MobileRowCard
+                        key={req.id}
+                        title={<RequestDetailCell req={req} programKey={programId || ''} />}
+                        subtitle={req.created ? formatDateTime(req.created) : null}
+                        footer={(
+                          <div className="d-flex flex-wrap gap-2 w-100 justify-content-end">
+                            <Button
+                              as={Link}
+                              variant="outline-primary"
+                              size="sm"
+                              className="text-nowrap"
+                              to={`?view=audit-log&record_id=${req.id}`}
+                            >
+                              History
+                            </Button>
+                            {actions}
+                          </div>
+                        )}
+                      >
+                        {!lockedType && (
+                          <MobileRowField label="Type">
+                            <Badge variant={REQUEST_TYPE_VARIANTS[req.request_type_label] || 'secondary'}>
+                              {REQUEST_TYPE_LABELS[req.request_type_label] || req.request_type_label}
+                            </Badge>
+                          </MobileRowField>
+                        )}
+                        {displayName && (
+                          <MobileRowField label="Submitter">
+                            <div>
+                              <UserIdentity
+                                name={displayName}
+                                badges={[SUBMITTER_ROLE_BADGES[req.submitter_role]]}
+                                size="compact"
+                              />
+                              {req.submitter_name && req.submitter_email && (
+                                <small className="text-muted d-block mt-1">{req.submitter_email}</small>
+                              )}
+                              {lockedType === REQUEST_TYPE.LEAVE && req.would_exceed_threshold === true && (
+                                <small className="text-danger d-block mt-1">
+                                  Approval would exceed threshold
+                                </small>
+                              )}
+                              {lockedType === REQUEST_TYPE.LEAVE && req.has_session_conflict === true && (
+                                <small className="requests-view__conflict-note d-block mt-1">
+                                  Sessions scheduled during leave period
+                                </small>
+                              )}
+                            </div>
+                          </MobileRowField>
+                        )}
+                        <MobileRowField label="Status">
+                          <Badge variant={REQUEST_STATUS_VARIANTS[req.state] || 'secondary'}>
+                            {REQUEST_STATUS_LABELS[req.state] || req.state}
+                          </Badge>
+                        </MobileRowField>
+                        {req.reason && (
+                          <MobileRowField label="Reason">
+                            <CollapsibleText text={req.reason} />
+                          </MobileRowField>
+                        )}
+                        {req.reviewer_note && (
+                          <MobileRowField label="Reviewer note">
+                            <CollapsibleText text={req.reviewer_note} muted />
+                          </MobileRowField>
+                        )}
+                        {attachment && (
+                          <MobileRowField label="Attachment">
+                            <a href={attachment} target="_blank" rel="noopener noreferrer" className="requests-view__attachment-link">
+                              {filename}
+                            </a>
+                          </MobileRowField>
+                        )}
+                      </MobileRowCard>
+                    );
+                  })}
+              </MobileRowCardsList>
+            )}
             <DataTable.TableFooter />
           </DataTable>
         )}

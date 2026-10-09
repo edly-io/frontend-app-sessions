@@ -6,6 +6,8 @@ import {
 import { UserIdentity } from '@edly-io/frontend-component-fbr';
 import { getLeaveUsage } from './api';
 import { extractApiError } from '../shared/utils';
+import { MobileRowCard, MobileRowCardsList, MobileRowField } from '../shared/MobileRowCards';
+import useIsBelowLg from '../shared/useIsBelowLg';
 import './requests.scss';
 
 const FILTER_OPTIONS = [
@@ -90,6 +92,7 @@ const COLUMNS = [
 ];
 
 const LeaveUsagePanel = ({ programKey }) => {
+  const isBelowLg = useIsBelowLg();
   const [usage, setUsage] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -165,10 +168,36 @@ const LeaveUsagePanel = ({ programKey }) => {
       {error && <Alert variant="danger">{error}</Alert>}
       {!loading && !error && usage && (
         <DataTable isSortable data={rows} columns={COLUMNS} itemCount={rows.length}>
-          <div className="sticky-header-table sessions-table-scroll">
-            <DataTable.Table />
-            <DataTable.EmptyTable content="No learners found." />
-          </div>
+          {!isBelowLg && (
+            <div className="sticky-header-table sessions-table-scroll">
+              <DataTable.Table />
+              <DataTable.EmptyTable content="No learners found." />
+            </div>
+          )}
+          {isBelowLg && rows.length > 0 && (
+            <MobileRowCardsList>
+                {rows.map((r) => {
+                  const row = { original: r };
+                  return (
+                    <MobileRowCard
+                      key={r.user_id ?? r.email ?? r.full_name}
+                      title={NameCell({ row })}
+                      subtitle={r.email}
+                    >
+                      <MobileRowField label="Leaves used">
+                        {LeavesUsedCell({ row })}
+                      </MobileRowField>
+                      <MobileRowField label="Full-day">
+                        {r.breakdown?.full_day_leaves ?? '—'}
+                      </MobileRowField>
+                      <MobileRowField label="Session-specific">
+                        {r.breakdown?.session_specific_leaves ?? '—'}
+                      </MobileRowField>
+                    </MobileRowCard>
+                  );
+                })}
+            </MobileRowCardsList>
+          )}
         </DataTable>
       )}
     </div>
