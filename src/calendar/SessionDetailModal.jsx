@@ -186,8 +186,10 @@ const SessionDetailModal = ({
         </div>
       )}
 
-      {/* Third section: meeting (own block, separated). */}
-      {hasMeeting && (canStartMeeting || session.my_join_url || session.meeting_join_url) && (
+      {/* Third section: meeting (own block, separated). Hidden once the session
+          is past — matches the calendar popover, which already hides both
+          Start-as-host and Join once scheduled_end_time passes. */}
+      {hasMeeting && !isPast && (canStartMeeting || session.my_join_url || session.meeting_join_url) && (
         <div className="mt-4 pt-3" style={{ borderTop: '1px solid #dee2e6' }}>
           <div className="text-muted mb-2" style={{ fontSize: 13 }}>Meeting</div>
           <div className="d-flex flex-wrap" style={{ gap: 8 }}>

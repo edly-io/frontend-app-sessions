@@ -11,8 +11,8 @@ expect.extend(jestDomMatchers);
 const BASE_SESSION = {
   title: 'Test Session',
   status: 'scheduled',
-  scheduled_start_time: '2026-06-01T10:00:00.000Z',
-  scheduled_end_time: '2026-06-01T11:00:00.000Z',
+  scheduled_start_time: '2999-06-01T10:00:00.000Z',
+  scheduled_end_time: '2999-06-01T11:00:00.000Z',
 };
 
 const wrap = (session, props = {}) => render(
@@ -115,6 +115,30 @@ it('shows "Join meeting" (not Start) for a non-host viewer', () => {
   });
   expect(screen.queryByRole('button', { name: /start as host/i })).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: /join meeting/i })).toBeInTheDocument();
+});
+
+it('hides "Start as host" for a host once scheduled_end_time has passed', () => {
+  wrap({
+    ...BASE_SESSION,
+    scheduled_start_time: '2020-06-01T10:00:00.000Z',
+    scheduled_end_time: '2020-06-01T11:00:00.000Z',
+    meeting_id: 'mid',
+    meeting_join_url: 'https://zoom.us/j/123',
+  }, { canManageSessions: true });
+  expect(screen.queryByRole('button', { name: /start as host/i })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /join meeting/i })).not.toBeInTheDocument();
+});
+
+it('hides "Join meeting" for a non-host viewer once scheduled_end_time has passed', () => {
+  wrap({
+    ...BASE_SESSION,
+    scheduled_start_time: '2020-06-01T10:00:00.000Z',
+    scheduled_end_time: '2020-06-01T11:00:00.000Z',
+    meeting_id: 'mid',
+    meeting_join_url: 'https://zoom.us/j/123',
+  });
+  expect(screen.queryByRole('button', { name: /join meeting/i })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /start as host/i })).not.toBeInTheDocument();
 });
 
 it('renders meeting password when provided', () => {
