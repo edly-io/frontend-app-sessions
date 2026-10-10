@@ -4,7 +4,7 @@ import React, {
 import PropTypes from 'prop-types';
 import { useParams } from 'react-router-dom';
 import {
-  Alert, Badge, Button, Col, Container, DataTable, Form, Row, Spinner,
+  Alert, Badge, Button, Col, Container, DataTable, Form, Row, Spinner, StandardModal,
 } from '@openedx/paragon';
 import { Add } from '@openedx/paragon/icons';
 
@@ -22,7 +22,7 @@ import SectionHeading from '../shared/SectionHeading';
 import DatepickerControl from '../shared/date-picker-control/DatepickerControl';
 import './requests.scss';
 import CreateRequestModal from './CreateRequestModal';
-import RequestDetailCell from './RequestDetailCell';
+import RequestDetailCell, { RequestSummary } from './RequestDetailCell';
 import LeaveUsageSummary from './LeaveUsageSummary';
 import useModalParams from '../shared/useModalParams';
 import { MobileRowCard, MobileRowCardsList, MobileRowField } from '../shared/MobileRowCards';
@@ -75,8 +75,10 @@ const LearnerRequestsView = ({ lockedType }) => {
   const [filterEndDate, setFilterEndDate] = useState('');
   const { modal, openModal, closeModal } = useModalParams();
   const isCreateOpen = modal === 'new-request';
+  // Shape: { request, kind: 'delete' | 'withdraw' }
   const [confirmAction, setConfirmAction] = useState(null);
-  // Shape: { id: string, kind: 'delete' | 'withdraw', requestTypeLabel?: string }
+  const [confirmSubmitting, setConfirmSubmitting] = useState(false);
+  const [confirmError, setConfirmError] = useState('');
 
   const fetchData = useCallback(async ({ pageIndex: nextIndex } = {}) => {
     const targetIndex = nextIndex ?? 0;
@@ -109,45 +111,13 @@ const LearnerRequestsView = ({ lockedType }) => {
   const renderActions = useCallback((req) => {
     const isLeave = req.request_type_label === REQUEST_TYPE.LEAVE;
 
-    if (confirmAction?.id === req.id) {
-      const btnVariant = confirmAction.kind === 'delete' ? 'danger' : 'warning';
-      return (
-        <span className="requests-view__row-actions">
-          <Button
-            variant={btnVariant}
-            size="sm"
-            onClick={async () => {
-              try {
-                if (confirmAction.kind === 'withdraw') {
-                  await withdrawRequest(req.id);
-                } else {
-                  await deleteRequest(req.id, confirmAction.requestTypeLabel);
-                }
-              } catch (err) {
-                setError(extractApiError(err, 'Action failed'));
-              } finally {
-                setConfirmAction(null);
-                fetchData({ pageIndex: 0 });
-              }
-            }}
-          >
-            Confirm
-          </Button>
-          <Button variant="tertiary" size="sm" onClick={() => setConfirmAction(null)}>Cancel</Button>
-        </span>
-      );
-    }
-
     if (req.state === REQUEST_STATUS.PENDING) {
       return (
         <Button
           variant="outline-danger"
           size="sm"
-          onClick={() => setConfirmAction({
-            id: req.id,
-            kind: 'delete',
-            requestTypeLabel: req.request_type_label,
-          })}
+          block
+          onClick={() => setConfirmAction({ request: req, kind: 'delete' })}
         >
           Delete
         </Button>
@@ -161,9 +131,10 @@ const LearnerRequestsView = ({ lockedType }) => {
             Your previous withdrawal request was denied.
           </small>
           <Button
-            variant="outline-warning"
+            variant="outline-primary"
             size="sm"
-            onClick={() => setConfirmAction({ id: req.id, kind: 'withdraw' })}
+            block
+            onClick={() => setConfirmAction({ request: req, kind: 'withdraw' })}
           >
             Withdraw
           </Button>
@@ -174,9 +145,10 @@ const LearnerRequestsView = ({ lockedType }) => {
     if (req.state === REQUEST_STATUS.APPROVED && isLeave) {
       return (
         <Button
-          variant="outline-warning"
+          variant="outline-primary"
           size="sm"
-          onClick={() => setConfirmAction({ id: req.id, kind: 'withdraw' })}
+          block
+          onClick={() => setConfirmAction({ request: req, kind: 'withdraw' })}
         >
           Withdraw
         </Button>
@@ -184,7 +156,7 @@ const LearnerRequestsView = ({ lockedType }) => {
     }
 
     return null;
-  }, [confirmAction, fetchData]);
+  }, []);
 
   /* eslint-disable react/no-unstable-nested-components, react/prop-types */
   const columns = useMemo(() => [
@@ -250,8 +222,38 @@ const LearnerRequestsView = ({ lockedType }) => {
       Cell: ({ row }) => renderActions(row.original),
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [confirmAction, renderActions]);
+  ], [renderActions]);
   /* eslint-enable react/no-unstable-nested-components, react/prop-types */
+
+  const closeConfirm = () => {
+    setConfirmAction(null);
+    setConfirmError('');
+  };
+
+  const submitConfirm = async () => {
+    const { request, kind } = confirmAction;
+    setConfirmSubmitting(true);
+    setConfirmError('');
+    try {
+      if (kind === 'withdraw') {
+        await withdrawRequest(request.id);
+      } else {
+        await deleteRequest(request.id, request.request_type_label);
+      }
+      closeConfirm();
+      fetchData({ pageIndex: 0 });
+    } catch (err) {
+      setConfirmError(extractApiError(err, 'Action failed'));
+    } finally {
+      setConfirmSubmitting(false);
+    }
+  };
+
+  const isWithdraw = confirmAction?.kind === 'withdraw';
+  let confirmLabel = isWithdraw ? 'Withdraw' : 'Delete';
+  if (confirmSubmitting) {
+    confirmLabel = isWithdraw ? 'Withdrawing…' : 'Deleting…';
+  }
 
   if (initialLoading) {
     return (
@@ -451,6 +453,39 @@ const LearnerRequestsView = ({ lockedType }) => {
           )}
           <DataTable.TableFooter />
         </DataTable>
+      )}
+
+      {confirmAction && (
+        <StandardModal
+          isOpen
+          onClose={closeConfirm}
+          title={isWithdraw ? 'Withdraw leave' : 'Delete request'}
+          size="md"
+          isFullscreenOnMobile
+          footerNode={(
+            <>
+              <Button variant="tertiary" onClick={closeConfirm} disabled={confirmSubmitting}>
+                Cancel
+              </Button>
+              <Button
+                variant={isWithdraw ? 'primary' : 'danger'}
+                onClick={submitConfirm}
+                disabled={confirmSubmitting}
+                className="ml-2"
+              >
+                {confirmLabel}
+              </Button>
+            </>
+          )}
+        >
+          {confirmError && <Alert variant="danger" className="mb-3">{confirmError}</Alert>}
+          <p>
+            {isWithdraw
+              ? 'Withdraw this approved leave? Your withdrawal will be sent for review.'
+              : 'Delete this pending request? This cannot be undone.'}
+          </p>
+          <RequestSummary req={confirmAction.request} programKey={programId || ''} />
+        </StandardModal>
       )}
 
       <CreateRequestModal
