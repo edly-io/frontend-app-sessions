@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import { Button, Spinner, StandardModal } from '@openedx/paragon';
 import { REQUEST_TYPE } from '../shared/constants';
@@ -85,8 +85,9 @@ const ModeBadge = ({ mode }) => {
 ModeBadge.propTypes = { mode: PropTypes.string };
 ModeBadge.defaultProps = { mode: null };
 
-const RequestDetailCell = ({ req, programKey }) => {
-  const [expanded, setExpanded] = useState(false);
+// Badges, date and sessions for one request. Shared by the Details modal and the
+// learner's delete / withdraw confirmation.
+export const RequestSummary = ({ req, programKey }) => {
   const [localSessions, setLocalSessions] = useState([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [localFetched, setLocalFetched] = useState(false);
@@ -110,26 +111,30 @@ const RequestDetailCell = ({ req, programKey }) => {
     dateRange = deriveDateRange(sessions);
   }
 
-  // Badge mode: derived from structure, not a stored field.
   let badgeMode = null;
   if (isLeave) {
     badgeMode = isFullDay ? 'full_day' : 'session_specific';
   }
 
-  const openDetails = () => {
-    setExpanded(true);
-    if (isFullDay && !localFetched && programKey && req.leave_start_date && req.leave_end_date) {
-      setLoadingSessions(true);
-      getSessions({
-        program_key: programKey,
-        start_date: req.leave_start_date,
-        end_date: req.leave_end_date,
-      })
-        .then((data) => { setLocalSessions(data); setLocalFetched(true); })
-        .catch(() => { setLocalFetched(true); })
-        .finally(() => setLoadingSessions(false));
-    }
-  };
+  useEffect(() => {
+    if (!isFullDay || !programKey || !req.leave_start_date || !req.leave_end_date) { return undefined; }
+    let isMounted = true;
+    setLoadingSessions(true);
+    getSessions({
+      program_key: programKey,
+      start_date: req.leave_start_date,
+      end_date: req.leave_end_date,
+    })
+      .then((data) => { if (isMounted) { setLocalSessions(data); } })
+      .catch(() => {})
+      .finally(() => {
+        if (isMounted) {
+          setLocalFetched(true);
+          setLoadingSessions(false);
+        }
+      });
+    return () => { isMounted = false; };
+  }, [isFullDay, programKey, req.leave_start_date, req.leave_end_date]);
 
   const renderSessionList = (list) => (
     <ul className="list-unstyled mb-0">
@@ -159,6 +164,35 @@ const RequestDetailCell = ({ req, programKey }) => {
     sessionsContent = <span className="text-muted">No sessions</span>;
   }
 
+  return (
+    <>
+      {isLeave && (
+        <div className="mb-3">
+          <ModeBadge mode={badgeMode} />
+          <CategoryBadge category={req.category} />
+        </div>
+      )}
+      {dateRange && (
+        <div className="mb-3">
+          <div className="small text-muted">{isFullDay ? 'Leave period' : 'Date'}</div>
+          <div className="font-weight-bold">{dateRange}</div>
+        </div>
+      )}
+      <div className="small text-muted">Sessions</div>
+      {sessionsContent}
+    </>
+  );
+};
+
+const RequestDetailCell = ({ req, programKey }) => {
+  const [expanded, setExpanded] = useState(false);
+  const isLeave = req.request_type_label === REQUEST_TYPE.LEAVE;
+  const isFullDay = isLeave && (req.leave_type === 'full' || req.leave_type === 'full_day');
+  let badgeMode = null;
+  if (isLeave) {
+    badgeMode = isFullDay ? 'full_day' : 'session_specific';
+  }
+
   let modalTitle = 'Request details';
   if (isLeave) {
     modalTitle = 'Leave details';
@@ -174,7 +208,7 @@ const RequestDetailCell = ({ req, programKey }) => {
         variant="link"
         size="sm"
         className="d-block p-0 text-left"
-        onClick={openDetails}
+        onClick={() => setExpanded(true)}
       >
         Details
       </Button>
@@ -188,39 +222,37 @@ const RequestDetailCell = ({ req, programKey }) => {
           <Button variant="tertiary" onClick={() => setExpanded(false)}>Close</Button>
         )}
       >
-        {isLeave && (
-          <div className="mb-3">
-            <ModeBadge mode={badgeMode} />
-            <CategoryBadge category={req.category} />
-          </div>
-        )}
-        {dateRange && (
-          <div className="mb-3">
-            <div className="small text-muted">{isFullDay ? 'Leave period' : 'Date'}</div>
-            <div className="font-weight-bold">{dateRange}</div>
-          </div>
-        )}
-        <div className="small text-muted">Sessions</div>
-        {sessionsContent}
+        {expanded && <RequestSummary req={req} programKey={programKey} />}
       </StandardModal>
     </div>
   );
 };
 
+const requestShape = PropTypes.shape({
+  request_type_label: PropTypes.string,
+  leave_type: PropTypes.string,
+  leave_start_date: PropTypes.string,
+  leave_end_date: PropTypes.string,
+  category: PropTypes.string,
+  sessions: PropTypes.arrayOf(PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    title: PropTypes.string,
+    scheduled_start_time: PropTypes.string,
+  })),
+});
+
+RequestSummary.propTypes = {
+  programKey: PropTypes.string,
+  req: requestShape.isRequired,
+};
+
+RequestSummary.defaultProps = {
+  programKey: '',
+};
+
 RequestDetailCell.propTypes = {
   programKey: PropTypes.string,
-  req: PropTypes.shape({
-    request_type_label: PropTypes.string,
-    leave_type: PropTypes.string,
-    leave_start_date: PropTypes.string,
-    leave_end_date: PropTypes.string,
-    category: PropTypes.string,
-    sessions: PropTypes.arrayOf(PropTypes.shape({
-      id: PropTypes.string.isRequired,
-      title: PropTypes.string,
-      scheduled_start_time: PropTypes.string,
-    })),
-  }).isRequired,
+  req: requestShape.isRequired,
 };
 
 RequestDetailCell.defaultProps = {

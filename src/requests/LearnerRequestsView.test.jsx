@@ -1,5 +1,7 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import {
+  render, screen, fireEvent, waitFor, within,
+} from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { IntlProvider } from 'react-intl';
@@ -58,24 +60,51 @@ describe('PENDING request', () => {
     expect(await screen.findByRole('button', { name: /delete/i })).toBeInTheDocument();
   });
 
-  it('shows confirm step after clicking Delete', async () => {
+  it('opens a confirmation modal after clicking Delete', async () => {
     wrap();
     fireEvent.click(await screen.findByRole('button', { name: /delete/i }));
-    expect(screen.getByRole('button', { name: /confirm/i })).toBeInTheDocument();
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText(/delete this pending request/i)).toBeInTheDocument();
   });
 
-  it('calls deleteRequest on Confirm click', async () => {
+  it('shows the request details in the confirmation modal', async () => {
+    getMyRequests.mockResolvedValue({
+      count: 1,
+      results: [makeRequest({
+        sessions: [{ id: 's9', title: 'Course 1 — Session 9', scheduled_start_time: '2026-08-05T10:00:00Z' }],
+      })],
+    });
     wrap();
     fireEvent.click(await screen.findByRole('button', { name: /delete/i }));
-    fireEvent.click(screen.getByRole('button', { name: /confirm/i }));
-    expect(deleteRequest).toHaveBeenCalledWith('1', 'leave');
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText(/course 1 — session 9/i)).toBeInTheDocument();
+    expect(within(dialog).getByText('Sessions')).toBeInTheDocument();
   });
 
-  it('dismisses confirm step on Cancel click', async () => {
+  it('calls deleteRequest when the modal is confirmed', async () => {
     wrap();
     fireEvent.click(await screen.findByRole('button', { name: /delete/i }));
-    fireEvent.click(screen.getByRole('button', { name: /^cancel$/i }));
-    expect(screen.queryByRole('button', { name: /confirm/i })).not.toBeInTheDocument();
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: /^delete$/i }));
+    await waitFor(() => expect(deleteRequest).toHaveBeenCalledWith('1', 'leave'));
+  });
+
+  it('closes the modal on Cancel without deleting', async () => {
+    wrap();
+    fireEvent.click(await screen.findByRole('button', { name: /delete/i }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: /^cancel$/i }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(deleteRequest).not.toHaveBeenCalled();
+  });
+
+  it('shows the API error inside the modal', async () => {
+    deleteRequest.mockRejectedValueOnce(new Error('boom'));
+    wrap();
+    fireEvent.click(await screen.findByRole('button', { name: /delete/i }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: /^delete$/i }));
+    expect(await within(dialog).findByRole('alert')).toBeInTheDocument();
   });
 });
 
@@ -94,11 +123,12 @@ describe('APPROVED leave request', () => {
     expect(await screen.findByRole('button', { name: /withdraw/i })).toBeInTheDocument();
   });
 
-  it('calls withdrawRequest on Confirm click', async () => {
+  it('calls withdrawRequest when the modal is confirmed', async () => {
     wrap();
     fireEvent.click(await screen.findByRole('button', { name: /withdraw/i }));
-    fireEvent.click(screen.getByRole('button', { name: /confirm/i }));
-    expect(withdrawRequest).toHaveBeenCalledWith('1');
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: /^withdraw$/i }));
+    await waitFor(() => expect(withdrawRequest).toHaveBeenCalledWith('1'));
   });
 
   it('does not show Delete button', async () => {
@@ -128,11 +158,12 @@ describe('WITHDRAWAL_REJECTED leave request', () => {
     expect(await screen.findByRole('button', { name: /withdraw/i })).toBeInTheDocument();
   });
 
-  it('calls withdrawRequest on Confirm', async () => {
+  it('calls withdrawRequest when the modal is confirmed', async () => {
     wrap();
     fireEvent.click(await screen.findByRole('button', { name: /withdraw/i }));
-    fireEvent.click(screen.getByRole('button', { name: /confirm/i }));
-    expect(withdrawRequest).toHaveBeenCalledWith('1');
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: /^withdraw$/i }));
+    await waitFor(() => expect(withdrawRequest).toHaveBeenCalledWith('1'));
   });
 });
 
@@ -155,6 +186,6 @@ describe.each([
     wrap();
     // Wait for the table to render (Status column shows the state label)
     await screen.findByRole('table');
-    expect(screen.queryByRole('button', { name: /delete|withdraw|confirm/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /delete|withdraw/i })).not.toBeInTheDocument();
   });
 });
