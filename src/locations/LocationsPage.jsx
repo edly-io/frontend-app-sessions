@@ -1,5 +1,6 @@
 // LocationsPage — admin CRUD for the global Location catalogue.
 // Visible inside the sessions-admin shell at /sessions/:programId/locations.
+// Access is gated upstream by `RequireAdmin` in src/app/routes.tsx.
 
 import React, {
   useState, useEffect, useCallback, useMemo,
@@ -12,9 +13,7 @@ import {
   Add, DeleteOutline, EditOutline, History,
 } from '@openedx/paragon/icons';
 import PropTypes from 'prop-types';
-import { useConfig } from '../app/useConfig';
 import { getProgram } from '../app/api';
-import { USER_ROLE } from '../shared/constants';
 import { getLocations, deleteLocation } from './api';
 import { extractApiError } from '../shared/utils';
 import LocationModal from './LocationModal';
@@ -30,10 +29,7 @@ DescriptionCell.propTypes = { value: PropTypes.string };
 DescriptionCell.defaultProps = { value: '' };
 
 const ActionsCell = ({ row, column }) => {
-  const {
-    isAdmin, onEdit, onDelete, onAuditHistory,
-  } = column;
-  if (!isAdmin) { return null; }
+  const { onEdit, onDelete, onAuditHistory } = column;
   return (
     <div className="d-flex" style={{ gap: 4 }}>
       <Button
@@ -71,7 +67,6 @@ ActionsCell.propTypes = {
     }).isRequired,
   }).isRequired,
   column: PropTypes.shape({
-    isAdmin: PropTypes.bool.isRequired,
     onEdit: PropTypes.func.isRequired,
     onDelete: PropTypes.func.isRequired,
     onAuditHistory: PropTypes.func.isRequired,
@@ -83,8 +78,6 @@ const PAGE_SIZE = 20;
 const LocationsPage = () => {
   const isBelowLg = useIsBelowLg();
   const { programId } = useParams();
-  const { data: config } = useConfig();
-  const isAdmin = config?.user_role === USER_ROLE.ADMIN;
 
   const [searchParams, setSearchParams] = useSearchParams();
   const activeView = searchParams.get('view') || 'list';
@@ -172,7 +165,6 @@ const LocationsPage = () => {
       Header: 'Actions',
       id: 'actions',
       Cell: ActionsCell,
-      isAdmin,
       onEdit: (loc) => openModal('edit-location', loc.id),
       onDelete: setDeleteTarget,
       onAuditHistory: (loc) => setSearchParams((prev) => {
@@ -183,16 +175,8 @@ const LocationsPage = () => {
       }),
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [isAdmin, openModal, programInfo]);
+  ], [openModal, programInfo]);
   /* eslint-enable react/no-unstable-nested-components, react/prop-types */
-
-  if (!isAdmin) {
-    return (
-      <Container className="py-4">
-        <Alert variant="info">This page is for admins only.</Alert>
-      </Container>
-    );
-  }
 
   const handleSaved = (saved) => {
     const wasEdit = modal === 'edit-location';
@@ -299,7 +283,7 @@ const LocationsPage = () => {
                         key={loc.id}
                         title={loc.name}
                         subtitle={programInfo?.city?.name || null}
-                        footer={isAdmin ? (
+                        footer={(
                           <>
                             <IconButton
                               src={EditOutline}
@@ -332,7 +316,7 @@ const LocationsPage = () => {
                               })}
                             />
                           </>
-                        ) : null}
+                        )}
                       >
                         {loc.description && (
                           <MobileRowField label="Description">

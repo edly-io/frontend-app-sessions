@@ -1,0 +1,38 @@
+.sessions-unauthorized-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 200px);
+  padding: 2rem 1rem;
+}
+
+.sessions-unauthorized-page__card {
+  max-width: 480px;
+  width: 100%;
+}
+
+.sessions-unauthorized-page__card-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 2rem 1.5rem;
+}
+
+.sessions-unauthorized-page__icon {
+  margin-bottom: 1rem;
+  color: var(--pgn-color-primary);
+}
+
+.sessions-unauthorized-page__title {
+  margin-bottom: .75rem;
+}
+
+.sessions-unauthorized-page__body {
+  margin-bottom: 1.5rem;
+  color: var(--pgn-color-text-muted);
+}
+
+.sessions-unauthorized-page__action {
+  width: 100%;
+}

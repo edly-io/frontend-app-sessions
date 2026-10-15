@@ -4,6 +4,7 @@ import { PageWrap } from '@edx/frontend-platform/react';
 
 import CalendarPage from '../calendar/CalendarPage';
 import AuthGate from './AuthGate';
+import RequireAdmin from './RequireAdmin';
 import SessionsAdminLayout from './SessionsAdminLayout';
 import SessionsLanding from './SessionsLanding';
 import RequestsPage, { RequestsTabPage } from '../requests/RequestsPage';
@@ -65,6 +66,20 @@ const wrapInShell = (Component: React.ComponentType) => (
   </PageWrap>
 );
 
+// Admin-only variant: RequireAdmin sits OUTSIDE the Shell so non-admins see
+// the full-page UnauthorizedPage with no sidebar / program selector / nav.
+const wrapAdminOnly = (Component: React.ComponentType) => (
+  <PageWrap>
+    <AuthGate>
+      <RequireAdmin>
+        <Shell>
+          <Component />
+        </Shell>
+      </RequireAdmin>
+    </AuthGate>
+  </PageWrap>
+);
+
 // Fragment children render correctly as direct children of `<Routes>` in
 // React Router 6 — the router walks through the fragment when collecting
 // route definitions.
@@ -93,8 +108,8 @@ export const sessionsAdminRoutes = (
       <Route path="remote-sessions" element={<RequestsTabPage lockedType={REQUEST_TYPE.REMOTE_SESSION} />} />
       <Route path="substitute-requests" element={<SubstituteRequestsView />} />
     </Route>
-    <Route path={SESSIONS_LOCATIONS_PATH} element={wrapInShell(LocationsPage)} />
-    <Route path={SESSIONS_HOLIDAYS_PATH} element={wrapInShell(HolidaysPage)} />
+    <Route path={SESSIONS_LOCATIONS_PATH} element={wrapAdminOnly(LocationsPage)} />
+    <Route path={SESSIONS_HOLIDAYS_PATH} element={wrapAdminOnly(HolidaysPage)} />
     <Route
       path={SESSIONS_DASHBOARD_PATH}
       element={<PageWrap><AuthGate><DashboardPage /></AuthGate></PageWrap>}

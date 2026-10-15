@@ -9,13 +9,11 @@ const jestDomMatchers = require('@testing-library/jest-dom/matchers');
 
 expect.extend(jestDomMatchers);
 
-jest.mock('../app/useConfig', () => ({ useConfig: jest.fn() }));
 jest.mock('./api', () => ({
   getHolidays: jest.fn(),
   deleteHoliday: jest.fn(),
 }));
 
-const { useConfig } = require('../app/useConfig');
 const { getHolidays } = require('./api');
 
 const wrap = () => render(
@@ -28,19 +26,10 @@ const wrap = () => render(
 
 beforeEach(() => jest.clearAllMocks());
 
-describe('non-admin', () => {
-  it('shows admins-only message', async () => {
-    useConfig.mockReturnValue({ data: { user_role: 'learner' } });
-    wrap();
-    await waitFor(() => expect(screen.getByText(/this page is for admins only/i)).toBeInTheDocument());
-  });
-});
-
+// Role gating lives in src/app/RequireAdmin.jsx (see RequireAdmin.test.jsx).
+// This suite assumes the user is already an admin — the page is never rendered
+// otherwise.
 describe('admin', () => {
-  beforeEach(() => {
-    useConfig.mockReturnValue({ data: { user_role: 'admin' } });
-  });
-
   it('shows loading spinner initially', () => {
     getHolidays.mockReturnValue(new Promise(() => {}));
     wrap();

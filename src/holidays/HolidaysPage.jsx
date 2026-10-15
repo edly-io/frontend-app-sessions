@@ -1,5 +1,6 @@
 // HolidaysPage — admin CRUD for public holidays.
 // Visible inside the sessions-admin shell at /sessions/:programId/holidays.
+// Access is gated upstream by `RequireAdmin` in src/app/routes.tsx.
 
 import React, {
   useState, useEffect, useCallback, useMemo,
@@ -9,8 +10,6 @@ import {
 } from '@openedx/paragon';
 import { Add, DeleteOutline, EditOutline } from '@openedx/paragon/icons';
 import PropTypes from 'prop-types';
-import { useConfig } from '../app/useConfig';
-import { USER_ROLE } from '../shared/constants';
 import { getHolidays, deleteHoliday } from './api';
 import { extractApiError } from '../shared/utils';
 import HolidayModal from './HolidayModal';
@@ -38,8 +37,7 @@ DescriptionCell.propTypes = { value: PropTypes.string };
 DescriptionCell.defaultProps = { value: '' };
 
 const ActionsCell = ({ row, column }) => {
-  const { isAdmin, onEdit, onDelete } = column;
-  if (!isAdmin) { return null; }
+  const { onEdit, onDelete } = column;
   return (
     <div className="d-flex" style={{ gap: 4 }}>
       <Button
@@ -70,7 +68,6 @@ ActionsCell.propTypes = {
     }).isRequired,
   }).isRequired,
   column: PropTypes.shape({
-    isAdmin: PropTypes.bool.isRequired,
     onEdit: PropTypes.func.isRequired,
     onDelete: PropTypes.func.isRequired,
   }).isRequired,
@@ -80,8 +77,6 @@ const PAGE_SIZE = 20;
 
 const HolidaysPage = () => {
   const isBelowLg = useIsBelowLg();
-  const { data: config } = useConfig();
-  const isAdmin = config?.user_role === USER_ROLE.ADMIN;
 
   const [holidays, setHolidays] = useState([]);
   const [count, setCount] = useState(0);
@@ -137,21 +132,12 @@ const HolidaysPage = () => {
       Header: 'Actions',
       id: 'actions',
       Cell: ActionsCell,
-      isAdmin,
       onEdit: (h) => openModal('edit-holiday', h.id),
       onDelete: setDeleteTarget,
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [isAdmin, openModal]);
+  ], [openModal]);
   /* eslint-enable react/no-unstable-nested-components, react/prop-types */
-
-  if (!isAdmin) {
-    return (
-      <Container className="py-4">
-        <Alert variant="info">This page is for admins only.</Alert>
-      </Container>
-    );
-  }
 
   const handleSaved = (saved) => {
     const wasEdit = modal === 'edit-holiday';
@@ -235,7 +221,7 @@ const HolidaysPage = () => {
                       key={h.id}
                       title={h.name}
                       subtitle={dateRange}
-                      footer={isAdmin ? (
+                      footer={(
                         <>
                           <Button variant="tertiary" size="sm" iconBefore={EditOutline} onClick={() => openModal('edit-holiday', h.id)}>Edit</Button>
                           <Button
@@ -248,7 +234,7 @@ const HolidaysPage = () => {
                             Delete
                           </Button>
                         </>
-                      ) : null}
+                      )}
                     >
                       {h.description && (
                         <MobileRowField label="Description">
